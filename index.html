@@ -53,11 +53,23 @@
         </div>
     </div>
     
+    <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
+            <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
+            <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
+            <img src="1000021086.png" alt="Share QR Code" class="w-64 h-64 mx-auto rounded-lg mb-6 border-4 border-white dark:border-gray-700">
+            <button id="close-share" class="px-6 py-2 text-white bg-primary-app rounded-lg hover:bg-secondary-app transition-colors font-semibold">Close</button>
+        </div>
+    </div>
+    
     <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
             <div class="p-6 pb-4 relative">
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">App Settings ⚙️</h3>
+                <button id="open-share-button" data-action="open-share" class="absolute top-4 right-12 text-gray-700 dark:text-gray-300 hover:text-primary-app dark:hover:text-primary-app transition-colors text-2xl font-bold focus:outline-none" title="Share App">
+                    📤
+                </button>
                 <button id="open-help-button" data-action="open-help" class="absolute top-4 right-4 text-gray-700 dark:text-gray-300 hover:text-primary-app dark:hover:text-primary-app transition-colors text-2xl font-bold focus:outline-none" title="View Help & Instructions">
                     ❓
                 </button>
