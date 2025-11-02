@@ -37,7 +37,7 @@
         isFollowsAutoplayEnabled: true, 
         isRounds15ClearAfterPlaybackEnabled: true, 
         isAudioPlaybackEnabled: true,
-        isVoiceInputEnabled: true, // NEW
+        isVoiceInputEnabled: true,
         areSlidersLocked: true,
         followsChunkSize: 3, 
     };
@@ -58,6 +58,7 @@
     // --- DOM Elements ---
     const sequenceContainer = document.getElementById('sequence-container');
     const customModal = document.getElementById('custom-modal');
+    const shareModal = document.getElementById('share-modal'); // *** NEW ***
 
     // Settings Modal Elements
     const settingsModal = document.getElementById('settings-modal');
@@ -79,7 +80,7 @@
     const followsAutoplayToggle = document.getElementById('follows-autoplay-toggle'); 
     const rounds15ClearAfterPlaybackToggle = document.getElementById('rounds15-clear-after-playback-toggle');
     const audioPlaybackToggle = document.getElementById('audio-playback-toggle'); 
-    const voiceInputToggle = document.getElementById('voice-input-toggle'); // NEW
+    const voiceInputToggle = document.getElementById('voice-input-toggle');
     const sliderLockToggle = document.getElementById('slider-lock-toggle'); 
 
     // Sliders and Displays
@@ -97,14 +98,14 @@
     const followsPad = document.getElementById('follows-pad');
     const pianoPad = document.getElementById('piano-pad');
     const rounds15Pad = document.getElementById('rounds15-pad');
-    const allMicButtons = document.querySelectorAll('button[data-action="voice-input"]'); // NEW
+    const allMicButtons = document.querySelectorAll('button[data-action="voice-input"]');
 
-    // --- NEW: Speech Recognition ---
+    // --- Speech Recognition ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognitionApi = SpeechRecognition ? new SpeechRecognition() : null;
     let isListening = false;
 
-    // --- NEW: Voice Command Mapping ---
+    // --- Voice Command Mapping ---
 
     // This map is for single-word-to-value translation
     const VOICE_VALUE_MAP = {
@@ -300,7 +301,6 @@
         }
         if (currentMode === 'bananas' && sequences[0].length >= 25) return;
         if (currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
-        // --- MODIFICATION: Changed 2 to 20 ---
         if (currentMode === 'piano' && sequences[0].length >= 20) return; 
 
         // Add value
@@ -388,11 +388,8 @@
         event.preventDefault(); 
         stopSpeedDeleting(); 
 
-        // 1. Handle single click (will be triggered on 'end' if timer is short)
-        // 2. Check if speed deleting is enabled
         if (!settings.isSpeedDeletingEnabled) return;
         
-        // 3. Check if demos are running (which disable backspace)
         if (currentMode === 'rounds15') {
             const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
             if (demoButton && demoButton.disabled) return;
@@ -402,26 +399,22 @@
             if (demoButton && demoButton.disabled) return;
         }
 
-        // 4. Start the speed delete timers
         initialDelayTimer = setTimeout(() => {
-            handleBackspace(); // Delete one immediately
+            handleBackspace();
             speedDeleteInterval = setInterval(handleBackspace, SPEED_DELETE_INTERVAL_MS);
-            initialDelayTimer = null; // Mark initial delay as passed
+            initialDelayTimer = null; 
         }, SPEED_DELETE_INITIAL_DELAY);
     }
 
     function handleBackspaceEnd() {
         if (initialDelayTimer !== null) {
-            // Timer was set, but didn't fire (short click)
             stopSpeedDeleting();
-            handleBackspace(); // Manually trigger the single backspace
+            handleBackspace(); 
         } 
         else if (!settings.isSpeedDeletingEnabled) {
-            // Speed deleting is off, trigger single click
             handleBackspace();
         } 
         else {
-            // Timer fired (long press), just stop the interval
             stopSpeedDeleting();
         }
     }
@@ -443,7 +436,6 @@
         event.stopPropagation();
         if (settingsModeDropdown.classList.contains('hidden')) {
             renderModeDropdown();
-            // Position dropdown relative to the modal
             const rect = settingsModeToggleButton.getBoundingClientRect();
             const modalRect = settingsModal.querySelector('div').getBoundingClientRect();
             settingsModeDropdown.style.position = 'absolute';
@@ -453,7 +445,6 @@
             
             settingsModeDropdown.classList.remove('hidden');
             setTimeout(() => settingsModeDropdown.classList.remove('opacity-0'), 10);
-            // Add listener to close dropdown
             document.addEventListener('click', closeModeDropdownOnOutsideClick, true);
         } else {
             closeModeDropdown();
@@ -467,7 +458,6 @@
     }
 
     function closeModeDropdownOnOutsideClick(event) {
-        // Close if click is outside the toggle button AND the dropdown
         if (!event.target.closest('#settings-mode-toggle-button') && !event.target.closest('#settings-mode-dropdown')) {
             closeModeDropdown();
         }
@@ -479,19 +469,14 @@
     }
 
     function openSettingsModal() {
-        // Sync UI elements to the current state
-        
-        // Sync Mode Button
         settingsModeToggleButton.innerHTML = `
             ${MODE_LABELS[currentMode]}
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         `;
         
-        // Sync "follows" settings
         followsCountSelect.value = appState['follows'].sequenceCount;
         followsChunkSizeSelect.value = settings.followsChunkSize;
         
-        // Sync Toggles
         darkModeToggle.checked = settings.isDarkMode;
         speedDeleteToggle.checked = settings.isSpeedDeletingEnabled; 
         pianoAutoplayToggle.checked = settings.isPianoAutoplayEnabled; 
@@ -499,10 +484,9 @@
         followsAutoplayToggle.checked = settings.isFollowsAutoplayEnabled;
         rounds15ClearAfterPlaybackToggle.checked = settings.isRounds15ClearAfterPlaybackEnabled;
         audioPlaybackToggle.checked = settings.isAudioPlaybackEnabled; 
-        voiceInputToggle.checked = settings.isVoiceInputEnabled; // NEW
+        voiceInputToggle.checked = settings.isVoiceInputEnabled;
         sliderLockToggle.checked = settings.areSlidersLocked; 
 
-        // Sync Speed Sliders
         bananasSpeedSlider.value = settings.bananasSpeedMultiplier * 100;
         updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
         pianoSpeedSlider.value = settings.pianoSpeedMultiplier * 100;
@@ -510,13 +494,11 @@
         rounds15SpeedSlider.value = settings.rounds15SpeedMultiplier * 100;
         updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
         
-        // Sync UI Scale Slider
         uiScaleSlider.value = settings.uiScaleMultiplier * 100;
         updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
         
         updateSliderLockState();
         
-        // Show modal
         settingsModal.classList.remove('opacity-0', 'pointer-events-none');
         settingsModal.querySelector('div').classList.remove('scale-90');
     }
@@ -530,7 +512,7 @@
     // --- Help Modal Logic ---
 
     function generateHelpContent() {
-        // Main help content (before prompts)
+        // This function ALREADY contains the voice command list from the previous update.
         return `
             <h4 class="text-primary-app">App Overview</h4>
             <p>This is a multi-mode number/sequence tracker designed to help you practice memorization and pattern recognition. Use the Settings menu (⚙️) to switch between four distinct modes.</p>
@@ -575,7 +557,7 @@
             <h4 class="text-primary-app">Global Features & Settings</h4>
             <ul>
                 <li><span class="font-bold">Backspace (←):</span> Removes the last entered value.</li>
-                <li><span class="font-bold">Voice Input (🎤):</span> (If enabled) Click to speak commands like "one", "five", "C", "clear", or "reset".</li>
+                <li><span class="font-bold">Voice Input (🎤):</span> (If enabled) Click to speak commands.</li>
                 <li><span class="font-bold">Speed Deleting:</span> Hold the backspace key to quickly delete many entries (On by default).</li>
                 <li><span class="font-bold">Audio Playback:</span> Speaks the sequence during demo playback (On by default).</li>
                 <li><span class="font-bold">Playback Speeds:</span> Adjust the speed sliders to control how quickly the demo features execute.</li>
@@ -628,20 +610,14 @@
     function openHelpModal() {
         const helpContentContainer = document.getElementById('help-content');
         
-        // 1. Inject the main help text
         helpContentContainer.innerHTML = generateHelpContent();
         
-        // 2. Find the hidden prompt section
         const promptSection = document.getElementById('virtual-assistant-prompts');
         if (promptSection) {
-            // 3. Remove the 'hidden' class to make it visible
             promptSection.classList.remove('hidden');
-            
-            // 4. Move the now-visible section into the modal's content area
             helpContentContainer.appendChild(promptSection);
         }
 
-        // 5. Show the modal
         helpModal.classList.remove('opacity-0', 'pointer-events-none');
         helpModal.querySelector('div').classList.remove('scale-90');
     }
@@ -649,19 +625,33 @@
     function closeHelpModal() {
         const promptSection = document.getElementById('virtual-assistant-prompts');
         
-        // When closing, move the prompt section back to the body and hide it
-        // This ensures it's available next time the modal opens.
         if (promptSection) {
             promptSection.classList.add('hidden');
             document.body.appendChild(promptSection);
         }
 
-        // Hide modal
         helpModal.querySelector('div').classList.add('scale-90');
         helpModal.classList.add('opacity-0');
         setTimeout(() => {
             helpModal.classList.add('pointer-events-none');
         }, 300);
+    }
+    
+    // --- *** NEW: Share Modal Functions *** ---
+    function openShareModal() {
+        closeSettingsModal(); // Close settings when opening share
+        if (shareModal) {
+            shareModal.classList.remove('opacity-0', 'pointer-events-none');
+            shareModal.querySelector('div').classList.remove('scale-90');
+        }
+    }
+
+    function closeShareModal() {
+        if (shareModal) {
+            shareModal.querySelector('div').classList.add('scale-90');
+            shareModal.classList.add('opacity-0');
+            setTimeout(() => shareModal.classList.add('pointer-events-none'), 300);
+        }
     }
     
     // --- Theme, Speed, and Scale Control ---
@@ -670,7 +660,7 @@
         settings.isDarkMode = isDark;
         document.body.classList.toggle('dark', isDark);
         document.body.classList.toggle('light', !isDark);
-        renderSequences(); // Re-render to apply correct sequence bg colors
+        renderSequences();
     }
     
     function getSpeedMultiplier(mode) {
@@ -715,13 +705,11 @@
      */
     function updateMode(newMode) {
         currentMode = newMode;
-        // Toggle pad visibility
         bananasPad.style.display = currentMode === 'bananas' ? 'block' : 'none';
         followsPad.style.display = currentMode === 'follows' ? 'block' : 'none';
         pianoPad.style.display = currentMode === 'piano' ? 'block' : 'none';
         rounds15Pad.style.display = currentMode === 'rounds15' ? 'block' : 'none';
         
-        // Update settings modal button if it's open
         if (!settingsModal.classList.contains('pointer-events-none') && settingsModeToggleButton) {
             settingsModeToggleButton.innerHTML = `
                 ${MODE_LABELS[newMode]}
@@ -731,7 +719,6 @@
         renderSequences();
     }
 
-    // --- NEW: Voice Input Visibility ---
     function updateMicButtonVisibility() {
         const isEnabled = settings.isVoiceInputEnabled;
         allMicButtons.forEach(btn => {
@@ -741,13 +728,10 @@
     
     // --- Audio Playback ---
     
-    /**
-     * Speaks the given text using Web Speech API.
-     */
     function speak(text) {
         if (!settings.isAudioPlaybackEnabled || !('speechSynthesis' in window)) return;
         try {
-            window.speechSynthesis.cancel(); // Stop any previous speech
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US'; 
             utterance.rate = 1.2; 
@@ -770,15 +754,13 @@
         const currentDelayMs = DEMO_DELAY_BASE_MS / speedMultiplier;
         
         if (sequenceToPlay.length === 0 || (demoButton && demoButton.disabled)) {
-            if (demoButton && demoButton.disabled) return; // Demo already running
-            // Only show modal if triggered by user, not autoplay
+            if (demoButton && demoButton.disabled) return;
             if (!settings.isBananasAutoplayEnabled) {
                 showModal('No Sequence', 'The sequence is empty. Enter some numbers first!', () => closeModal(), 'OK', '');
             }
             return;
         }
 
-        // Disable buttons
         demoButton.disabled = true;
         inputKeys.forEach(key => key.disabled = true);
         
@@ -803,7 +785,6 @@
                 }
                 i++;
             } else {
-                // Re-enable buttons
                 demoButton.disabled = false;
                 demoButton.innerHTML = '▶'; 
                 inputKeys.forEach(key => key.disabled = false);
@@ -824,15 +805,13 @@
         const maxLength = Math.max(...activeSequences.map(s => s.length));
         
         if (maxLength === 0 || (demoButton && demoButton.disabled)) {
-             if (demoButton && demoButton.disabled) return; // Demo already running
-             // Only show modal if triggered by user, not autoplay
+             if (demoButton && demoButton.disabled) return;
             if (!settings.isFollowsAutoplayEnabled) {
                 showModal('No Sequence', 'The sequences are empty. Enter some numbers first!', () => closeModal(), 'OK', '');
             }
             return;
         }
         
-        // Build the "playlist"
         const playlist = [];
         const numChunks = Math.ceil(maxLength / chunkSize);
 
@@ -850,7 +829,6 @@
         
         if (playlist.length === 0) return;
 
-        // Disable buttons
         demoButton.disabled = true;
         inputKeys.forEach(key => key.disabled = true);
         
@@ -869,23 +847,21 @@
                 demoButton.innerHTML = String(i + 1);
                 speak(value);
 
-                // Flash key and highlight sequence box
                 if (key) key.classList.add('bananas-flash');
                 if (seqBox) seqBox.className = 'p-4 rounded-xl shadow-md transition-all duration-200 bg-accent-app scale-[1.02] shadow-lg text-gray-900';
                 
                 setTimeout(() => {
                     if (key) key.classList.remove('bananas-flash');
-                    if (seqBox) seqBox.className = originalClasses; // Restore original class
+                    if (seqBox) seqBox.className = originalClasses;
                     setTimeout(playNextItem, pauseDuration - flashDuration);
                 }, flashDuration);
                         
                 i++;
             } else {
-                // Re-enable buttons
                 demoButton.disabled = false;
                 demoButton.innerHTML = '▶'; 
                 inputKeys.forEach(key => key.disabled = false);
-                renderSequences(); // Redraw to reset current turn highlight
+                renderSequences();
             }
         }
         playNextItem();
@@ -907,7 +883,6 @@
         const currentDelayMs = DEMO_DELAY_BASE_MS / speedMultiplier;
 
         if (sequenceToPlay.length === 0 || (demoButton && demoButton.disabled)) {
-            // Only show modal if triggered by user, not autoplay
             if (!settings.isPianoAutoplayEnabled || (demoButton && demoButton.disabled)) {
                  if (demoButton && demoButton.disabled) return; 
                 showModal('No Sequence', 'The sequence is empty. Enter some notes first!', () => closeModal(), 'OK', '');
@@ -915,11 +890,9 @@
             return;
         }
 
-        // Disable buttons
         demoButton.disabled = true;
         const keys = document.querySelectorAll('#piano-pad button[data-value]');
         keys.forEach(key => key.disabled = true);
-        // Re-enable control buttons
         document.querySelector('#piano-pad button[data-action="backspace"]').disabled = false;
         document.querySelector('#piano-pad button[data-action="open-settings"]').disabled = false;
 
@@ -935,7 +908,6 @@
                 i++;
                 setTimeout(playNextKey, currentDelayMs);
             } else {
-                // Re-enable buttons
                 demoButton.disabled = false;
                 demoButton.innerHTML = '▶'; 
                 keys.forEach(key => key.disabled = false);
@@ -948,11 +920,10 @@
         const state = appState['rounds15'];
         state.currentRound++;
         if (state.currentRound > state.maxRound) {
-            state.currentRound = 1; // Loop back
+            state.currentRound = 1;
             showModal('Complete!', `You finished all ${state.maxRound} rounds. Resetting to Round 1.`, () => closeModal(), 'OK', '');
         }
         renderSequences(); 
-        // Re-enable all keys for the new round
         const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
         allKeys.forEach(key => key.disabled = false);
     }
@@ -967,9 +938,6 @@
         renderSequences();
     }
     
-    /**
-     * Clears the 15-rounds sequence with a rapid delete animation.
-     */
     function clearRounds15Sequence() {
         const state = appState['rounds15'];
         const sequence = state.sequences[0];
@@ -993,7 +961,6 @@
                 advanceToNextRound(); 
             }
         }
-        // Start the rapid delete
         setTimeout(() => {
             speedDeleteInterval = setInterval(rapidDelete, SPEED_DELETE_INTERVAL_MS);
         }, 10);
@@ -1014,10 +981,8 @@
             return;
         }
 
-        // Disable buttons
         demoButton.disabled = true;
         allKeys.forEach(key => key.disabled = true);
-        // Re-enable control buttons
         document.querySelector('#rounds15-pad button[data-action="backspace"]').disabled = false;
         document.querySelector('#rounds15-pad button[data-action="open-settings"]').disabled = false;
         document.querySelector('#rounds15-pad button[data-action="reset-rounds"]').disabled = false;
@@ -1043,15 +1008,12 @@
                 }
                 i++;
             } else {
-                // Demo finished
                 demoButton.disabled = false;
                 demoButton.innerHTML = '▶'; 
                 
                 if (settings.isRounds15ClearAfterPlaybackEnabled) {
-                    // Automatically clear and advance
                     setTimeout(clearRounds15Sequence, 300); 
                 } else {
-                    // Manually re-enable keys
                     allKeys.forEach(key => key.disabled = false);
                 }
             }
@@ -1059,7 +1021,6 @@
         playNextNumber();
     }
 
-    // --- NEW: Helper function for voice playback ---
     function handleCurrentDemo() {
         switch(currentMode) {
             case 'bananas': handleBananasDemo(); break;
@@ -1069,7 +1030,6 @@
         }
     }
 
-    // --- NEW: Helper function for voice speed control ---
     function adjustSpeed(amount, reset = false) {
         let slider, display, modeKey;
         
@@ -1086,7 +1046,7 @@
             display = rounds15SpeedDisplay;
             modeKey = 'rounds15';
         } else {
-            return; // No speed slider for this mode
+            return;
         }
 
         let currentMultiplier = settings[`${modeKey}SpeedMultiplier`];
@@ -1109,14 +1069,12 @@
     function showModal(title, message, onConfirm, confirmText = 'OK', cancelText = 'Cancel') {
         if (!customModal) return;
         
-        // Set text
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-message').textContent = message;
         
         const oldConfirmBtn = document.getElementById('modal-confirm');
         const oldCancelBtn = document.getElementById('modal-cancel');
         
-        // Clone buttons to remove old event listeners
         const newConfirmBtn = oldConfirmBtn.cloneNode(true); 
         newConfirmBtn.textContent = confirmText;
         oldConfirmBtn.parentNode.replaceChild(newConfirmBtn, oldConfirmBtn); 
@@ -1125,17 +1083,13 @@
         newCancelBtn.textContent = cancelText;
         oldCancelBtn.parentNode.replaceChild(newCancelBtn, oldCancelBtn);
 
-        // Add new listeners
         newConfirmBtn.addEventListener('click', () => { onConfirm(); closeModal(); }); 
         newCancelBtn.addEventListener('click', closeModal); 
         
-        // Show/hide cancel button
         newCancelBtn.style.display = cancelText ? 'inline-block' : 'none';
         
-        // Set confirm button style (in case it was changed)
         newConfirmBtn.className = 'px-4 py-2 text-white rounded-lg transition-colors font-semibold bg-primary-app hover:bg-secondary-app';
         
-        // Show modal
         setTimeout(() => {
             customModal.classList.remove('opacity-0', 'pointer-events-none');
             customModal.querySelector('div').classList.remove('scale-90');
@@ -1150,52 +1104,41 @@
         }
     }
 
-    // --- NEW: Voice Input Functions ---
+    // --- Voice Input Functions ---
 
-    /**
-     * Processes the transcript from speech recognition.
-     */
     function processVoiceTranscript(transcript) {
         if (!transcript) return;
         
         const cleanTranscript = transcript.toLowerCase().replace(/[\.,]/g, '').trim();
         
-        // 1. Check for an exact action command
         if (VOICE_ACTION_MAP[cleanTranscript]) {
             VOICE_ACTION_MAP[cleanTranscript]();
             return;
         }
 
-        // 2. Check for action commands that might be *part* of the transcript
-        //    (e.g., "please reset rounds")
         for (const phrase in VOICE_ACTION_MAP) {
             if (cleanTranscript.includes(phrase)) {
                 VOICE_ACTION_MAP[phrase]();
-                return; // Only execute the first matching command
+                return;
             }
         }
 
-        // 3. If no action command, parse for sequence values
         const words = cleanTranscript.split(' ');
         let valuesAdded = 0;
         
         for (const word of words) {
-            // Check value map first (e.g., 'one' -> '1')
             let value = VOICE_VALUE_MAP[word];
             
-            // If not in map, check if it's a direct value (e.g., '1', 'C')
             if (!value) {
                  const upperWord = word.toUpperCase();
-                 if (/^[1-9]$/.test(word) || /^(1[0-2])$/.test(word)) { // 1-12
+                 if (/^[1-9]$/.test(word) || /^(1[0-2])$/.test(word)) {
                     value = word;
-                 } else if (/^[A-G]$/.test(upperWord) || /^[1-5]$/.test(word)) { // A-G, 1-5
+                 } else if (/^[A-G]$/.test(upperWord) || /^[1-5]$/.test(word)) {
                     value = upperWord;
                  }
             }
 
-            // If we have a value, try to add it
             if (value) {
-                // Check if 'value' is a valid input for the current mode
                 if (currentMode === 'bananas' || currentMode === 'follows') {
                     if (/^[1-9]$/.test(value)) {
                         addValue(value);
@@ -1215,11 +1158,8 @@
             }
         }
         
-        // If no values were added and no commands were found, it's an unknown command
         if (valuesAdded === 0) {
             console.log(`Unknown voice command or value: ${transcript}`);
-            // Optional: Give user feedback
-            // speak("Unknown command"); 
         }
     }
 
@@ -1232,12 +1172,9 @@
         console.error('Voice Error:', event.error);
         if (event.error === 'not-allowed') {
             showModal('Permission Denied', 'You have blocked microphone access. To use voice input, please allow microphone access in your browser settings.', () => closeModal(), 'OK', '');
-            // Disable the feature
             settings.isVoiceInputEnabled = false;
             voiceInputToggle.checked = false;
             updateMicButtonVisibility();
-        } else if (event.error === 'no-speech') {
-            // Do nothing, user just didn't speak
         }
         stopListening();
     }
@@ -1247,7 +1184,6 @@
         isListening = false;
         if(recognitionApi) recognitionApi.stop();
         
-        // Reset all mic buttons
         allMicButtons.forEach(btn => {
             btn.classList.remove('voice-active');
             btn.innerHTML = '🎤';
@@ -1259,7 +1195,6 @@
         
         isListening = true;
         
-        // Style the current button
         const currentMicButton = document.querySelector(`#${currentMode}-pad button[data-action="voice-input"]`);
         if (currentMicButton) {
             currentMicButton.classList.add('voice-active');
@@ -1286,23 +1221,17 @@
 
     // --- Event Listeners Setup ---
     
-    /**
-     * Initializes all application-wide event listeners.
-     */
     function initializeListeners() {
         
-        // 1. GLOBAL CLICK LISTENER (Event Delegation)
         document.addEventListener('click', (event) => {
             const button = event.target.closest('button');
             if (!button) return;
 
             const { value, action, mode, modeSelect, copyTarget } = button.dataset;
 
-            // A. Handle Copy Button
             if (copyTarget) {
                 const targetElement = document.getElementById(copyTarget);
                 if (targetElement) {
-                    // Use document.execCommand for iFrame compatibility
                     targetElement.select();
                     try {
                         document.execCommand('copy');
@@ -1315,11 +1244,7 @@
                         }, 2000);
                     } catch (err) {
                         console.error('Failed to copy text: ', err);
-                        // Fallback for modern browsers (might fail in iFrame)
-                        // Note: navigator.clipboard may be blocked in sandboxed iFrames
-                        navigator.clipboard.writeText(targetElement.value).then(() => {
-                            /* ... success ... */
-                        }).catch(err => {
+                        navigator.clipboard.writeText(targetElement.value).catch(err => {
                             console.error('Clipboard API failed: ', err);
                         });
                     }
@@ -1327,7 +1252,6 @@
                 return;
             }
             
-            // B. Handle Modal/Settings Actions
             if (action === 'open-settings') {
                 openSettingsModal();
                 return;
@@ -1337,12 +1261,16 @@
                 openHelpModal();
                 return;
             }
+            // *** NEW ***
+            if (action === 'open-share') {
+                openShareModal();
+                return;
+            }
             if (modeSelect) {
                 handleModeSelection(modeSelect);
                 return;
             }
 
-            // C. Handle Demo / Reset Actions
             if (action === 'reset-rounds' && mode === 'rounds15') {
                 resetRounds15();
                 return;
@@ -1364,7 +1292,6 @@
                 return;
             }
 
-            // D. NEW: Handle Voice Input
             if (action === 'voice-input' && mode === currentMode) {
                 if (isListening) {
                     stopListening();
@@ -1374,13 +1301,12 @@
                 return;
             }
             
-            // E. Handle Value Input (Check if button's mode matches current mode)
             if (value && mode === currentMode) {
                 if ((currentMode === 'bananas' || currentMode === 'follows') && /^[1-9]$/.test(value)) {
                     addValue(value);
                 }
                 else if (currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
-                    if (!settings.isPianoAutoplayEnabled) flashKey(value, 200); // Manual flash
+                    if (!settings.isPianoAutoplayEnabled) flashKey(value, 200);
                     addValue(value);
                 }
                 else if (currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
@@ -1389,7 +1315,6 @@
             }
         });
         
-        // 2. BACKSPACE SPEED DELETE LISTENERS (Mouse + Touch)
         document.querySelectorAll('button[data-action="backspace"]').forEach(btn => {
             btn.addEventListener('mousedown', handleBackspaceStart);
             btn.addEventListener('mouseup', handleBackspaceEnd);
@@ -1398,23 +1323,20 @@
             btn.addEventListener('touchend', handleBackspaceEnd);
         });
         
-        // 3. SETTINGS MODAL LISTENERS 
         settingsModeToggleButton.addEventListener('click', toggleModeDropdown);
         document.getElementById('close-settings').addEventListener('click', closeSettingsModal);
         
-        // "follows" mode settings
         followsCountSelect.addEventListener('change', (event) => {
             const newCount = parseInt(event.target.value);
             const state = appState['follows'];
             state.sequenceCount = newCount;
-            state.nextSequenceIndex = 0; // Reset index on change
+            state.nextSequenceIndex = 0;
             renderSequences(); 
         });
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
         });
         
-        // Toggles
         darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
         speedDeleteToggle.addEventListener('change', (e) => settings.isSpeedDeletingEnabled = e.target.checked);
         pianoAutoplayToggle.addEventListener('change', (e) => settings.isPianoAutoplayEnabled = e.target.checked);
@@ -1423,9 +1345,8 @@
         rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked);
         audioPlaybackToggle.addEventListener('change', (e) => {
             settings.isAudioPlaybackEnabled = e.target.checked;
-            if (settings.isAudioPlaybackEnabled) speak("Audio"); // Pre-load voice
+            if (settings.isAudioPlaybackEnabled) speak("Audio");
         });
-        // NEW: Voice Input Toggle Listener
         voiceInputToggle.addEventListener('change', (e) => {
             settings.isVoiceInputEnabled = e.target.checked;
             updateMicButtonVisibility();
@@ -1443,7 +1364,6 @@
             updateSliderLockState();
         });
 
-        // Speed Sliders
         function setupSpeedSlider(slider, displayElement, modeKey) {
             slider.addEventListener('input', (event) => {
                 const multiplier = parseInt(event.target.value) / 100;
@@ -1455,24 +1375,22 @@
         setupSpeedSlider(pianoSpeedSlider, pianoSpeedDisplay, 'piano');
         setupSpeedSlider(rounds15SpeedSlider, rounds15SpeedDisplay, 'rounds15');
         
-        // UI Scale Slider
         uiScaleSlider.addEventListener('input', (event) => {
             const multiplier = parseInt(event.target.value) / 100;
             settings.uiScaleMultiplier = multiplier;
             updateScaleDisplay(multiplier, uiScaleDisplay);
-            renderSequences(); // Re-render to apply new size
+            renderSequences();
         });
         
-        // 4. HELP MODAL LISTENER
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
+        document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
     }
     
     // --- Initialization ---
     window.onload = function() {
         
-        // --- PWA: Service Worker Registration ---
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js') // Points to your new sw.js file
+            navigator.serviceWorker.register('sw.js')
                 .then((registration) => {
                     console.log('Service Worker registered with scope:', registration.scope);
                 })
@@ -1480,18 +1398,15 @@
                     console.error('Service Worker registration failed:', error);
                 });
         }
-        // --- End PWA Registration ---
 
-        // Apply defaults on load
         updateTheme(settings.isDarkMode);
         updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
         updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
         updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
         updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        updateSliderLockState(); // Apply default lock
-        updateMicButtonVisibility(); // NEW: Show/hide mic buttons
+        updateSliderLockState();
+        updateMicButtonVisibility();
         
-        // NEW: Check for voice support on load
         if (settings.isVoiceInputEnabled && !recognitionApi) {
             showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                 settings.isVoiceInputEnabled = false;
@@ -1501,13 +1416,10 @@
             }, 'OK', '');
         }
         
-        // Setup all event listeners
         initializeListeners();
         
-        // Start in 'bananas' mode
         updateMode('bananas');
         
-        // Pre-load voice engine
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
 
