@@ -104,15 +104,74 @@
     const recognitionApi = SpeechRecognition ? new SpeechRecognition() : null;
     let isListening = false;
 
-    // Voice Command Mapping
-    const VOICE_COMMAND_MAP = {
+    // --- NEW: Voice Command Mapping ---
+
+    // This map is for single-word-to-value translation
+    const VOICE_VALUE_MAP = {
         'one': '1', 'two': '2', 'to': '2', 'three': '3', 'four': '4', 'for': '4', 'five': '5',
         'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
         'eleven': '11', 'twelve': '12',
+        
+        // Piano notes
         'see': 'C', 'dee': 'D', 'e': 'E', 'eff': 'F', 'gee': 'G', 'eh': 'A', 'be': 'B',
-        'c': 'C', 'd': 'D', 'f': 'F', 'g': 'G', 'a': 'A', 'b': 'B',
-        'clear': 'BACKSPACE', 'delete': 'BACKSPACE', 'back': 'BACKSPACE',
-        'reset': 'RESET',
+        'c': 'C', 'd': 'D', 'f': 'F', 'g': 'G', 'a': 'A', 'b': 'B'
+    };
+    
+    // This map is for action phrases
+    const VOICE_ACTION_MAP = {
+        // App Control
+        'settings': openSettingsModal,
+        'open settings': openSettingsModal,
+        'close settings': closeSettingsModal,
+        'help': openHelpModal,
+        'open help': openHelpModal,
+        'close help': closeHelpModal,
+        
+        // Mode Switching
+        'mode bananas': () => handleModeSelection('bananas'),
+        'switch to bananas': () => handleModeSelection('bananas'),
+        'mode follows': () => handleModeSelection('follows'),
+        'switch to follows': () => handleModeSelection('follows'),
+        'mode piano': () => handleModeSelection('piano'),
+        'switch to piano': () => handleModeSelection('piano'),
+        'mode rounds': () => handleModeSelection('rounds15'),
+        'switch to rounds': () => handleModeSelection('rounds15'),
+        
+        // Playback
+        'play': handleCurrentDemo,
+        'demo': handleCurrentDemo,
+        'play demo': handleCurrentDemo,
+        
+        // Sequence Control
+        'clear': handleBackspace,
+        'delete': handleBackspace,
+        'back': handleBackspace,
+        'backspace': handleBackspace,
+        'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
+        'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
+        
+        // Speed Control
+        'speed up': () => adjustSpeed(0.25),
+        'faster': () => adjustSpeed(0.25),
+        'speed down': () => adjustSpeed(-0.25),
+        'slower': () => adjustSpeed(-0.25),
+        'speed reset': () => adjustSpeed(0, true),
+        'base speed': () => adjustSpeed(0, true),
+        
+        // Toggles
+        'toggle dark mode': () => darkModeToggle.click(),
+        'toggle light mode': () => darkModeToggle.click(),
+        'toggle audio': () => audioPlaybackToggle.click(),
+        'toggle sound': () => audioPlaybackToggle.click(),
+        'toggle autoplay': () => {
+             if (currentMode === 'bananas') bananasAutoplayToggle.click();
+             else if (currentMode === 'follows') followsAutoplayToggle.click();
+             else if (currentMode === 'piano') pianoAutoplayToggle.click();
+        },
+        'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
+        'toggle lock': () => sliderLockToggle.click(),
+        'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
+        'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
     };
 
     // --- Core Functions for State Management ---
@@ -523,6 +582,45 @@
                 <li><span class="font-bold">Sequence Size:</span> Adjust the slider to change the visual size of the number boxes.</li>
                 <li><span class="font-bold">Lock Sliders:</span> Prevents accidental changes to the speed and size sliders (On by default).</li>
                 <li><span class="font-bold">Dark Mode:</span> Toggles the entire app between Dark and Light visual themes (On by default).</li>
+            </ul>
+
+            <h4 class="text-primary-app">Voice Commands (🎤)</h4>
+            <p>When enabled, you can speak commands to the app. The app will first check for action commands, and if none are found, it will try to add your words as sequence values.</p>
+            
+            <p class="font-bold text-gray-900 dark:text-white mt-4">Sequence Input</p>
+            <ul>
+                <li>Say numbers ("one", "five", "twelve") or notes ("C", "E", "F") to add them to the current sequence.</li>
+                <li><span class="font-bold">"Clear"</span> / <span class="font-bold">"Delete"</span> / <span class="font-bold">"Back"</span>: Deletes the last entry.</li>
+                <li><span class="font-bold">"Reset"</span> / <span class="font-bold">"Reset Rounds"</span>: (15 rounds only) Resets the game to Round 1.</li>
+            </ul>
+            
+            <p class="font-bold text-gray-900 dark:text-white mt-4">Playback & Speed</p>
+            <ul>
+                <li><span class="font-bold">"Play"</span> / <span class="font-bold">"Demo"</span>: Runs the demo for the current mode.</li>
+                <li><span class="font-bold">"Speed Up"</span> / <span class="font-bold">"Faster"</span>: Increases playback speed by 25%.</li>
+                <li><span class="font-bold">"Speed Down"</span> / <span class="font-bold">"Slower"</span>: Decreases playback speed by 25%.</li>
+                <li><span class="font-bold">"Speed Reset"</span> / <span class="font-bold">"Base Speed"</span>: Resets playback speed to 100%.</li>
+            </ul>
+            
+            <p class="font-bold text-gray-900 dark:text-white mt-4">App Control</p>
+            <ul>
+                <li><span class="font-bold">"Mode Bananas"</span> / <span class="font-bold">"Switch to Bananas"</span></li>
+                <li><span class="font-bold">"Mode Follows"</span> / <span class="font-bold">"Switch to Follows"</span></li>
+                <li><span class="font-bold">"Mode Piano"</span> / <span class="font-bold">"Switch to Piano"</span></li>
+                <li><span class="font-bold">"Mode Rounds"</span> / <span class="font-bold">"Switch to Rounds"</span></li>
+                <li><span class="font-bold">"Settings"</span> / <span class="font-bold">"Open Settings"</span></li>
+                <li><span class="font-bold">"Close Settings"</span></li>
+                <li><span class="font-bold">"Help"</span> / <span class="font-bold">"Open Help"</span></li>
+                <li><span class="font-bold">"Close Help"</span></li>
+            </ul>
+            
+            <p class="font-bold text-gray-900 dark:text-white mt-4">Toggles</p>
+            <ul>
+                <li><span class="font-bold">"Toggle Dark/Light Mode"</span></li>
+                <li><span class="font-bold">"Toggle Audio"</span> / <span class="font-bold">"Toggle Sound"</span></li>
+                <li><span class="font-bold">"Toggle Autoplay"</span>: (Bananas, Follows, Piano)</li>
+                <li><span class="font-bold">"Toggle Auto Clear"</span>: (15 rounds only)</li>
+                <li><span class="font-bold">"Lock/Unlock Sliders"</span></li>
             </ul>
         `;
     }
@@ -961,6 +1059,51 @@
         playNextNumber();
     }
 
+    // --- NEW: Helper function for voice playback ---
+    function handleCurrentDemo() {
+        switch(currentMode) {
+            case 'bananas': handleBananasDemo(); break;
+            case 'follows': handleFollowsDemo(); break;
+            case 'piano': handlePianoDemo(); break;
+            case 'rounds15': handleRounds15Demo(); break;
+        }
+    }
+
+    // --- NEW: Helper function for voice speed control ---
+    function adjustSpeed(amount, reset = false) {
+        let slider, display, modeKey;
+        
+        if (currentMode === 'bananas' || currentMode === 'follows') {
+            slider = bananasSpeedSlider;
+            display = bananasSpeedDisplay;
+            modeKey = 'bananas';
+        } else if (currentMode === 'piano') {
+            slider = pianoSpeedSlider;
+            display = pianoSpeedDisplay;
+            modeKey = 'piano';
+        } else if (currentMode === 'rounds15') {
+            slider = rounds15SpeedSlider;
+            display = rounds15SpeedDisplay;
+            modeKey = 'rounds15';
+        } else {
+            return; // No speed slider for this mode
+        }
+
+        let currentMultiplier = settings[`${modeKey}SpeedMultiplier`];
+        let newMultiplier;
+
+        if (reset) {
+            newMultiplier = 1.0;
+        } else {
+            newMultiplier = Math.max(0.5, Math.min(1.5, currentMultiplier + amount));
+        }
+        
+        settings[`${modeKey}SpeedMultiplier`] = newMultiplier;
+        slider.value = newMultiplier * 100;
+        updateSpeedDisplay(newMultiplier, display);
+        speak(`${Math.round(newMultiplier * 100)}% speed`);
+    }
+
     // --- Modal/Message Box Implementation ---
     
     function showModal(title, message, onConfirm, confirmText = 'OK', cancelText = 'Cancel') {
@@ -1015,25 +1158,68 @@
     function processVoiceTranscript(transcript) {
         if (!transcript) return;
         
-        const words = transcript.toLowerCase().replace(/[\.,]/g, '').split(' ');
+        const cleanTranscript = transcript.toLowerCase().replace(/[\.,]/g, '').trim();
+        
+        // 1. Check for an exact action command
+        if (VOICE_ACTION_MAP[cleanTranscript]) {
+            VOICE_ACTION_MAP[cleanTranscript]();
+            return;
+        }
+
+        // 2. Check for action commands that might be *part* of the transcript
+        //    (e.g., "please reset rounds")
+        for (const phrase in VOICE_ACTION_MAP) {
+            if (cleanTranscript.includes(phrase)) {
+                VOICE_ACTION_MAP[phrase]();
+                return; // Only execute the first matching command
+            }
+        }
+
+        // 3. If no action command, parse for sequence values
+        const words = cleanTranscript.split(' ');
+        let valuesAdded = 0;
         
         for (const word of words) {
-            const command = VOICE_COMMAND_MAP[word] || word; // Check map, else use word
+            // Check value map first (e.g., 'one' -> '1')
+            let value = VOICE_VALUE_MAP[word];
             
-            if (command === 'BACKSPACE') {
-                handleBackspace();
-            } else if (command === 'RESET' && currentMode === 'rounds15') {
-                resetRounds15();
-            } else {
-                // Check if 'command' is a valid input for the current mode
+            // If not in map, check if it's a direct value (e.g., '1', 'C')
+            if (!value) {
+                 const upperWord = word.toUpperCase();
+                 if (/^[1-9]$/.test(word) || /^(1[0-2])$/.test(word)) { // 1-12
+                    value = word;
+                 } else if (/^[A-G]$/.test(upperWord) || /^[1-5]$/.test(word)) { // A-G, 1-5
+                    value = upperWord;
+                 }
+            }
+
+            // If we have a value, try to add it
+            if (value) {
+                // Check if 'value' is a valid input for the current mode
                 if (currentMode === 'bananas' || currentMode === 'follows') {
-                    if (/^[1-9]$/.test(command)) addValue(command);
+                    if (/^[1-9]$/.test(value)) {
+                        addValue(value);
+                        valuesAdded++;
+                    }
                 } else if (currentMode === 'piano') {
-                    if ((/^[1-5]$/.test(command) || /^[A-G]$/.test(command))) addValue(command);
+                    if ((/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
+                        addValue(value);
+                        valuesAdded++;
+                    }
                 } else if (currentMode === 'rounds15') {
-                    if (/^(?:[1-9]|1[0-2])$/.test(command)) addValue(command);
+                    if (/^(?:[1-9]|1[0-2])$/.test(value)) {
+                        addValue(value);
+                        valuesAdded++;
+                    }
                 }
             }
+        }
+        
+        // If no values were added and no commands were found, it's an unknown command
+        if (valuesAdded === 0) {
+            console.log(`Unknown voice command or value: ${transcript}`);
+            // Optional: Give user feedback
+            // speak("Unknown command"); 
         }
     }
 
