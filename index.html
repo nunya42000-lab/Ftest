@@ -42,8 +42,8 @@
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
-    <!-- Standard Confirmation Modal -->
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- *** MODIFIED: z-index changed from z-50 to z-60 *** -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
             <p id="modal-message" class="text-gray-700 dark:text-gray-300 mb-6"></p>
@@ -54,8 +54,8 @@
         </div>
     </div>
     
-    <!-- Share Modal -->
-    <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- *** MODIFIED: z-index changed from z-50 to z-60 *** -->
+    <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
             <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
@@ -64,7 +64,7 @@
         </div>
     </div>
     
-    <!-- Settings Modal -->
+    <!-- Settings Modal (z-50) -->
     <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
@@ -260,6 +260,7 @@
         </div>
     </div>
     
+    <!-- Help Modal (z-50) -->
     <div id="help-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
@@ -458,7 +459,6 @@ Let's start with Round 1.</textarea>
         <button class="copy-button" data-copy-target="prompt-rounds15">📋 <span class="ml-2">Copy</span></button>
     </div>
     
-    <!-- *** MODIFIED: Added defer attribute back *** -->
     <script src="app.js" defer></script> 
 
 </body>
