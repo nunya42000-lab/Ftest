@@ -42,6 +42,7 @@
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
+    <!-- Confirmation Modal -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
@@ -53,20 +54,24 @@
         </div>
     </div>
     
+    <!-- Share Modal -->
     <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
             <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
+            <!-- *** FIXED: Using .jpg as requested *** -->
             <img src="1000021086.jpg" alt="Share QR Code" class="w-64 h-64 mx-auto rounded-lg mb-6 border-4 border-white dark:border-gray-700">
             <button id="close-share" class="px-6 py-2 text-white bg-primary-app rounded-lg hover:bg-secondary-app transition-colors font-semibold">Close</button>
         </div>
     </div>
     
+    <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
             <div class="p-6 pb-4 relative">
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">App Settings ⚙️</h3>
+                <!-- *** Share Button with spacing *** -->
                 <button id="open-share-button" data-action="open-share" class="absolute top-4 right-16 text-gray-700 dark:text-gray-300 hover:text-primary-app dark:hover:text-primary-app transition-colors text-2xl font-bold focus:outline-none" title="Share App">
                     📤
                 </button>
@@ -244,6 +249,7 @@
         </div>
     </div>
     
+    <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
@@ -262,6 +268,8 @@
             
         </div>
     </div>
+
+    <!-- Main App Content -->
     <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow">
         
         <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
@@ -443,3 +451,5 @@ Let's start with Round 1.</textarea>
 
 </body>
 </html>
+
+
