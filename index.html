@@ -263,32 +263,15 @@
         </div>
     </div>
     
-    <div id="help-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
-            
-            <div class="p-6 pb-4">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Application Instructions & Help 📚</h3>
-            </div>
-
-            <div class="p-6 pt-2 overflow-y-auto flex-grow text-gray-700 dark:text-gray-300 text-base" id="help-content">
-                <!-- Help content will be injected by app.js -->
-            </div>
-
-            <div class="p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-end">
-                    <button id="close-help" class="px-6 py-2 text-white bg-primary-app rounded-lg hover:bg-secondary-app transition-colors font-semibold">Got it!</button>
-                </div>
-            </div>
-            
-        </div>
-    </div>
-    <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow">
+    <!-- *** MODIFIED: Added 'relative' and 'z-10' to force app behind modals *** -->
+    <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow relative z-10">
         
         <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
             <!-- Sequences will be injected by app.js -->
         </main>
 
-        <footer id="input-footer" class="sticky bottom-0 left-0 right-0 p-4 rounded-xl shadow-2xl border-t-4 border-primary-app">
+        <!-- *** MODIFIED: Added z-40 to force footer below modals *** -->
+        <footer id="input-footer" class="sticky bottom-0 left-0 right-0 p-4 rounded-xl shadow-2xl border-t-4 border-primary-app z-40">
             
             <div id="bananas-pad" class="max-w-xs mx-auto">
                 <div class="grid grid-cols-3 gap-3 mb-3">
@@ -465,5 +448,3 @@ Let's start with Round 1.</textarea>
 
 </body>
 </html>
-
-
