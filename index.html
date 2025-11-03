@@ -42,6 +42,7 @@
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
+    <!-- Standard Confirmation Modal -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
@@ -53,15 +54,17 @@
         </div>
     </div>
     
+    <!-- Share Modal -->
     <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
             <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
-            <img src="1000021086.jpg" alt="Share QR Code" class="w-64 h-64 mx-auto rounded-lg mb-6 border-4 border-white dark:border-gray-700">
+            <img src="1000021086.jpg" alt="Share QR Code" class="w-64 h-64 mx-auto rounded-lg mb-6 border-4 border-white dark:border-gray-700" onerror="this.alt='QR Code image not found. Make sure 1000021086.jpg is in the root folder.'; this.src='https://placehold.co/256x256/ef4444/ffffff?text=Error';">
             <button id="close-share" class="px-6 py-2 text-white bg-primary-app rounded-lg hover:bg-secondary-app transition-colors font-semibold">Close</button>
         </div>
     </div>
     
+    <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
@@ -91,23 +94,35 @@
                 
                 <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Follows Mode Settings</p>
+                    
                     <div id="follows-count-setting" class="mb-6">
-                        <label for="follows-count-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Follows Sequences</label>
-                        <select id="follows-count-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="2">2 Sequences</option>
-                            <option value="3">3 Sequences</option>
-                            <option value="4">4 Sequences</option>
-                        </select>
+                        <label for="follows-count-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Follows Sequences</label>
+                        <input type="range" id="follows-count-slider" min="2" max="4" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>2</span>
+                            <span id="follows-count-display">... Sequences</span>
+                            <span>4</span>
+                        </div>
                     </div>
                     
                     <div id="follows-chunk-setting" class="mb-6">
-                        <label for="follows-chunk-size-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Numbers per sequence (playback)</label>
-                        <select id="follows-chunk-size-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="2">2</option>
-                            <option value="3" selected>3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                        </select>
+                        <label for="follows-chunk-size-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Numbers per sequence (playback)</label>
+                        <input type="range" id="follows-chunk-size-slider" min="2" max="5" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>2</span>
+                            <span id="follows-chunk-size-display">...</span>
+                            <span>5</span>
+                        </div>
+                    </div>
+
+                    <div id="follows-delay-setting" class="mb-6">
+                        <label for="follows-delay-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Delay Between Sequences</label>
+                        <input type="range" id="follows-delay-slider" min="0" max="2000" step="250" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>0.0s</span>
+                            <span id="follows-delay-display">... s</span>
+                            <span>2.0s</span>
+                        </div>
                     </div>
                 </div>
 
@@ -236,7 +251,8 @@
             </div>
             
             <div class="p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-end">
+                <div class="flex justify-between">
+                    <button id="restore-defaults-button" class="px-6 py-2 text-white bg-btn-control-red rounded-lg hover:bg-btn-control-red-active transition-colors font-semibold">Restore Defaults</button>
                     <button id="close-settings" class="px-6 py-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors font-semibold">Close</button>
                 </div>
             </div>
@@ -252,7 +268,8 @@
             </div>
 
             <div class="p-6 pt-2 overflow-y-auto flex-grow text-gray-700 dark:text-gray-300 text-base" id="help-content">
-                </div>
+                <!-- Help content will be injected by app.js -->
+            </div>
 
             <div class="p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex justify-end">
@@ -265,7 +282,8 @@
     <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow">
         
         <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
-            </main>
+            <!-- Sequences will be injected by app.js -->
+        </main>
 
         <footer id="input-footer" class="sticky bottom-0 left-0 right-0 p-4 rounded-xl shadow-2xl border-t-4 border-primary-app">
             
@@ -439,7 +457,11 @@ Let's start.</textarea>
 Let's start with Round 1.</textarea>
         <button class="copy-button" data-copy-target="prompt-rounds15">📋 <span class="ml-2">Copy</span></button>
     </div>
-    <script src="app.js" defer></script>
+    
+    <!-- *** MODIFIED: Added defer attribute back *** -->
+    <script src="app.js" defer></script> 
 
 </body>
 </html>
+
+
