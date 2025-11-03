@@ -5,9 +5,59 @@
     const DEMO_DELAY_BASE_MS = 798;
     const SPEED_DELETE_INITIAL_DELAY = 250;
     const SPEED_DELETE_INTERVAL_MS = 10;    
+    const SETTINGS_KEY = 'followMeAppSettings'; // *** NEW ***
+    const STATE_KEY = 'followMeAppState';       // *** NEW ***
     
     let initialDelayTimer = null; 
     let speedDeleteInterval = null; 
+
+    // --- Settings State (Defaults) ---
+    // *** NEW: Defined defaults for loading ***
+    const defaultSettings = {
+        currentMode: 'bananas',
+        isDarkMode: true,
+        bananasSpeedMultiplier: 1.0, 
+        pianoSpeedMultiplier: 1.0, 
+        rounds15SpeedMultiplier: 1.0,
+        uiScaleMultiplier: 1.0, 
+        isSpeedDeletingEnabled: true, 
+        isPianoAutoplayEnabled: true, 
+        isBananasAutoplayEnabled: true, 
+        isFollowsAutoplayEnabled: true, 
+        isRounds15ClearAfterPlaybackEnabled: true, 
+        isAudioPlaybackEnabled: true,
+        isVoiceInputEnabled: true,
+        areSlidersLocked: true,
+        followsChunkSize: 3, 
+    };
+
+    // --- LocalStorage Load/Save ---
+
+    // *** NEW: Load settings from localStorage or use defaults ***
+    function loadSettings() {
+        try {
+            const savedSettings = localStorage.getItem(SETTINGS_KEY);
+            if (savedSettings) {
+                // Merge saved settings with defaults to ensure new properties are not missed
+                return { ...defaultSettings, ...JSON.parse(savedSettings) };
+            }
+        } catch (e) {
+            console.error("Failed to load settings, using defaults:", e);
+        }
+        return { ...defaultSettings }; // Return a copy
+    }
+    
+    // *** NEW: Save settings to localStorage ***
+    function saveSettings() {
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        } catch (e) {
+            console.error("Failed to save settings:", e);
+        }
+    }
+    
+    // *** MODIFIED: Initialize settings from localStorage ***
+    let settings = loadSettings(); 
 
     // Mode Definitions
     const MODES = ['bananas', 'follows', 'piano', 'rounds15']; 
@@ -24,41 +74,91 @@
         '1': '1', '2': '2', '3': '3', '4': '4', '5': '5'
     };
     
-    // Settings State (All toggles ON by default)
-    let settings = {
-        isDarkMode: true,
-        bananasSpeedMultiplier: 1.0, // Used for Bananas and Follows
-        pianoSpeedMultiplier: 1.0, 
-        rounds15SpeedMultiplier: 1.0,
-        uiScaleMultiplier: 1.0, 
-        isSpeedDeletingEnabled: true, 
-        isPianoAutoplayEnabled: true, 
-        isBananasAutoplayEnabled: true, 
-        isFollowsAutoplayEnabled: true, 
-        isRounds15ClearAfterPlaybackEnabled: true, 
-        isAudioPlaybackEnabled: true,
-        isVoiceInputEnabled: true,
-        areSlidersLocked: true,
-        followsChunkSize: 3, 
-    };
+    // (Removed old 'settings' variable definition)
 
-    // --- Data Store ---
-    let appState = {
+    // --- Core Functions for State Management ---
+    // *** MOVED: getInitialState moved up to be available for defaultAppState ***
+    function getInitialState(mode) {
+        switch (mode) {
+            case 'follows':
+                return { 
+                    sequences: Array.from({ length: MAX_SEQUENCES }, () => []),
+                    sequenceCount: 2,
+                    nextSequenceIndex: 0
+                };
+            case 'rounds15': 
+                return {
+                    sequences: [[]], 
+                    sequenceCount: 1, 
+                    nextSequenceIndex: 0,
+                    currentRound: 1,
+                    maxRound: 15
+                };
+            case 'bananas':
+            case 'piano':
+            default:
+                return { 
+                    sequences: [[]], 
+                    sequenceCount: 1, 
+                    nextSequenceIndex: 0 
+                };
+        }
+    }
+
+    // --- Data Store (Defaults and Loading) ---
+    
+    // *** NEW: Defined default state ***
+    const defaultAppState = {
         'bananas': getInitialState('bananas'),
         'follows': getInitialState('follows'),
         'piano': getInitialState('piano'), 
         'rounds15': getInitialState('rounds15'),
     };
     
-    let currentMode = 'bananas'; 
+    // *** NEW: Load state from localStorage or use defaults ***
+    function loadState() {
+        try {
+            const savedState = localStorage.getItem(STATE_KEY);
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                const mergedState = JSON.parse(JSON.stringify(defaultAppState)); // Deep copy defaults
+                
+                for (const mode of MODES) {
+                    if (parsedState[mode]) {
+                        // Merge saved state for this mode onto the default state for this mode
+                        Object.assign(mergedState[mode], parsedState[mode]);
+                    }
+                }
+                return mergedState;
+            }
+        } catch (e) {
+            console.error("Failed to load app state, using defaults:", e);
+        }
+        return JSON.parse(JSON.stringify(defaultAppState)); // Deep copy defaults
+    }
     
-    const getCurrentState = () => appState[currentMode];
+    // *** NEW: Save state to localStorage ***
+    function saveState() {
+        try {
+            localStorage.setItem(STATE_KEY, JSON.stringify(appState));
+        } catch (e) {
+            console.error("Failed to save app state:", e);
+        }
+    }
+
+    // *** MODIFIED: Initialize state from localStorage ***
+    let appState = loadState();
+    
+    // (Removed old 'appState' and 'currentMode' definitions)
+    
+    // *** MODIFIED: Use currentMode from 'settings' object ***
+    const getCurrentState = () => appState[settings.currentMode];
 
     
     // --- DOM Elements ---
     const sequenceContainer = document.getElementById('sequence-container');
     const customModal = document.getElementById('custom-modal');
-    const shareModal = document.getElementById('share-modal'); // *** NEW ***
+    const shareModal = document.getElementById('share-modal'); 
 
     // Settings Modal Elements
     const settingsModal = document.getElementById('settings-modal');
@@ -137,8 +237,8 @@
         'delete': handleBackspace,
         'back': handleBackspace,
         'backspace': handleBackspace,
-        'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
-        'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
+        'reset': () => { if (settings.currentMode === 'rounds15') resetRounds15(); },
+        'reset rounds': () => { if (settings.currentMode === 'rounds15') resetRounds15(); },
         'speed up': () => adjustSpeed(0.25),
         'faster': () => adjustSpeed(0.25),
         'speed down': () => adjustSpeed(-0.25),
@@ -150,44 +250,17 @@
         'toggle audio': () => audioPlaybackToggle.click(),
         'toggle sound': () => audioPlaybackToggle.click(),
         'toggle autoplay': () => {
-             if (currentMode === 'bananas') bananasAutoplayToggle.click();
-             else if (currentMode === 'follows') followsAutoplayToggle.click();
-             else if (currentMode === 'piano') pianoAutoplayToggle.click();
+             if (settings.currentMode === 'bananas') bananasAutoplayToggle.click();
+             else if (settings.currentMode === 'follows') followsAutoplayToggle.click();
+             else if (settings.currentMode === 'piano') pianoAutoplayToggle.click();
         },
-        'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
+        'toggle auto clear': () => { if (settings.currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
         'toggle lock': () => sliderLockToggle.click(),
         'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
         'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
     };
 
-    // --- Core Functions for State Management ---
-
-    function getInitialState(mode) {
-        switch (mode) {
-            case 'follows':
-                return { 
-                    sequences: Array.from({ length: MAX_SEQUENCES }, () => []),
-                    sequenceCount: 2,
-                    nextSequenceIndex: 0
-                };
-            case 'rounds15': 
-                return {
-                    sequences: [[]], 
-                    sequenceCount: 1, 
-                    nextSequenceIndex: 0,
-                    currentRound: 1,
-                    maxRound: 15
-                };
-            case 'bananas':
-            case 'piano':
-            default:
-                return { 
-                    sequences: [[]], 
-                    sequenceCount: 1, 
-                    nextSequenceIndex: 0 
-                };
-        }
-    }
+    // --- (getInitialState moved up) ---
 
     function renderSequences() {
         const state = getCurrentState();
@@ -199,9 +272,9 @@
 
         let layoutClasses = 'gap-4 flex-grow mb-6 transition-all duration-300 pt-1 ';
 
-        if (currentMode === 'bananas') {
+        if (settings.currentMode === 'bananas') {
             layoutClasses += ' flex flex-col max-w-xl mx-auto';
-        } else if (currentMode === 'follows') {
+        } else if (settings.currentMode === 'follows') {
             if (sequenceCount === 2) {
                 layoutClasses += ' grid grid-cols-2 max-w-3xl mx-auto';
             } else if (sequenceCount === 3) {
@@ -209,12 +282,12 @@
             } else if (sequenceCount === 4) {
                 layoutClasses += ' grid grid-cols-4 max-w-5xl mx-auto';
             }
-        } else if (currentMode === 'piano' || currentMode === 'rounds15') {
+        } else if (settings.currentMode === 'piano' || settings.currentMode === 'rounds15') {
             layoutClasses += ' flex flex-col max-w-2xl mx-auto';
         }
         sequenceContainer.className = layoutClasses;
 
-        if (currentMode === 'rounds15') {
+        if (settings.currentMode === 'rounds15') {
             const roundDisplay = document.createElement('div');
             roundDisplay.className = 'text-center text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100';
             roundDisplay.id = 'rounds15-round-display';
@@ -223,12 +296,12 @@
         }
 
         let numColumns = 0;
-        if (currentMode === 'bananas') numColumns = 5;
-        else if (currentMode === 'follows') {
+        if (settings.currentMode === 'bananas') numColumns = 5;
+        else if (settings.currentMode === 'follows') {
             if (sequenceCount === 2) numColumns = 4;
             else if (sequenceCount === 3) numColumns = 4;
             else if (sequenceCount === 4) numColumns = 3; 
-        } else if (currentMode === 'piano' || currentMode === 'rounds15') numColumns = 5; 
+        } else if (settings.currentMode === 'piano' || settings.currentMode === 'rounds15') numColumns = 5; 
         
         let gridClass = numColumns > 0 ? `grid grid-cols-${numColumns}` : 'flex flex-wrap';
         
@@ -266,10 +339,10 @@
         
         if (sequenceCount === 0) return;
 
-        if (currentMode === 'rounds15' && sequences[0].length >= state.currentRound) return; 
-        if (currentMode === 'bananas' && sequences[0].length >= 25) return;
-        if (currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
-        if (currentMode === 'piano' && sequences[0].length >= 20) return; 
+        if (settings.currentMode === 'rounds15' && sequences[0].length >= state.currentRound) return; 
+        if (settings.currentMode === 'bananas' && sequences[0].length >= 25) return;
+        if (settings.currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
+        if (settings.currentMode === 'piano' && sequences[0].length >= 20) return; 
 
         const targetIndex = state.nextSequenceIndex % sequenceCount;
         sequences[targetIndex].push(value);
@@ -279,18 +352,18 @@
 
         renderSequences();
         
-        if (currentMode === 'piano' && settings.isPianoAutoplayEnabled) { 
+        if (settings.currentMode === 'piano' && settings.isPianoAutoplayEnabled) { 
             setTimeout(() => { handlePianoDemo(); }, 100); 
         }
-        else if (currentMode === 'bananas' && settings.isBananasAutoplayEnabled) {
+        else if (settings.currentMode === 'bananas' && settings.isBananasAutoplayEnabled) {
             setTimeout(() => { handleBananasDemo(); }, 100); 
         }
-        else if (currentMode === 'follows' && settings.isFollowsAutoplayEnabled) {
+        else if (settings.currentMode === 'follows' && settings.isFollowsAutoplayEnabled) {
             if (justFilledIndex === state.sequenceCount - 1) {
                  setTimeout(() => { handleFollowsDemo(); }, 100);
             }
         }
-        else if (currentMode === 'rounds15') {
+        else if (settings.currentMode === 'rounds15') {
             const sequence = state.sequences[0];
             if (sequence.length === state.currentRound) {
                 const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
@@ -299,17 +372,19 @@
                 setTimeout(() => { handleRounds15Demo(); }, 100); 
             }
         }
+        
+        saveState(); // *** NEW: Save state after adding value ***
     }
     
     function handleBackspace() {
         const state = getCurrentState();
         const { sequences, sequenceCount } = state;
         
-        if (currentMode === 'rounds15') {
+        if (settings.currentMode === 'rounds15') {
             const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
             if (demoButton && demoButton.disabled) return;
         }
-        if (currentMode === 'follows') {
+        if (settings.currentMode === 'follows') {
             const demoButton = document.querySelector('#follows-pad button[data-action="play-demo"]');
             if (demoButton && demoButton.disabled) return;
         }
@@ -323,12 +398,13 @@
             targetSet.pop();
             state.nextSequenceIndex--; 
 
-            if (currentMode === 'rounds15') {
+            if (settings.currentMode === 'rounds15') {
                  const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
                  allKeys.forEach(key => key.disabled = false);
             }
 
             renderSequences();
+            saveState(); // *** NEW: Save state after backspace ***
         }
     }
 
@@ -348,11 +424,11 @@
 
         if (!settings.isSpeedDeletingEnabled) return;
         
-        if (currentMode === 'rounds15') {
+        if (settings.currentMode === 'rounds15') {
             const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
             if (demoButton && demoButton.disabled) return;
         }
-        if (currentMode === 'follows') {
+        if (settings.currentMode === 'follows') {
             const demoButton = document.querySelector('#follows-pad button[data-action="play-demo"]');
             if (demoButton && demoButton.disabled) return;
         }
@@ -383,7 +459,7 @@
         settingsModeDropdown.innerHTML = MODES.map(modeKey => `
             <button data-mode-select="${modeKey}" 
                     class="w-full text-left px-4 py-3 text-lg font-semibold 
-                        ${currentMode === modeKey ? 'bg-primary-app text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'} 
+                        ${settings.currentMode === modeKey ? 'bg-primary-app text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'} 
                         transition-colors duration-150">
                 ${MODE_LABELS[modeKey]}
             </button>
@@ -427,11 +503,13 @@
     }
 
     function openSettingsModal() {
+        // *** MODIFIED: Use settings.currentMode ***
         settingsModeToggleButton.innerHTML = `
-            ${MODE_LABELS[currentMode]}
+            ${MODE_LABELS[settings.currentMode]}
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         `;
         
+        // *** MODIFIED: Use loaded settings to populate fields ***
         followsCountSelect.value = appState['follows'].sequenceCount;
         followsChunkSizeSelect.value = settings.followsChunkSize;
         
@@ -616,6 +694,7 @@
 
     function updateTheme(isDark) {
         settings.isDarkMode = isDark;
+        saveSettings(); // *** NEW: Save settings ***
         document.body.classList.toggle('dark', isDark);
         document.body.classList.toggle('light', !isDark);
         renderSequences();
@@ -659,11 +738,13 @@
     }
 
     function updateMode(newMode) {
-        currentMode = newMode;
-        bananasPad.style.display = currentMode === 'bananas' ? 'block' : 'none';
-        followsPad.style.display = currentMode === 'follows' ? 'block' : 'none';
-        pianoPad.style.display = currentMode === 'piano' ? 'block' : 'none';
-        rounds15Pad.style.display = currentMode === 'rounds15' ? 'block' : 'none';
+        settings.currentMode = newMode; // *** MODIFIED: Update settings object ***
+        saveSettings(); // *** NEW: Save settings ***
+        
+        bananasPad.style.display = settings.currentMode === 'bananas' ? 'block' : 'none';
+        followsPad.style.display = settings.currentMode === 'follows' ? 'block' : 'none';
+        pianoPad.style.display = settings.currentMode === 'piano' ? 'block' : 'none';
+        rounds15Pad.style.display = settings.currentMode === 'rounds15' ? 'block' : 'none';
         
         if (!settingsModal.classList.contains('pointer-events-none') && settingsModeToggleButton) {
             settingsModeToggleButton.innerHTML = `
@@ -879,6 +960,7 @@
             showModal('Complete!', `You finished all ${state.maxRound} rounds. Resetting to Round 1.`, () => closeModal(), 'OK', '');
         }
         renderSequences(); 
+        saveState(); // *** NEW: Save state ***
         const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
         allKeys.forEach(key => key.disabled = false);
     }
@@ -891,6 +973,7 @@
         const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
         allKeys.forEach(key => key.disabled = false);
         renderSequences();
+        saveState(); // *** NEW: Save state ***
     }
     
     function clearRounds15Sequence() {
@@ -910,6 +993,7 @@
                 sequence.pop();
                 state.nextSequenceIndex--;
                 renderSequences();
+                saveState(); // *** NEW: Save state ***
             } else {
                 clearInterval(speedDeleteInterval);
                 speedDeleteInterval = null;
@@ -977,7 +1061,7 @@
     }
 
     function handleCurrentDemo() {
-        switch(currentMode) {
+        switch(settings.currentMode) { // *** MODIFIED: Use settings.currentMode ***
             case 'bananas': handleBananasDemo(); break;
             case 'follows': handleFollowsDemo(); break;
             case 'piano': handlePianoDemo(); break;
@@ -988,15 +1072,15 @@
     function adjustSpeed(amount, reset = false) {
         let slider, display, modeKey;
         
-        if (currentMode === 'bananas' || currentMode === 'follows') {
+        if (settings.currentMode === 'bananas' || settings.currentMode === 'follows') {
             slider = bananasSpeedSlider;
             display = bananasSpeedDisplay;
             modeKey = 'bananas';
-        } else if (currentMode === 'piano') {
+        } else if (settings.currentMode === 'piano') {
             slider = pianoSpeedSlider;
             display = pianoSpeedDisplay;
             modeKey = 'piano';
-        } else if (currentMode === 'rounds15') {
+        } else if (settings.currentMode === 'rounds15') {
             slider = rounds15SpeedSlider;
             display = rounds15SpeedDisplay;
             modeKey = 'rounds15';
@@ -1014,6 +1098,7 @@
         }
         
         settings[`${modeKey}SpeedMultiplier`] = newMultiplier;
+        saveSettings(); // *** NEW: Save settings ***
         slider.value = newMultiplier * 100;
         updateSpeedDisplay(newMultiplier, display);
         speak(`${Math.round(newMultiplier * 100)}% speed`);
@@ -1086,17 +1171,17 @@
             }
 
             if (value) {
-                if (currentMode === 'bananas' || currentMode === 'follows') {
+                if (settings.currentMode === 'bananas' || settings.currentMode === 'follows') {
                     if (/^[1-9]$/.test(value)) {
                         addValue(value);
                         valuesAdded++;
                     }
-                } else if (currentMode === 'piano') {
+                } else if (settings.currentMode === 'piano') {
                     if ((/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                         addValue(value);
                         valuesAdded++;
                     }
-                } else if (currentMode === 'rounds15') {
+                } else if (settings.currentMode === 'rounds15') {
                     if (/^(?:[1-9]|1[0-2])$/.test(value)) {
                         addValue(value);
                         valuesAdded++;
@@ -1143,6 +1228,7 @@
             settings.isVoiceInputEnabled = false;
             voiceInputToggle.checked = false;
             updateMicButtonVisibility();
+            saveSettings(); // *** NEW: Save settings ***
         }
         stopListening();
     }
@@ -1163,7 +1249,8 @@
         
         isListening = true;
         
-        const currentMicButton = document.querySelector(`#${currentMode}-pad button[data-action="voice-input"]`);
+        // *** MODIFIED: Use settings.currentMode ***
+        const currentMicButton = document.querySelector(`#${settings.currentMode}-pad button[data-action="voice-input"]`);
         if (currentMicButton) {
             currentMicButton.classList.add('voice-active');
             currentMicButton.innerHTML = '...';
@@ -1259,7 +1346,7 @@
                 return;
             }
 
-            if (action === 'voice-input' && mode === currentMode) {
+            if (action === 'voice-input' && mode === settings.currentMode) {
                 if (isListening) {
                     stopListening();
                 } else {
@@ -1268,15 +1355,15 @@
                 return;
             }
             
-            if (value && mode === currentMode) {
-                if ((currentMode === 'bananas' || currentMode === 'follows') && /^[1-9]$/.test(value)) {
+            if (value && mode === settings.currentMode) {
+                if ((settings.currentMode === 'bananas' || settings.currentMode === 'follows') && /^[1-9]$/.test(value)) {
                     addValue(value);
                 }
-                else if (currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
+                else if (settings.currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                     if (!settings.isPianoAutoplayEnabled) flashKey(value, 200);
                     addValue(value);
                 }
-                else if (currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
+                else if (settings.currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
                     addValue(value);
                 }
             }
@@ -1293,35 +1380,62 @@
         settingsModeToggleButton.addEventListener('click', toggleModeDropdown);
         document.getElementById('close-settings').addEventListener('click', closeSettingsModal);
         
+        // *** NEW: Listener for Restore Defaults ***
+        document.getElementById('restore-defaults-button').addEventListener('click', () => {
+            localStorage.removeItem(SETTINGS_KEY);
+            localStorage.removeItem(STATE_KEY);
+            window.location.reload();
+        });
+        
         followsCountSelect.addEventListener('change', (event) => {
             const newCount = parseInt(event.target.value);
             const state = appState['follows'];
             state.sequenceCount = newCount;
             state.nextSequenceIndex = 0;
             renderSequences(); 
+            saveState(); // *** NEW: Save state ***
         });
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
+            saveSettings(); // *** NEW: Save settings ***
         });
         
         darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
-        speedDeleteToggle.addEventListener('change', (e) => settings.isSpeedDeletingEnabled = e.target.checked);
-        pianoAutoplayToggle.addEventListener('change', (e) => settings.isPianoAutoplayEnabled = e.target.checked);
-        bananasAutoplayToggle.addEventListener('change', (e) => settings.isBananasAutoplayEnabled = e.target.checked);
-        followsAutoplayToggle.addEventListener('change', (e) => settings.isFollowsAutoplayEnabled = e.target.checked);
-        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked);
+        speedDeleteToggle.addEventListener('change', (e) => {
+            settings.isSpeedDeletingEnabled = e.target.checked;
+            saveSettings(); // *** NEW: Save settings ***
+        });
+        pianoAutoplayToggle.addEventListener('change', (e) => {
+            settings.isPianoAutoplayEnabled = e.target.checked;
+            saveSettings(); // *** NEW: Save settings ***
+        });
+        bananasAutoplayToggle.addEventListener('change', (e) => {
+            settings.isBananasAutoplayEnabled = e.target.checked;
+            saveSettings(); // *** NEW: Save settings ***
+        });
+        followsAutoplayToggle.addEventListener('change', (e) => {
+            settings.isFollowsAutoplayEnabled = e.target.checked;
+            saveSettings(); // *** NEW: Save settings ***
+        });
+        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => {
+            settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked;
+            saveSettings(); // *** NEW: Save settings ***
+        });
         audioPlaybackToggle.addEventListener('change', (e) => {
             settings.isAudioPlaybackEnabled = e.target.checked;
             if (settings.isAudioPlaybackEnabled) speak("Audio");
+            saveSettings(); // *** NEW: Save settings ***
         });
         voiceInputToggle.addEventListener('change', (e) => {
             settings.isVoiceInputEnabled = e.target.checked;
             updateMicButtonVisibility();
+            saveSettings(); // *** NEW: Save settings ***
             if (settings.isVoiceInputEnabled && !recognitionApi) {
                 showModal('Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                     settings.isVoiceInputEnabled = false;
                     voiceInputToggle.checked = false;
                     updateMicButtonVisibility();
+                    saveSettings(); // *** NEW: Save settings ***
                     closeModal();
                 }, 'OK', '');
             }
@@ -1329,6 +1443,7 @@
         sliderLockToggle.addEventListener('change', (e) => {
             settings.areSlidersLocked = e.target.checked;
             updateSliderLockState();
+            saveSettings(); // *** NEW: Save settings ***
         });
 
         function setupSpeedSlider(slider, displayElement, modeKey) {
@@ -1336,6 +1451,7 @@
                 const multiplier = parseInt(event.target.value) / 100;
                 updateModeSpeed(modeKey, multiplier);
                 updateSpeedDisplay(multiplier, displayElement);
+                saveSettings(); // *** NEW: Save settings ***
             });
         }
         setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
@@ -1347,10 +1463,11 @@
             settings.uiScaleMultiplier = multiplier;
             updateScaleDisplay(multiplier, uiScaleDisplay);
             renderSequences();
+            saveSettings(); // *** NEW: Save settings ***
         });
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
-        document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
+        document.getElementById('close-share').addEventListener('click', closeShareModal);
     }
     
     // --- Initialization ---
@@ -1366,6 +1483,7 @@
                 });
         }
 
+        // *** MODIFIED: All these functions now use the loaded 'settings' object ***
         updateTheme(settings.isDarkMode);
         updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
         updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
@@ -1379,13 +1497,14 @@
                 settings.isVoiceInputEnabled = false;
                 voiceInputToggle.checked = false;
                 updateMicButtonVisibility();
+                saveSettings(); // *** NEW: Save settings ***
                 closeModal();
             }, 'OK', '');
         }
         
         initializeListeners();
         
-        updateMode('bananas');
+        updateMode(settings.currentMode); // *** MODIFIED: Load the saved mode ***
         
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
