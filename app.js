@@ -5,54 +5,9 @@
     const DEMO_DELAY_BASE_MS = 798;
     const SPEED_DELETE_INITIAL_DELAY = 250;
     const SPEED_DELETE_INTERVAL_MS = 10;    
-    const SETTINGS_KEY = 'followMeAppSettings'; 
-    const STATE_KEY = 'followMeAppState';       
     
     let initialDelayTimer = null; 
     let speedDeleteInterval = null; 
-
-    // --- Settings State (Defaults) ---
-    const defaultSettings = {
-        currentMode: 'bananas',
-        isDarkMode: true,
-        bananasSpeedMultiplier: 1.0, 
-        pianoSpeedMultiplier: 1.0, 
-        rounds15SpeedMultiplier: 1.0,
-        uiScaleMultiplier: 1.0, 
-        isSpeedDeletingEnabled: true, 
-        isPianoAutoplayEnabled: true, 
-        isBananasAutoplayEnabled: true, 
-        isFollowsAutoplayEnabled: true, 
-        isRounds15ClearAfterPlaybackEnabled: true, 
-        isAudioPlaybackEnabled: true,
-        isVoiceInputEnabled: true,
-        areSlidersLocked: true,
-        followsChunkSize: 3, 
-    };
-
-    // --- LocalStorage Load/Save ---
-
-    function loadSettings() {
-        try {
-            const savedSettings = localStorage.getItem(SETTINGS_KEY);
-            if (savedSettings) {
-                return { ...defaultSettings, ...JSON.parse(savedSettings) };
-            }
-        } catch (e) {
-            console.error("Failed to load settings, using defaults:", e);
-        }
-        return { ...defaultSettings }; 
-    }
-    
-    function saveSettings() {
-        try {
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-        } catch (e) {
-            console.error("Failed to save settings:", e);
-        }
-    }
-    
-    let settings = loadSettings(); 
 
     // Mode Definitions
     const MODES = ['bananas', 'follows', 'piano', 'rounds15']; 
@@ -69,80 +24,41 @@
         '1': '1', '2': '2', '3': '3', '4': '4', '5': '5'
     };
     
-    // --- Core Functions for State Management ---
-    function getInitialState(mode) {
-        switch (mode) {
-            case 'follows':
-                return { 
-                    sequences: Array.from({ length: MAX_SEQUENCES }, () => []),
-                    sequenceCount: 2,
-                    nextSequenceIndex: 0
-                };
-            case 'rounds15': 
-                return {
-                    sequences: [[]], 
-                    sequenceCount: 1, 
-                    nextSequenceIndex: 0,
-                    currentRound: 1,
-                    maxRound: 15
-                };
-            case 'bananas':
-            case 'piano':
-            default:
-                return { 
-                    sequences: [[]], 
-                    sequenceCount: 1, 
-                    nextSequenceIndex: 0 
-                };
-        }
-    }
+    // Settings State (All toggles ON by default)
+    let settings = {
+        isDarkMode: true,
+        bananasSpeedMultiplier: 1.0, // Used for Bananas and Follows
+        pianoSpeedMultiplier: 1.0, 
+        rounds15SpeedMultiplier: 1.0,
+        uiScaleMultiplier: 1.0, 
+        isSpeedDeletingEnabled: true, 
+        isPianoAutoplayEnabled: true, 
+        isBananasAutoplayEnabled: true, 
+        isFollowsAutoplayEnabled: true, 
+        isRounds15ClearAfterPlaybackEnabled: true, 
+        isAudioPlaybackEnabled: true,
+        isVoiceInputEnabled: true,
+        areSlidersLocked: true,
+        followsChunkSize: 3, 
+    };
 
-    // --- Data Store (Defaults and Loading) ---
-    
-    const defaultAppState = {
+    // --- Data Store ---
+    let appState = {
         'bananas': getInitialState('bananas'),
         'follows': getInitialState('follows'),
         'piano': getInitialState('piano'), 
         'rounds15': getInitialState('rounds15'),
     };
     
-    function loadState() {
-        try {
-            const savedState = localStorage.getItem(STATE_KEY);
-            if (savedState) {
-                const parsedState = JSON.parse(savedState);
-                const mergedState = JSON.parse(JSON.stringify(defaultAppState)); 
-                
-                for (const mode of MODES) {
-                    if (parsedState[mode]) {
-                        Object.assign(mergedState[mode], parsedState[mode]);
-                    }
-                }
-                return mergedState;
-            }
-        } catch (e) {
-            console.error("Failed to load app state, using defaults:", e);
-        }
-        return JSON.parse(JSON.stringify(defaultAppState)); 
-    }
+    let currentMode = 'bananas'; 
     
-    function saveState() {
-        try {
-            localStorage.setItem(STATE_KEY, JSON.stringify(appState));
-        } catch (e) {
-            console.error("Failed to save app state:", e);
-        }
-    }
-
-    let appState = loadState();
-    
-    const getCurrentState = () => appState[settings.currentMode];
+    const getCurrentState = () => appState[currentMode];
 
     
     // --- DOM Elements ---
     const sequenceContainer = document.getElementById('sequence-container');
     const customModal = document.getElementById('custom-modal');
-    const shareModal = document.getElementById('share-modal'); 
+    const shareModal = document.getElementById('share-modal'); // *** NEW ***
 
     // Settings Modal Elements
     const settingsModal = document.getElementById('settings-modal');
@@ -221,8 +137,8 @@
         'delete': handleBackspace,
         'back': handleBackspace,
         'backspace': handleBackspace,
-        'reset': () => { if (settings.currentMode === 'rounds15') resetRounds15(); },
-        'reset rounds': () => { if (settings.currentMode === 'rounds15') resetRounds15(); },
+        'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
+        'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
         'speed up': () => adjustSpeed(0.25),
         'faster': () => adjustSpeed(0.25),
         'speed down': () => adjustSpeed(-0.25),
@@ -234,17 +150,44 @@
         'toggle audio': () => audioPlaybackToggle.click(),
         'toggle sound': () => audioPlaybackToggle.click(),
         'toggle autoplay': () => {
-             if (settings.currentMode === 'bananas') bananasAutoplayToggle.click();
-             else if (settings.currentMode === 'follows') followsAutoplayToggle.click();
-             else if (settings.currentMode === 'piano') pianoAutoplayToggle.click();
+             if (currentMode === 'bananas') bananasAutoplayToggle.click();
+             else if (currentMode === 'follows') followsAutoplayToggle.click();
+             else if (currentMode === 'piano') pianoAutoplayToggle.click();
         },
-        'toggle auto clear': () => { if (settings.currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
+        'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
         'toggle lock': () => sliderLockToggle.click(),
         'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
         'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
     };
 
-    // --- (getInitialState moved up) ---
+    // --- Core Functions for State Management ---
+
+    function getInitialState(mode) {
+        switch (mode) {
+            case 'follows':
+                return { 
+                    sequences: Array.from({ length: MAX_SEQUENCES }, () => []),
+                    sequenceCount: 2,
+                    nextSequenceIndex: 0
+                };
+            case 'rounds15': 
+                return {
+                    sequences: [[]], 
+                    sequenceCount: 1, 
+                    nextSequenceIndex: 0,
+                    currentRound: 1,
+                    maxRound: 15
+                };
+            case 'bananas':
+            case 'piano':
+            default:
+                return { 
+                    sequences: [[]], 
+                    sequenceCount: 1, 
+                    nextSequenceIndex: 0 
+                };
+        }
+    }
 
     function renderSequences() {
         const state = getCurrentState();
@@ -256,9 +199,9 @@
 
         let layoutClasses = 'gap-4 flex-grow mb-6 transition-all duration-300 pt-1 ';
 
-        if (settings.currentMode === 'bananas') {
+        if (currentMode === 'bananas') {
             layoutClasses += ' flex flex-col max-w-xl mx-auto';
-        } else if (settings.currentMode === 'follows') {
+        } else if (currentMode === 'follows') {
             if (sequenceCount === 2) {
                 layoutClasses += ' grid grid-cols-2 max-w-3xl mx-auto';
             } else if (sequenceCount === 3) {
@@ -266,12 +209,12 @@
             } else if (sequenceCount === 4) {
                 layoutClasses += ' grid grid-cols-4 max-w-5xl mx-auto';
             }
-        } else if (settings.currentMode === 'piano' || settings.currentMode === 'rounds15') {
+        } else if (currentMode === 'piano' || currentMode === 'rounds15') {
             layoutClasses += ' flex flex-col max-w-2xl mx-auto';
         }
         sequenceContainer.className = layoutClasses;
 
-        if (settings.currentMode === 'rounds15') {
+        if (currentMode === 'rounds15') {
             const roundDisplay = document.createElement('div');
             roundDisplay.className = 'text-center text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100';
             roundDisplay.id = 'rounds15-round-display';
@@ -280,12 +223,12 @@
         }
 
         let numColumns = 0;
-        if (settings.currentMode === 'bananas') numColumns = 5;
-        else if (settings.currentMode === 'follows') {
+        if (currentMode === 'bananas') numColumns = 5;
+        else if (currentMode === 'follows') {
             if (sequenceCount === 2) numColumns = 4;
             else if (sequenceCount === 3) numColumns = 4;
             else if (sequenceCount === 4) numColumns = 3; 
-        } else if (settings.currentMode === 'piano' || settings.currentMode === 'rounds15') numColumns = 5; 
+        } else if (currentMode === 'piano' || currentMode === 'rounds15') numColumns = 5; 
         
         let gridClass = numColumns > 0 ? `grid grid-cols-${numColumns}` : 'flex flex-wrap';
         
@@ -323,10 +266,10 @@
         
         if (sequenceCount === 0) return;
 
-        if (settings.currentMode === 'rounds15' && sequences[0].length >= state.currentRound) return; 
-        if (settings.currentMode === 'bananas' && sequences[0].length >= 25) return;
-        if (settings.currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
-        if (settings.currentMode === 'piano' && sequences[0].length >= 20) return; 
+        if (currentMode === 'rounds15' && sequences[0].length >= state.currentRound) return; 
+        if (currentMode === 'bananas' && sequences[0].length >= 25) return;
+        if (currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
+        if (currentMode === 'piano' && sequences[0].length >= 20) return; 
 
         const targetIndex = state.nextSequenceIndex % sequenceCount;
         sequences[targetIndex].push(value);
@@ -336,66 +279,61 @@
 
         renderSequences();
         
-        if (settings.currentMode === 'piano' && settings.isPianoAutoplayEnabled) { 
+        if (currentMode === 'piano' && settings.isPianoAutoplayEnabled) { 
             setTimeout(() => { handlePianoDemo(); }, 100); 
         }
-        else if (settings.currentMode === 'bananas' && settings.isBananasAutoplayEnabled) {
+        else if (currentMode === 'bananas' && settings.isBananasAutoplayEnabled) {
             setTimeout(() => { handleBananasDemo(); }, 100); 
         }
-        else if (settings.currentMode === 'follows' && settings.isFollowsAutoplayEnabled) {
+        else if (currentMode === 'follows' && settings.isFollowsAutoplayEnabled) {
             if (justFilledIndex === state.sequenceCount - 1) {
                  setTimeout(() => { handleFollowsDemo(); }, 100);
             }
         }
-        else if (settings.currentMode === 'rounds15') {
+        else if (currentMode === 'rounds15') {
             const sequence = state.sequences[0];
             if (sequence.length === state.currentRound) {
+                const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
+                allKeys.forEach(key => key.disabled = true);
+                
                 setTimeout(() => { handleRounds15Demo(); }, 100); 
             }
         }
-        
-        // *** REMOVED: saveState() ***
-    }
-    
-    // --- Backspace Speed Deleting Logic (MODIFIED) ---
-
-    function _internalBackspace() {
-        const state = getCurrentState();
-        const { sequences, sequenceCount } = state;
-
-        if (settings.currentMode === 'rounds15') {
-            const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
-            if (demoButton && demoButton.disabled) return false;
-        }
-        if (settings.currentMode === 'follows') {
-            const demoButton = document.querySelector('#follows-pad button[data-action="play-demo"]');
-            if (demoButton && demoButton.disabled) return false;
-        }
-
-        if (state.nextSequenceIndex === 0) return false;
-
-        const lastClickTargetIndex = (state.nextSequenceIndex - 1) % sequenceCount;
-        const targetSet = sequences[lastClickTargetIndex];
-
-        if (targetSet.length > 0) {
-            targetSet.pop();
-            state.nextSequenceIndex--;
-
-            if (settings.currentMode === 'rounds15') {
-                const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
-                allKeys.forEach(key => key.disabled = false);
-            }
-
-            renderSequences();
-            return true; 
-        }
-        return false; 
     }
     
     function handleBackspace() {
-        _internalBackspace();
-        // *** REMOVED: saveState() ***
+        const state = getCurrentState();
+        const { sequences, sequenceCount } = state;
+        
+        if (currentMode === 'rounds15') {
+            const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
+            if (demoButton && demoButton.disabled) return;
+        }
+        if (currentMode === 'follows') {
+            const demoButton = document.querySelector('#follows-pad button[data-action="play-demo"]');
+            if (demoButton && demoButton.disabled) return;
+        }
+
+        if (state.nextSequenceIndex === 0) return; 
+        
+        const lastClickTargetIndex = (state.nextSequenceIndex - 1) % sequenceCount;
+        const targetSet = sequences[lastClickTargetIndex];
+        
+        if (targetSet.length > 0) {
+            targetSet.pop();
+            state.nextSequenceIndex--; 
+
+            if (currentMode === 'rounds15') {
+                 const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
+                 allKeys.forEach(key => key.disabled = false);
+            }
+
+            renderSequences();
+        }
     }
+
+
+    // --- Backspace Speed Deleting Logic ---
     
     function stopSpeedDeleting() {
         if (initialDelayTimer) clearTimeout(initialDelayTimer);
@@ -408,26 +346,35 @@
         event.preventDefault(); 
         stopSpeedDeleting(); 
 
-        _internalBackspace(); 
-
-        if (!settings.isSpeedDeletingEnabled) {
-             // *** REMOVED: saveState() ***
-            return; 
-        }
+        if (!settings.isSpeedDeletingEnabled) return;
         
+        if (currentMode === 'rounds15') {
+            const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
+            if (demoButton && demoButton.disabled) return;
+        }
+        if (currentMode === 'follows') {
+            const demoButton = document.querySelector('#follows-pad button[data-action="play-demo"]');
+            if (demoButton && demoButton.disabled) return;
+        }
+
         initialDelayTimer = setTimeout(() => {
-            speedDeleteInterval = setInterval(_internalBackspace, SPEED_DELETE_INTERVAL_MS);
+            handleBackspace();
+            speedDeleteInterval = setInterval(handleBackspace, SPEED_DELETE_INTERVAL_MS);
             initialDelayTimer = null; 
         }, SPEED_DELETE_INITIAL_DELAY);
     }
 
     function handleBackspaceEnd() {
-        if (!settings.isSpeedDeletingEnabled) {
-            return; 
+        if (initialDelayTimer !== null) {
+            stopSpeedDeleting();
+            handleBackspace(); 
+        } 
+        else if (!settings.isSpeedDeletingEnabled) {
+            handleBackspace();
+        } 
+        else {
+            stopSpeedDeleting();
         }
-        
-        stopSpeedDeleting();
-        // *** REMOVED: saveState() calls ***
     }
 
     // --- Settings Panel Logic ---
@@ -436,7 +383,7 @@
         settingsModeDropdown.innerHTML = MODES.map(modeKey => `
             <button data-mode-select="${modeKey}" 
                     class="w-full text-left px-4 py-3 text-lg font-semibold 
-                        ${settings.currentMode === modeKey ? 'bg-primary-app text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'} 
+                        ${currentMode === modeKey ? 'bg-primary-app text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'} 
                         transition-colors duration-150">
                 ${MODE_LABELS[modeKey]}
             </button>
@@ -481,7 +428,7 @@
 
     function openSettingsModal() {
         settingsModeToggleButton.innerHTML = `
-            ${MODE_LABELS[settings.currentMode]}
+            ${MODE_LABELS[currentMode]}
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         `;
         
@@ -669,7 +616,6 @@
 
     function updateTheme(isDark) {
         settings.isDarkMode = isDark;
-        // *** REMOVED: saveSettings() ***
         document.body.classList.toggle('dark', isDark);
         document.body.classList.toggle('light', !isDark);
         renderSequences();
@@ -713,13 +659,11 @@
     }
 
     function updateMode(newMode) {
-        settings.currentMode = newMode; 
-        // *** REMOVED: saveSettings() ***
-        
-        bananasPad.style.display = settings.currentMode === 'bananas' ? 'block' : 'none';
-        followsPad.style.display = settings.currentMode === 'follows' ? 'block' : 'none';
-        pianoPad.style.display = settings.currentMode === 'piano' ? 'block' : 'none';
-        rounds15Pad.style.display = settings.currentMode === 'rounds15' ? 'block' : 'none';
+        currentMode = newMode;
+        bananasPad.style.display = currentMode === 'bananas' ? 'block' : 'none';
+        followsPad.style.display = currentMode === 'follows' ? 'block' : 'none';
+        pianoPad.style.display = currentMode === 'piano' ? 'block' : 'none';
+        rounds15Pad.style.display = currentMode === 'rounds15' ? 'block' : 'none';
         
         if (!settingsModal.classList.contains('pointer-events-none') && settingsModeToggleButton) {
             settingsModeToggleButton.innerHTML = `
@@ -935,7 +879,6 @@
             showModal('Complete!', `You finished all ${state.maxRound} rounds. Resetting to Round 1.`, () => closeModal(), 'OK', '');
         }
         renderSequences(); 
-        // *** REMOVED: saveState() ***
         const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
         allKeys.forEach(key => key.disabled = false);
     }
@@ -948,7 +891,6 @@
         const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
         allKeys.forEach(key => key.disabled = false);
         renderSequences();
-        // *** REMOVED: saveState() ***
     }
     
     function clearRounds15Sequence() {
@@ -971,7 +913,6 @@
             } else {
                 clearInterval(speedDeleteInterval);
                 speedDeleteInterval = null;
-                // *** REMOVED: saveState() ***
                 advanceToNextRound(); 
             }
         }
@@ -991,6 +932,7 @@
         if (sequenceToPlay.length === 0 || (demoButton.disabled && !settings.isRounds15ClearAfterPlaybackEnabled) ) {
             if (demoButton && demoButton.disabled && !settings.isRounds15ClearAfterPlaybackEnabled) return;
             showModal('No Sequence', 'The sequence is empty. Enter some numbers first!', () => closeModal(), 'OK', '');
+            allKeys.forEach(key => key.disabled = false);
             return;
         }
 
@@ -1035,7 +977,7 @@
     }
 
     function handleCurrentDemo() {
-        switch(settings.currentMode) { 
+        switch(currentMode) {
             case 'bananas': handleBananasDemo(); break;
             case 'follows': handleFollowsDemo(); break;
             case 'piano': handlePianoDemo(); break;
@@ -1046,15 +988,15 @@
     function adjustSpeed(amount, reset = false) {
         let slider, display, modeKey;
         
-        if (settings.currentMode === 'bananas' || settings.currentMode === 'follows') {
+        if (currentMode === 'bananas' || currentMode === 'follows') {
             slider = bananasSpeedSlider;
             display = bananasSpeedDisplay;
             modeKey = 'bananas';
-        } else if (settings.currentMode === 'piano') {
+        } else if (currentMode === 'piano') {
             slider = pianoSpeedSlider;
             display = pianoSpeedDisplay;
             modeKey = 'piano';
-        } else if (settings.currentMode === 'rounds15') {
+        } else if (currentMode === 'rounds15') {
             slider = rounds15SpeedSlider;
             display = rounds15SpeedDisplay;
             modeKey = 'rounds15';
@@ -1072,7 +1014,6 @@
         }
         
         settings[`${modeKey}SpeedMultiplier`] = newMultiplier;
-        // *** REMOVED: saveSettings() ***
         slider.value = newMultiplier * 100;
         updateSpeedDisplay(newMultiplier, display);
         speak(`${Math.round(newMultiplier * 100)}% speed`);
@@ -1120,6 +1061,10 @@
 
     // --- Voice Input Functions ---
 
+    /**
+     * Processes the transcript from speech recognition.
+     * *** MODIFIED: Logic is re-prioritized to check for values FIRST. ***
+     */
     function processVoiceTranscript(transcript) {
         if (!transcript) return;
         
@@ -1141,17 +1086,17 @@
             }
 
             if (value) {
-                if (settings.currentMode === 'bananas' || settings.currentMode === 'follows') {
+                if (currentMode === 'bananas' || currentMode === 'follows') {
                     if (/^[1-9]$/.test(value)) {
                         addValue(value);
                         valuesAdded++;
                     }
-                } else if (settings.currentMode === 'piano') {
+                } else if (currentMode === 'piano') {
                     if ((/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                         addValue(value);
                         valuesAdded++;
                     }
-                } else if (settings.currentMode === 'rounds15') {
+                } else if (currentMode === 'rounds15') {
                     if (/^(?:[1-9]|1[0-2])$/.test(value)) {
                         addValue(value);
                         valuesAdded++;
@@ -1198,7 +1143,6 @@
             settings.isVoiceInputEnabled = false;
             voiceInputToggle.checked = false;
             updateMicButtonVisibility();
-            // *** REMOVED: saveSettings() ***
         }
         stopListening();
     }
@@ -1219,7 +1163,7 @@
         
         isListening = true;
         
-        const currentMicButton = document.querySelector(`#${settings.currentMode}-pad button[data-action="voice-input"]`);
+        const currentMicButton = document.querySelector(`#${currentMode}-pad button[data-action="voice-input"]`);
         if (currentMicButton) {
             currentMicButton.classList.add('voice-active');
             currentMicButton.innerHTML = '...';
@@ -1315,7 +1259,7 @@
                 return;
             }
 
-            if (action === 'voice-input' && mode === settings.currentMode) {
+            if (action === 'voice-input' && mode === currentMode) {
                 if (isListening) {
                     stopListening();
                 } else {
@@ -1324,15 +1268,15 @@
                 return;
             }
             
-            if (value && mode === settings.currentMode) {
-                if ((settings.currentMode === 'bananas' || settings.currentMode === 'follows') && /^[1-9]$/.test(value)) {
+            if (value && mode === currentMode) {
+                if ((currentMode === 'bananas' || currentMode === 'follows') && /^[1-9]$/.test(value)) {
                     addValue(value);
                 }
-                else if (settings.currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
+                else if (currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                     if (!settings.isPianoAutoplayEnabled) flashKey(value, 200);
                     addValue(value);
                 }
-                else if (settings.currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
+                else if (currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
                     addValue(value);
                 }
             }
@@ -1341,25 +1285,13 @@
         document.querySelectorAll('button[data-action="backspace"]').forEach(btn => {
             btn.addEventListener('mousedown', handleBackspaceStart);
             btn.addEventListener('mouseup', handleBackspaceEnd);
-            btn.addEventListener('mouseleave', handleBackspaceEnd); 
+            btn.addEventListener('mouseleave', stopSpeedDeleting);
             btn.addEventListener('touchstart', handleBackspaceStart, { passive: false });
             btn.addEventListener('touchend', handleBackspaceEnd);
         });
         
         settingsModeToggleButton.addEventListener('click', toggleModeDropdown);
-        
-        // *** MODIFIED: "Save and Exit" button listener ***
-        document.getElementById('close-settings').addEventListener('click', () => {
-            saveSettings();
-            saveState();
-            closeSettingsModal();
-        });
-        
-        document.getElementById('restore-defaults-button').addEventListener('click', () => {
-            localStorage.removeItem(SETTINGS_KEY);
-            localStorage.removeItem(STATE_KEY);
-            window.location.reload();
-        });
+        document.getElementById('close-settings').addEventListener('click', closeSettingsModal);
         
         followsCountSelect.addEventListener('change', (event) => {
             const newCount = parseInt(event.target.value);
@@ -1367,49 +1299,29 @@
             state.sequenceCount = newCount;
             state.nextSequenceIndex = 0;
             renderSequences(); 
-            // *** REMOVED: saveState() ***
         });
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
-            // *** REMOVED: saveSettings() ***
         });
         
         darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
-        speedDeleteToggle.addEventListener('change', (e) => {
-            settings.isSpeedDeletingEnabled = e.target.checked;
-            // *** REMOVED: saveSettings() ***
-        });
-        pianoAutoplayToggle.addEventListener('change', (e) => {
-            settings.isPianoAutoplayEnabled = e.target.checked;
-            // *** REMOVED: saveSettings() ***
-        });
-        bananasAutoplayToggle.addEventListener('change', (e) => {
-            settings.isBananasAutoplayEnabled = e.target.checked;
-            // *** REMOVED: saveSettings() ***
-        });
-        followsAutoplayToggle.addEventListener('change', (e) => {
-            settings.isFollowsAutoplayEnabled = e.target.checked;
-            // *** REMOVED: saveSettings() ***
-        });
-        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => {
-            settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked;
-            // *** REMOVED: saveSettings() ***
-        });
+        speedDeleteToggle.addEventListener('change', (e) => settings.isSpeedDeletingEnabled = e.target.checked);
+        pianoAutoplayToggle.addEventListener('change', (e) => settings.isPianoAutoplayEnabled = e.target.checked);
+        bananasAutoplayToggle.addEventListener('change', (e) => settings.isBananasAutoplayEnabled = e.target.checked);
+        followsAutoplayToggle.addEventListener('change', (e) => settings.isFollowsAutoplayEnabled = e.target.checked);
+        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked);
         audioPlaybackToggle.addEventListener('change', (e) => {
             settings.isAudioPlaybackEnabled = e.target.checked;
             if (settings.isAudioPlaybackEnabled) speak("Audio");
-            // *** REMOVED: saveSettings() ***
         });
         voiceInputToggle.addEventListener('change', (e) => {
             settings.isVoiceInputEnabled = e.target.checked;
             updateMicButtonVisibility();
-            // *** REMOVED: saveSettings() ***
             if (settings.isVoiceInputEnabled && !recognitionApi) {
                 showModal('Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                     settings.isVoiceInputEnabled = false;
                     voiceInputToggle.checked = false;
                     updateMicButtonVisibility();
-                    // *** REMOVED: saveSettings() ***
                     closeModal();
                 }, 'OK', '');
             }
@@ -1417,7 +1329,6 @@
         sliderLockToggle.addEventListener('change', (e) => {
             settings.areSlidersLocked = e.target.checked;
             updateSliderLockState();
-            // *** REMOVED: saveSettings() ***
         });
 
         function setupSpeedSlider(slider, displayElement, modeKey) {
@@ -1425,7 +1336,6 @@
                 const multiplier = parseInt(event.target.value) / 100;
                 updateModeSpeed(modeKey, multiplier);
                 updateSpeedDisplay(multiplier, displayElement);
-                // *** REMOVED: saveSettings() from 'change' listener ***
             });
         }
         setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
@@ -1437,11 +1347,10 @@
             settings.uiScaleMultiplier = multiplier;
             updateScaleDisplay(multiplier, uiScaleDisplay);
             renderSequences();
-            // *** REMOVED: saveSettings() from 'change' listener ***
         });
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
-        document.getElementById('close-share').addEventListener('click', closeShareModal);
+        document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
     }
     
     // --- Initialization ---
@@ -1470,67 +1379,13 @@
                 settings.isVoiceInputEnabled = false;
                 voiceInputToggle.checked = false;
                 updateMicButtonVisibility();
-                // *** REMOVED: saveSettings() ***
                 closeModal();
             }, 'OK', '');
         }
         
         initializeListeners();
         
-        updateMode(settings.currentMode); 
-        
-        if (settings.currentMode === 'rounds15') {
-            const state = appState['rounds15'];
-            if (state.sequences[0].length >= state.currentRound && settings.isRounds15ClearAfterPlaybackEnabled) {
-                console.log('Fixing stuck "rounds15" state on load...');
-                state.sequences[0] = [];
-                state.nextSequenceIndex = 0;
-                advanceToNextRound(); // This no longer auto-saves
-            }
-        }
-        
-        if (settings.isAudioPlaybackEnabled) speak(" "); 
-    };
-
-})(); // End IIFE
-re').addEventListener('click', closeShareModal);
-    }
-    
-    // --- Initialization ---
-    window.onload = function() {
-        
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then((registration) => {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                })
-                .catch((error) => {
-                    console.error('Service Worker registration failed:', error);
-                });
-        }
-
-        // *** MODIFIED: All these functions now use the loaded 'settings' object ***
-        updateTheme(settings.isDarkMode);
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        updateSliderLockState();
-        updateMicButtonVisibility();
-        
-        if (settings.isVoiceInputEnabled && !recognitionApi) {
-            showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
-                settings.isVoiceInputEnabled = false;
-                voiceInputToggle.checked = false;
-                updateMicButtonVisibility();
-                saveSettings(); // *** NEW: Save settings ***
-                closeModal();
-            }, 'OK', '');
-        }
-        
-        initializeListeners();
-        
-        updateMode(settings.currentMode); // *** MODIFIED: Load the saved mode ***
+        updateMode('bananas');
         
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
