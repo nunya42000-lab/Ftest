@@ -58,7 +58,7 @@
     // --- DOM Elements ---
     const sequenceContainer = document.getElementById('sequence-container');
     const customModal = document.getElementById('custom-modal');
-    const shareModal = document.getElementById('share-modal'); // *** NEW ***
+    const shareModal = document.getElementById('share-modal'); // Share modal
 
     // Settings Modal Elements
     const settingsModal = document.getElementById('settings-modal');
@@ -107,20 +107,16 @@
 
     // --- Voice Command Mapping ---
 
-    // This map is for single-word-to-value translation
     const VOICE_VALUE_MAP = {
         'one': '1', 'two': '2', 'to': '2', 'three': '3', 'four': '4', 'for': '4', 'five': '5',
         'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
         'eleven': '11', 'twelve': '12',
         
-        // Piano notes
         'see': 'C', 'dee': 'D', 'e': 'E', 'eff': 'F', 'gee': 'G', 'eh': 'A', 'be': 'B',
         'c': 'C', 'd': 'D', 'f': 'F', 'g': 'G', 'a': 'A', 'b': 'B'
     };
     
-    // This map is for action phrases
     const VOICE_ACTION_MAP = {
-        // App Control
         'settings': openSettingsModal,
         'open settings': openSettingsModal,
         'close settings': closeSettingsModal,
@@ -128,7 +124,6 @@
         'open help': openHelpModal,
         'close help': closeHelpModal,
         
-        // Mode Switching
         'mode bananas': () => handleModeSelection('bananas'),
         'switch to bananas': () => handleModeSelection('bananas'),
         'mode follows': () => handleModeSelection('follows'),
@@ -138,12 +133,10 @@
         'mode rounds': () => handleModeSelection('rounds15'),
         'switch to rounds': () => handleModeSelection('rounds15'),
         
-        // Playback
         'play': handleCurrentDemo,
         'demo': handleCurrentDemo,
         'play demo': handleCurrentDemo,
         
-        // Sequence Control
         'clear': handleBackspace,
         'delete': handleBackspace,
         'back': handleBackspace,
@@ -151,7 +144,6 @@
         'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
         'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
         
-        // Speed Control
         'speed up': () => adjustSpeed(0.25),
         'faster': () => adjustSpeed(0.25),
         'speed down': () => adjustSpeed(-0.25),
@@ -159,7 +151,6 @@
         'speed reset': () => adjustSpeed(0, true),
         'base speed': () => adjustSpeed(0, true),
         
-        // Toggles
         'toggle dark mode': () => darkModeToggle.click(),
         'toggle light mode': () => darkModeToggle.click(),
         'toggle audio': () => audioPlaybackToggle.click(),
@@ -177,15 +168,12 @@
 
     // --- Core Functions for State Management ---
 
-    /**
-     * Creates an initial state object for a given mode.
-     */
     function getInitialState(mode) {
         switch (mode) {
             case 'follows':
                 return { 
                     sequences: Array.from({ length: MAX_SEQUENCES }, () => []),
-                    sequenceCount: 2, // Default
+                    sequenceCount: 2,
                     nextSequenceIndex: 0
                 };
             case 'rounds15': 
@@ -207,9 +195,6 @@
         }
     }
 
-    /**
-     * Renders the current state's sequences to the DOM.
-     */
     function renderSequences() {
         const state = getCurrentState();
         const { sequences, sequenceCount } = state;
@@ -218,7 +203,6 @@
         
         const currentTurnIndex = state.nextSequenceIndex % sequenceCount;
 
-        // 1. Set Layout Classes for the main container
         let layoutClasses = 'gap-4 flex-grow mb-6 transition-all duration-300 pt-1 ';
 
         if (currentMode === 'bananas') {
@@ -236,7 +220,6 @@
         }
         sequenceContainer.className = layoutClasses;
 
-        // 2. Add Round Display for '15 rounds' mode
         if (currentMode === 'rounds15') {
             const roundDisplay = document.createElement('div');
             roundDisplay.className = 'text-center text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100';
@@ -245,7 +228,6 @@
             sequenceContainer.appendChild(roundDisplay);
         }
 
-        // 3. Determine grid columns for sequence items
         let numColumns = 0;
         if (currentMode === 'bananas') numColumns = 5;
         else if (currentMode === 'follows') {
@@ -256,21 +238,19 @@
         
         let gridClass = numColumns > 0 ? `grid grid-cols-${numColumns}` : 'flex flex-wrap';
         
-        // 4. Calculate UI Scale
         const baseSize = 40;
         const baseFont = 1.1;
         const newSize = baseSize * settings.uiScaleMultiplier;
         const newFont = baseFont * settings.uiScaleMultiplier;
         const sizeStyle = `height: ${newSize}px; line-height: ${newSize}px; font-size: ${newFont}rem;`;
 
-        // 5. Render each active sequence
         activeSequences.forEach((set, index) => {
             const isCurrent = currentTurnIndex === index;
             const sequenceDiv = document.createElement('div');
             
             const originalClasses = `p-4 rounded-xl shadow-md transition-all duration-200 ${isCurrent ? 'bg-accent-app scale-[1.02] shadow-lg text-gray-900' : 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100'}`;
             sequenceDiv.className = originalClasses;
-            sequenceDiv.dataset.originalClasses = originalClasses; // Store for restore
+            sequenceDiv.dataset.originalClasses = originalClasses;
             
             sequenceDiv.innerHTML = `
                 <div class="${gridClass} gap-2 min-h-[50px]"> 
@@ -286,24 +266,17 @@
         });
     }
 
-    /**
-     * Adds a new value to the appropriate sequence.
-     */
     function addValue(value) {
         const state = getCurrentState();
         const { sequences, sequenceCount } = state;
         
         if (sequenceCount === 0) return;
 
-        // Check length constraints
-        if (currentMode === 'rounds15' && sequences[0].length >= state.currentRound) {
-            return; 
-        }
+        if (currentMode === 'rounds15' && sequences[0].length >= state.currentRound) return; 
         if (currentMode === 'bananas' && sequences[0].length >= 25) return;
         if (currentMode === 'follows' && sequences[state.nextSequenceIndex % sequenceCount].length >= 25) return;
         if (currentMode === 'piano' && sequences[0].length >= 20) return; 
 
-        // Add value
         const targetIndex = state.nextSequenceIndex % sequenceCount;
         sequences[targetIndex].push(value);
         state.nextSequenceIndex++;
@@ -312,7 +285,6 @@
 
         renderSequences();
         
-        // --- Autoplay Logic ---
         if (currentMode === 'piano' && settings.isPianoAutoplayEnabled) { 
             setTimeout(() => { handlePianoDemo(); }, 100); 
         }
@@ -320,16 +292,13 @@
             setTimeout(() => { handleBananasDemo(); }, 100); 
         }
         else if (currentMode === 'follows' && settings.isFollowsAutoplayEnabled) {
-            // Only autoplay 'follows' after filling the *last* sequence
             if (justFilledIndex === state.sequenceCount - 1) {
                  setTimeout(() => { handleFollowsDemo(); }, 100);
             }
         }
         else if (currentMode === 'rounds15') {
-            // Autoplay '15 rounds' when the round is full
             const sequence = state.sequences[0];
             if (sequence.length === state.currentRound) {
-                // Disable input keys, but not control keys
                 const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
                 allKeys.forEach(key => key.disabled = true);
                 
@@ -338,14 +307,10 @@
         }
     }
     
-    /**
-     * Removes the last added value from the sequences.
-     */
     function handleBackspace() {
         const state = getCurrentState();
         const { sequences, sequenceCount } = state;
         
-        // Prevent backspace while a demo is running
         if (currentMode === 'rounds15') {
             const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
             if (demoButton && demoButton.disabled) return;
@@ -364,7 +329,6 @@
             targetSet.pop();
             state.nextSequenceIndex--; 
 
-            // Re-enable 15-rounds keys if we delete back
             if (currentMode === 'rounds15') {
                  const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
                  allKeys.forEach(key => key.disabled = false);
@@ -512,7 +476,6 @@
     // --- Help Modal Logic ---
 
     function generateHelpContent() {
-        // This function ALREADY contains the voice command list from the previous update.
         return `
             <h4 class="text-primary-app">App Overview</h4>
             <p>This is a multi-mode number/sequence tracker designed to help you practice memorization and pattern recognition. Use the Settings menu (⚙️) to switch between four distinct modes.</p>
@@ -567,9 +530,9 @@
             </ul>
 
             <h4 class="text-primary-app">Voice Commands (🎤)</h4>
-            <p>When enabled, you can speak commands to the app. The app will first check for action commands, and if none are found, it will try to add your words as sequence values.</p>
+            <p>When enabled, you can speak commands to the app. The app prioritizes adding sequence values first. If no values are heard, it checks for action commands.</p>
             
-            <p class="font-bold text-gray-900 dark:text-white mt-4">Sequence Input</p>
+            <p class="font-bold text-gray-900 dark:text-white mt-4">Sequence Input (Top Priority)</p>
             <ul>
                 <li>Say numbers ("one", "five", "twelve") or notes ("C", "E", "F") to add them to the current sequence.</li>
                 <li><span class="font-bold">"Clear"</span> / <span class="font-bold">"Delete"</span> / <span class="font-bold">"Back"</span>: Deletes the last entry.</li>
@@ -637,7 +600,7 @@
         }, 300);
     }
     
-    // --- *** NEW: Share Modal Functions *** ---
+    // --- Share Modal Functions ---
     function openShareModal() {
         closeSettingsModal(); // Close settings when opening share
         if (shareModal) {
@@ -700,9 +663,6 @@
         if (uiScaleSlider) uiScaleSlider.disabled = locked;
     }
 
-    /**
-     * Switches the application to a new mode.
-     */
     function updateMode(newMode) {
         currentMode = newMode;
         bananasPad.style.display = currentMode === 'bananas' ? 'block' : 'none';
@@ -1110,22 +1070,10 @@
         if (!transcript) return;
         
         const cleanTranscript = transcript.toLowerCase().replace(/[\.,]/g, '').trim();
-        
-        if (VOICE_ACTION_MAP[cleanTranscript]) {
-            VOICE_ACTION_MAP[cleanTranscript]();
-            return;
-        }
-
-        for (const phrase in VOICE_ACTION_MAP) {
-            if (cleanTranscript.includes(phrase)) {
-                VOICE_ACTION_MAP[phrase]();
-                return;
-            }
-        }
-
         const words = cleanTranscript.split(' ');
         let valuesAdded = 0;
-        
+
+        // --- Priority 1: Check for Sequence Values ---
         for (const word of words) {
             let value = VOICE_VALUE_MAP[word];
             
@@ -1157,11 +1105,27 @@
                 }
             }
         }
-        
-        if (valuesAdded === 0) {
-            console.log(`Unknown voice command or value: ${transcript}`);
+
+        if (valuesAdded > 0) {
+            return;
         }
+
+        // --- Priority 2: Check for Action Commands ---
+        if (VOICE_ACTION_MAP[cleanTranscript]) {
+            VOICE_ACTION_MAP[cleanTranscript]();
+            return;
+        }
+
+        for (const phrase in VOICE_ACTION_MAP) {
+            if (cleanTranscript.includes(phrase)) {
+                VOICE_ACTION_MAP[phrase]();
+                return;
+            }
+        }
+        
+        console.log(`Unknown voice command or value: ${transcript}`);
     }
+
 
     function handleVoiceResult(event) {
         const transcript = event.results[0][0].transcript.trim();
@@ -1261,7 +1225,6 @@
                 openHelpModal();
                 return;
             }
-            // *** NEW ***
             if (action === 'open-share') {
                 openShareModal();
                 return;
@@ -1383,7 +1346,7 @@
         });
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
-        document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
+        document.getElementById('close-share').addEventListener('click', closeShareModal);
     }
     
     // --- Initialization ---
