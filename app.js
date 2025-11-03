@@ -40,6 +40,7 @@
         isVoiceInputEnabled: true,
         areSlidersLocked: true,
         followsChunkSize: 3, 
+        followsInterSequenceDelay: 500, // <<< NEW: Default 0.5s in ms
     };
 
     // --- Data Store ---
@@ -67,6 +68,7 @@
     const openHelpButton = document.getElementById('open-help-button'); 
     const followsCountSelect = document.getElementById('follows-count-select'); 
     const followsChunkSizeSelect = document.getElementById('follows-chunk-size-select'); 
+    const followsDelaySelect = document.getElementById('follows-delay-select'); // <<< NEW
 
     // Help Modal Elements
     const helpModal = document.getElementById('help-modal');
@@ -434,6 +436,7 @@
         
         followsCountSelect.value = appState['follows'].sequenceCount;
         followsChunkSizeSelect.value = settings.followsChunkSize;
+        followsDelaySelect.value = settings.followsInterSequenceDelay; // <<< NEW
         
         darkModeToggle.checked = settings.isDarkMode;
         speedDeleteToggle.checked = settings.isSpeedDeletingEnabled; 
@@ -490,6 +493,7 @@
                 <li><span class="font-bold">Input:</span> Numbers 1 through 9.</li>
                 <li><span class="font-bold">Demo (▶):</span> Plays back all sequences. It plays 'X' numbers from sequence 1, then 'X' from sequence 2, etc., before moving to the next chunk.</li>
                 <li><span class="font-bold">Numbers per sequence:</span> Use the Settings (⚙️) to change 'X' (the chunk size) from 2 to 5. Default is 3.</li>
+                <li><span class="font-bold">Delay between sequences:</span> Use the Settings (⚙️) to add a pause (0.0s - 2.0s) when playback switches from one sequence to the next.</li>
                 <li><span class="font-bold">Follows Sequences:</span> Use the Settings (⚙️) to select 2, 3, or 4 active sequences.</li>
                 <li><span class="font-bold">Autoplay Option:</span> Plays the demo automatically after you add a number to the *last* sequence (On by default).</li>
             </ul>
@@ -805,10 +809,23 @@
                 if (key) key.classList.add('bananas-flash');
                 if (seqBox) seqBox.className = 'p-4 rounded-xl shadow-md transition-all duration-200 bg-accent-app scale-[1.02] shadow-lg text-gray-900';
                 
+                // --- NEW DELAY LOGIC ---
+                // Determine the pause duration for *after* this item
+                const nextSeqIndex = (i + 1 < playlist.length) ? playlist[i + 1].seqIndex : -1;
+                
+                let timeBetweenItems = pauseDuration - flashDuration; // Base pause
+                
+                if (nextSeqIndex !== -1 && seqIndex !== nextSeqIndex) {
+                    // The next item is from a different sequence. Add the delay.
+                    timeBetweenItems += settings.followsInterSequenceDelay;
+                }
+                // --- END NEW DELAY LOGIC ---
+
                 setTimeout(() => {
                     if (key) key.classList.remove('bananas-flash');
                     if (seqBox) seqBox.className = originalClasses;
-                    setTimeout(playNextItem, pauseDuration - flashDuration);
+                    
+                    setTimeout(playNextItem, timeBetweenItems); // <<< MODIFIED
                 }, flashDuration);
                         
                 i++;
@@ -1302,6 +1319,9 @@
         });
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
+        });
+        followsDelaySelect.addEventListener('change', (event) => { // <<< NEW
+            settings.followsInterSequenceDelay = parseInt(event.target.value);
         });
         
         darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
