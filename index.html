@@ -120,84 +120,7 @@
                             <option value="2000">2.0s</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Playback & Size Controls</p>
-                    
-                    <div class="mb-6">
-                        <label for="bananas-speed-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Bananas/Follows Play Speed</label>
-                        <select id="bananas-speed-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="50">50% (Slow)</option>
-                            <option value="60">60%</option>
-                            <option value="70">70%</option>
-                            <option value="80">80%</option>
-                            <option value="90">90%</option>
-                            <option value="100" selected>100% (Base)</option>
-                            <option value="110">110%</option>
-                            <option value="120">120%</option>
-                            <option value="130">130%</option>
-                            <option value="140">140%</option>
-                            <option value="150">150% (Fast)</option>
-                        </select>
                     </div>
-
-                    <div class="mb-6">
-                        <label for="piano-speed-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Piano Play Speed</label>
-                        <select id="piano-speed-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="50">50% (Slow)</option>
-                            <option value="60">60%</option>
-                            <option value="70">70%</option>
-                            <option value="80">80%</option>
-                            <option value="90">90%</option>
-                            <option value="100" selected>100% (Base)</option>
-                            <option value="110">110%</option>
-                            <option value="120">120%</option>
-                            <option value="130">130%</option>
-                            <option value="140">140%</option>
-                            <option value="150">150% (Fast)</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="rounds15-speed-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">15 rounds Play Speed</label>
-                        <select id="rounds15-speed-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="50">50% (Slow)</option>
-                            <option value="60">60%</option>
-                            <option value="70">70%</option>
-                            <option value="80">80%</option>
-                            <option value="90">90%</option>
-                            <option value="100" selected>100% (Base)</option>
-                            <option value="110">110%</option>
-                            <option value="120">120%</option>
-                            <option value="130">130%</option>
-                            <option value="140">140%</option>
-                            <option value="150">150% (Fast)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <label for="ui-scale-select" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Sequence Size</label>
-                        <select id="ui-scale-select" class="w-full h-12 px-4 py-2 text-lg font-semibold text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-app">
-                            <option value="50">50% (Small)</option>
-                            <option value="60">60%</option>
-                            <option value="70">70%</option>
-                            <option value="80">80%</option>
-                            <option value="90">90%</option>
-                            <option value="100" selected>100% (Base)</option>
-                            <option value="110">110%</option>
-                            <option value="120">120%</option>
-                            <option value="130">130%</option>
-                            <option value="140">140%</option>
-                            <option value="150">150%</option>
-                            <option value="160">160%</option>
-                            <option value="170">170%</option>
-                            <option value="180">180%</option>
-                            <option value="190">190%</option>
-                            <option value="200">200% (Large)</option>
-                        </select>
-                    </div>
-                </div>
 
                 <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Toggles</p>
@@ -233,6 +156,14 @@
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
                         </label>
                     </div>
+
+                    <div class="flex items-center justify-between mb-6">
+                        <label for="slider-lock-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Lock Sliders</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="slider-lock-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
+                        </label>
+                    </div>
                     
                     <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-6">
@@ -265,6 +196,50 @@
                                 <input type="checkbox" id="rounds15-clear-after-playback-toggle" class="sr-only peer" checked> 
                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
                             </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Playback & Size Controls</p>
+                    
+                    <div class="mb-6">
+                        <label for="bananas-speed-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Bananas/Follows Play Speed</label>
+                        <input type="range" id="bananas-speed-slider" min="50" max="150" value="100" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>50% (Slow)</span>
+                            <span id="bananas-speed-display">100% (Base)</span>
+                            <span>150% (Fast)</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="piano-speed-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Piano Play Speed</label>
+                        <input type="range" id="piano-speed-slider" min="50" max="150" value="100" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>50% (Slow)</span>
+                            <span id="piano-speed-display">100% (Base)</span>
+                            <span>150% (Fast)</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="rounds15-speed-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">15 rounds Play Speed</label>
+                        <input type="range" id="rounds15-speed-slider" min="50" max="150" value="100" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>50% (Slow)</span>
+                            <span id="rounds15-speed-display">100% (Base)</span>
+                            <span>150% (Fast)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="ui-scale-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Sequence Size</label>
+                        <input type="range" id="ui-scale-slider" min="50" max="200" value="100" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>50% (Small)</span>
+                            <span id="ui-scale-display">100% (Base)</span>
+                            <span>200% (Large)</span>
                         </div>
                     </div>
                 </div>
@@ -472,14 +447,6 @@ Let's start.</textarea>
 4. After you finish reading, you will **immediately** clear the sequence, advance to the next round, and say "Next Round" to let me know you are ready.
 5. 'Repeat': Read the current round's sequence again.
 6. 'Reset': Go back to Round 1.
-Let's start with Round 1.</textarea>
-        <button class="copy-button" data-copy-target="prompt-rounds15">📋 <span class="ml-2">Copy</span></button>
-    </div>
-    <script src="app.js" defer></script>
-
-</body>
-</html>
-nd 1.
 Let's start with Round 1.</textarea>
         <button class="copy-button" data-copy-target="prompt-rounds15">📋 <span class="ml-2">Copy</span></button>
     </div>
