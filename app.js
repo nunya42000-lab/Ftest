@@ -1,6 +1,6 @@
 (function () {
     
-    // *** NEW: Wait for the DOM to be loaded before running any code ***
+    // Wait for the DOM to be loaded before running any code
     window.addEventListener('DOMContentLoaded', () => {
 
         // --- Application State and Constants ---
@@ -68,7 +68,7 @@
         
         const getCurrentState = () => appState[currentMode];
         
-        // --- DOM Elements (Now safe to declare) ---
+        // --- DOM Elements ---
         const sequenceContainer = document.getElementById('sequence-container');
         const customModal = document.getElementById('custom-modal');
         const shareModal = document.getElementById('share-modal');
@@ -418,7 +418,7 @@
             followsChunkSizeDisplay.textContent = `${value}`;
         }
         function updateFollowsDelayDisplay(value) {
-            followsDelayDisplay.textContent = `${(value / 1000).toFixed(1)} s`; // Show 1 decimal place
+            followsDelayDisplay.textContent = `${(value / 1000).toFixed(1)} s`;
         }
 
         function renderModeDropdown() {
@@ -852,16 +852,19 @@
                     if (key) key.classList.add('bananas-flash');
                     if (seqBox) seqBox.className = 'p-4 rounded-xl shadow-md transition-all duration-200 bg-accent-app scale-[1.02] shadow-lg text-gray-900';
                     
+                    // *** MODIFIED: Delay logic corrected ***
                     const prevItem = i > 0 ? playlist[i-1] : null;
                     const hasSequenceChanged = prevItem && item.seqIndex !== prevItem.seqIndex;
-                    // Add delay *after* flash, before next item
-                    const delay = hasSequenceChanged ? (pauseDuration - flashDuration + settings.followsDelayMs) : (pauseDuration - flashDuration);
+                    // Base pause + extra delay IF sequence changed
+                    const delay = hasSequenceChanged ? (pauseDuration + settings.followsDelayMs) : pauseDuration;
 
                     setTimeout(() => {
                         if (key) key.classList.remove('bananas-flash');
                         if (seqBox) seqBox.className = originalClasses;
-                        setTimeout(playNextItem, delay);
-                    }, flashDuration);
+                    }, flashDuration); // Flash duration is constant
+
+                    // Wait for the full delay time before playing the next item
+                    setTimeout(playNextItem, delay); 
                             
                     i++;
                 } else {
@@ -1345,37 +1348,17 @@
             
             // --- Settings Listeners ---
             
+            // *** MODIFIED: Removed confirmation dialog ***
             followsCountSlider.addEventListener('input', (event) => {
                 updateFollowsCountDisplay(parseInt(event.target.value));
             });
             followsCountSlider.addEventListener('change', (event) => {
                 const newValue = parseInt(event.target.value);
-                const oldValue = appState['follows'].sequenceCount;
-                if (newValue === oldValue) return;
-
-                const sequences = appState['follows'].sequences;
-                const isPopulated = sequences.slice(0, oldValue).some(seq => seq.length > 0);
-
-                if (isPopulated) {
-                    showModal('Clear Sequences?', 'Changing the number of sequences will erase all entries in Follows mode. Are you sure?', 
-                    () => { // onConfirm
-                        appState['follows'] = getInitialState('follows');
-                        appState['follows'].sequenceCount = newValue;
-                        renderSequences();
-                        saveStateToStorage();
-                        updateFollowsCountDisplay(newValue); // Update display after confirm
-                    }, 
-                    'Yes, Clear', 'No',
-                    () => { // onCancel
-                        followsCountSlider.value = oldValue;
-                        updateFollowsCountDisplay(oldValue);
-                    });
-                } else {
-                    appState['follows'].sequenceCount = newValue;
-                    appState['follows'].nextSequenceIndex = 0;
-                    renderSequences();
-                    saveStateToStorage();
-                }
+                appState['follows'] = getInitialState('follows'); // Reset state
+                appState['follows'].sequenceCount = newValue; // Set new count
+                renderSequences();
+                saveStateToStorage();
+                updateFollowsCountDisplay(newValue);
             });
 
             followsChunkSizeSlider.addEventListener('input', (event) => {
@@ -1467,14 +1450,11 @@
             document.getElementById('close-help').addEventListener('click', closeHelpModal);
             document.getElementById('close-share').addEventListener('click', closeShareModal);
             
+            // *** MODIFIED: Removed confirmation dialog ***
             restoreDefaultsButton.addEventListener('click', () => {
-                showModal('Restore Defaults?', 'This will erase all saved settings and all sequences. Are you sure?', 
-                () => { // onConfirm
-                    localStorage.removeItem('followMeSettings');
-                    localStorage.removeItem('followMeAppState');
-                    location.reload();
-                }, 
-                'Yes, Restore', 'No');
+                localStorage.removeItem('followMeSettings');
+                localStorage.removeItem('followMeAppState');
+                location.reload();
             });
         }
         
@@ -1504,7 +1484,7 @@
         updateMicButtonVisibility();
         
         if (settings.isVoiceInputEnabled && !recognitionApi) {
-            showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
+            showModal('Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                 settings.isVoiceInputEnabled = false;
                 voiceInputToggle.checked = false;
                 updateMicButtonVisibility();
