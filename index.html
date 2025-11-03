@@ -42,7 +42,7 @@
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
-    <!-- *** MODIFIED: z-index changed from z-50 to z-60 *** -->
+    <!-- Standard Confirmation Modal (z-60) -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
@@ -54,7 +54,7 @@
         </div>
     </div>
     
-    <!-- *** MODIFIED: z-index changed from z-50 to z-60 *** -->
+    <!-- Share Modal (z-60) -->
     <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
@@ -78,8 +78,10 @@
                 </button>
             </div>
 
+            <!-- *** MODIFIED: Settings menu reorganized *** -->
             <div class="p-6 pt-2 overflow-y-auto flex-grow">
                 
+                <!-- 1. Mode -->
                 <div class="mb-6">
                     <label class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Current Mode</label>
                     <button id="settings-mode-toggle-button" 
@@ -92,42 +94,45 @@
                         </div>
                 </div>
                 
+                <!-- 2. Mode-Specific Toggles -->
                 <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Follows Mode Settings</p>
-                    
-                    <div id="follows-count-setting" class="mb-6">
-                        <label for="follows-count-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Follows Sequences</label>
-                        <input type="range" id="follows-count-slider" min="2" max="4" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
-                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            <span>2</span>
-                            <span id="follows-count-display">... Sequences</span>
-                            <span>4</span>
-                        </div>
+                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Mode-Specific Toggles</p>
+                    <div class="flex items-center justify-between mb-6">
+                        <label for="bananas-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Bananas Autoplay</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="bananas-autoplay-toggle" class="sr-only peer" checked> 
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
+                        </label>
                     </div>
                     
-                    <div id="follows-chunk-setting" class="mb-6">
-                        <label for="follows-chunk-size-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Numbers per sequence (playback)</label>
-                        <input type="range" id="follows-chunk-size-slider" min="2" max="5" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
-                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            <span>2</span>
-                            <span id="follows-chunk-size-display">...</span>
-                            <span>5</span>
-                        </div>
+                    <div class="flex items-center justify-between mb-6">
+                        <label for="follows-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Follows Autoplay</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="follows-autoplay-toggle" class="sr-only peer" checked> 
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
+                        </label>
                     </div>
-
-                    <div id="follows-delay-setting" class="mb-6">
-                        <label for="follows-delay-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Delay Between Sequences</label>
-                        <input type="range" id="follows-delay-slider" min="0" max="2000" step="250" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
-                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            <span>0.0s</span>
-                            <span id="follows-delay-display">... s</span>
-                            <span>2.0s</span>
-                        </div>
+                    
+                    <div class="flex items-center justify-between mb-6">
+                        <label for="piano-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Piano Autoplay</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="piano-autoplay-toggle" class="sr-only peer" checked> 
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-6">
+                        <label for="rounds15-clear-after-playback-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">15 rounds Auto-Clear/Advance</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="rounds15-clear-after-playback-toggle" class="sr-only peer" checked> 
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
+                        </label>
                     </div>
                 </div>
-
+                
+                <!-- 3. Universal Toggles -->
                 <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Toggles</p>
+                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">General Toggles</p>
                     
                     <div class="flex items-center justify-between mb-6">
                         <label for="dark-mode-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Dark Mode</label>
@@ -168,44 +173,41 @@
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
                         </label>
                     </div>
-                    
-                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between mb-6">
-                            <label for="bananas-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Bananas Autoplay</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="bananas-autoplay-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-6">
-                            <label for="follows-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Follows Autoplay</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="follows-autoplay-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-6">
-                            <label for="piano-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Piano Autoplay</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="piano-autoplay-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-8">
-                            <label for="rounds15-clear-after-playback-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">15 rounds Auto-Clear/Advance</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="rounds15-clear-after-playback-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                    </div>
                 </div>
 
+                <!-- 4. Sliders -->
                 <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Playback & Size Controls</p>
+                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Sliders</p>
+                    
+                    <div id="follows-count-setting" class="mb-6">
+                        <label for="follows-count-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Follows Sequences</label>
+                        <input type="range" id="follows-count-slider" min="2" max="4" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>2</span>
+                            <span id="follows-count-display">... Sequences</span>
+                            <span>4</span>
+                        </div>
+                    </div>
+                    
+                    <div id="follows-chunk-setting" class="mb-6">
+                        <label for="follows-chunk-size-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Numbers per sequence (playback)</label>
+                        <input type="range" id="follows-chunk-size-slider" min="2" max="5" step="1" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>2</span>
+                            <span id="follows-chunk-size-display">...</span>
+                            <span>5</span>
+                        </div>
+                    </div>
+
+                    <div id="follows-delay-setting" class="mb-6">
+                        <label for="follows-delay-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Delay Between Sequences</label>
+                        <input type="range" id="follows-delay-slider" min="0" max="2000" step="250" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg disabled:opacity-50">
+                        <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>0.0s</span>
+                            <span id="follows-delay-display">... s</span>
+                            <span>2.0s</span>
+                        </div>
+                    </div>
                     
                     <div class="mb-6">
                         <label for="bananas-speed-slider" class="block text-gray-700 dark:text-gray-300 text-lg font-semibold mb-2">Bananas/Follows Play Speed</label>
@@ -250,6 +252,7 @@
                 
             </div>
             
+            <!-- 5. Restore Defaults -->
             <div class="p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex justify-between">
                     <button id="restore-defaults-button" class="px-6 py-2 text-white bg-btn-control-red rounded-lg hover:bg-btn-control-red-active transition-colors font-semibold">Restore Defaults</button>
@@ -260,7 +263,6 @@
         </div>
     </div>
     
-    <!-- Help Modal (z-50) -->
     <div id="help-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
