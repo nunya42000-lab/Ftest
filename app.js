@@ -24,8 +24,10 @@
         '1': '1', '2': '2', '3': '3', '4': '4', '5': '5'
     };
     
-    // Settings State (All toggles ON by default)
-    let settings = {
+    // --- NEW: Settings Management ---
+    const SETTINGS_KEY = 'followMeAppSettings';
+    
+    const DEFAULT_SETTINGS = {
         isDarkMode: true,
         bananasSpeedMultiplier: 1.0, // Used for Bananas and Follows
         pianoSpeedMultiplier: 1.0, 
@@ -38,10 +40,13 @@
         isRounds15ClearAfterPlaybackEnabled: true, 
         isAudioPlaybackEnabled: true,
         isVoiceInputEnabled: true,
-        areSlidersLocked: true,
+        // areSlidersLocked: true, // <-- Removed
         followsChunkSize: 3, 
-        followsInterSequenceDelay: 500, // <<< NEW: Default 0.5s in ms
+        followsInterSequenceDelay: 500,
     };
+    
+    // Settings State
+    let settings = { ...DEFAULT_SETTINGS };
 
     // --- Data Store ---
     let appState = {
@@ -59,16 +64,18 @@
     // --- DOM Elements ---
     const sequenceContainer = document.getElementById('sequence-container');
     const customModal = document.getElementById('custom-modal');
-    const shareModal = document.getElementById('share-modal'); // *** NEW ***
+    const shareModal = document.getElementById('share-modal');
 
     // Settings Modal Elements
     const settingsModal = document.getElementById('settings-modal');
     const settingsModeToggleButton = document.getElementById('settings-mode-toggle-button');
     const settingsModeDropdown = document.getElementById('settings-mode-dropdown');
-    const openHelpButton = document.getElementById('open-help-button'); 
+    const openHelpButton = document.getElementById('open-help-button');
     const followsCountSelect = document.getElementById('follows-count-select'); 
     const followsChunkSizeSelect = document.getElementById('follows-chunk-size-select'); 
-    const followsDelaySelect = document.getElementById('follows-delay-select'); // <<< NEW
+    const followsDelaySelect = document.getElementById('follows-delay-select');
+    const saveSettingsButton = document.getElementById('save-settings-button');
+    const restoreDefaultsButton = document.getElementById('restore-defaults-button');
 
     // Help Modal Elements
     const helpModal = document.getElementById('help-modal');
@@ -83,17 +90,12 @@
     const rounds15ClearAfterPlaybackToggle = document.getElementById('rounds15-clear-after-playback-toggle');
     const audioPlaybackToggle = document.getElementById('audio-playback-toggle'); 
     const voiceInputToggle = document.getElementById('voice-input-toggle');
-    const sliderLockToggle = document.getElementById('slider-lock-toggle'); 
 
-    // Sliders and Displays
-    const bananasSpeedSlider = document.getElementById('bananas-speed-slider');
-    const bananasSpeedDisplay = document.getElementById('bananas-speed-display');
-    const pianoSpeedSlider = document.getElementById('piano-speed-slider');
-    const pianoSpeedDisplay = document.getElementById('piano-speed-display');
-    const rounds15SpeedSlider = document.getElementById('rounds15-speed-slider');
-    const rounds15SpeedDisplay = document.getElementById('rounds15-speed-display');
-    const uiScaleSlider = document.getElementById('ui-scale-slider');
-    const uiScaleDisplay = document.getElementById('ui-scale-display');
+    // --- NEW: Control Dropdowns ---
+    const bananasSpeedSelect = document.getElementById('bananas-speed-select');
+    const pianoSpeedSelect = document.getElementById('piano-speed-select');
+    const rounds15SpeedSelect = document.getElementById('rounds15-speed-select');
+    const uiScaleSelect = document.getElementById('ui-scale-select');
     
     // Pad Elements
     const bananasPad = document.getElementById('bananas-pad');
@@ -141,10 +143,10 @@
         'backspace': handleBackspace,
         'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
         'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
-        'speed up': () => adjustSpeed(0.25),
-        'faster': () => adjustSpeed(0.25),
-        'speed down': () => adjustSpeed(-0.25),
-        'slower': () => adjustSpeed(-0.25),
+        'speed up': () => adjustSpeed(0.1), // Adjusted for 10% steps
+        'faster': () => adjustSpeed(0.1),
+        'speed down': () => adjustSpeed(-0.1),
+        'slower': () => adjustSpeed(-0.1),
         'speed reset': () => adjustSpeed(0, true),
         'base speed': () => adjustSpeed(0, true),
         'toggle dark mode': () => darkModeToggle.click(),
@@ -157,9 +159,6 @@
              else if (currentMode === 'piano') pianoAutoplayToggle.click();
         },
         'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
-        'toggle lock': () => sliderLockToggle.click(),
-        'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
-        'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
     };
 
     // --- Core Functions for State Management ---
@@ -236,6 +235,7 @@
         
         const baseSize = 40;
         const baseFont = 1.1;
+        // This logic remains the same, it reads from settings
         const newSize = baseSize * settings.uiScaleMultiplier;
         const newFont = baseFont * settings.uiScaleMultiplier;
         const sizeStyle = `height: ${newSize}px; line-height: ${newSize}px; font-size: ${newFont}rem;`;
@@ -381,6 +381,79 @@
 
     // --- Settings Panel Logic ---
 
+    // --- NEW: Settings Save/Load/Apply ---
+    function saveSettings() {
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            closeSettingsModal();
+        } catch (e) {
+            console.error("Failed to save settings:", e);
+            showModal('Save Error', 'Could not save settings. Your browser might be in private mode or storage is full.', () => closeModal(), 'OK', '');
+        }
+    }
+
+    function loadSettings() {
+        try {
+            const saved = localStorage.getItem(SETTINGS_KEY);
+            if (saved) {
+                // Merge saved settings with defaults to ensure new settings are not missed
+                settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+            }
+        } catch (e) {
+            console.error("Failed to load settings:", e);
+            settings = { ...DEFAULT_SETTINGS }; // Fallback to defaults
+        }
+    }
+
+    function applyAllSettings() {
+        updateTheme(settings.isDarkMode);
+        renderSequences(); // This applies UI scale
+        updateMicButtonVisibility();
+        // All other settings are read "live" when needed (e.g., getSpeedMultiplier)
+    }
+
+    function resetSettingsToDefaults() {
+        settings = { ...DEFAULT_SETTINGS };
+        localStorage.removeItem(SETTINGS_KEY);
+        applyAllSettings();
+        // Re-populate the modal with the new default values
+        populateSettingsModal();
+    }
+    
+    // NEW: Helper to populate modal fields
+    function populateSettingsModal() {
+        settingsModeToggleButton.innerHTML = `
+            ${MODE_LABELS[currentMode]}
+            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        `;
+        
+        // --- Populate Dropdowns ---
+        followsCountSelect.value = appState['follows'].sequenceCount;
+        followsChunkSizeSelect.value = settings.followsChunkSize;
+        followsDelaySelect.value = settings.followsInterSequenceDelay;
+        bananasSpeedSelect.value = settings.bananasSpeedMultiplier;
+        pianoSpeedSelect.value = settings.pianoSpeedMultiplier;
+        rounds15SpeedSelect.value = settings.rounds15SpeedMultiplier;
+        uiScaleSelect.value = settings.uiScaleMultiplier;
+
+        // --- Populate Toggles ---
+        darkModeToggle.checked = settings.isDarkMode;
+        speedDeleteToggle.checked = settings.isSpeedDeletingEnabled; 
+        pianoAutoplayToggle.checked = settings.isPianoAutoplayEnabled; 
+        bananasAutoplayToggle.checked = settings.isBananasAutoplayEnabled;
+        followsAutoplayToggle.checked = settings.isFollowsAutoplayEnabled;
+        rounds15ClearAfterPlaybackToggle.checked = settings.isRounds15ClearAfterPlaybackEnabled;
+        audioPlaybackToggle.checked = settings.isAudioPlaybackEnabled; 
+        voiceInputToggle.checked = settings.isVoiceInputEnabled;
+    }
+
+    function openSettingsModal() {
+        populateSettingsModal(); // Use the new helper function
+        settingsModal.classList.remove('opacity-0', 'pointer-events-none');
+        settingsModal.querySelector('div').classList.remove('scale-90');
+    }
+    // --- END NEW/MODIFIED Settings functions ---
+
     function renderModeDropdown() {
         settingsModeDropdown.innerHTML = MODES.map(modeKey => `
             <button data-mode-select="${modeKey}" 
@@ -428,42 +501,6 @@
         updateMode(newMode);
     }
 
-    function openSettingsModal() {
-        settingsModeToggleButton.innerHTML = `
-            ${MODE_LABELS[currentMode]}
-            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-        `;
-        
-        followsCountSelect.value = appState['follows'].sequenceCount;
-        followsChunkSizeSelect.value = settings.followsChunkSize;
-        followsDelaySelect.value = settings.followsInterSequenceDelay; // <<< NEW
-        
-        darkModeToggle.checked = settings.isDarkMode;
-        speedDeleteToggle.checked = settings.isSpeedDeletingEnabled; 
-        pianoAutoplayToggle.checked = settings.isPianoAutoplayEnabled; 
-        bananasAutoplayToggle.checked = settings.isBananasAutoplayEnabled;
-        followsAutoplayToggle.checked = settings.isFollowsAutoplayEnabled;
-        rounds15ClearAfterPlaybackToggle.checked = settings.isRounds15ClearAfterPlaybackEnabled;
-        audioPlaybackToggle.checked = settings.isAudioPlaybackEnabled; 
-        voiceInputToggle.checked = settings.isVoiceInputEnabled;
-        sliderLockToggle.checked = settings.areSlidersLocked; 
-
-        bananasSpeedSlider.value = settings.bananasSpeedMultiplier * 100;
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        pianoSpeedSlider.value = settings.pianoSpeedMultiplier * 100;
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        rounds15SpeedSlider.value = settings.rounds15SpeedMultiplier * 100;
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
-        
-        uiScaleSlider.value = settings.uiScaleMultiplier * 100;
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        
-        updateSliderLockState();
-        
-        settingsModal.classList.remove('opacity-0', 'pointer-events-none');
-        settingsModal.querySelector('div').classList.remove('scale-90');
-    }
-
     function closeSettingsModal() {
         settingsModal.querySelector('div').classList.add('scale-90');
         settingsModal.classList.add('opacity-0');
@@ -477,6 +514,7 @@
         return `
             <h4 class="text-primary-app">App Overview</h4>
             <p>This is a multi-mode number/sequence tracker designed to help you practice memorization and pattern recognition. Use the Settings menu (⚙️) to switch between four distinct modes.</p>
+            <p>Your settings are automatically saved when you click <span class="font-bold">"Save & Exit"</span>. Use <span class="font-bold">"Restore Defaults"</span> to reset all options.</p>
 
             <h4 class="text-primary-app">1. Bananas</h4>
             <p>Enter a sequence of numbers (1-9), up to a maximum of 25. When you press the <span class="text-primary-app font-bold">▶ Play</span> button, the app flashes the numbers in order on the key-pad, allowing you to visually review the sequence.</p>
@@ -492,9 +530,9 @@
             <ul>
                 <li><span class="font-bold">Input:</span> Numbers 1 through 9.</li>
                 <li><span class="font-bold">Demo (▶):</span> Plays back all sequences. It plays 'X' numbers from sequence 1, then 'X' from sequence 2, etc., before moving to the next chunk.</li>
-                <li><span class="font-bold">Numbers per sequence:</span> Use the Settings (⚙️) to change 'X' (the chunk size) from 2 to 5. Default is 3.</li>
-                <li><span class="font-bold">Delay between sequences:</span> Use the Settings (⚙️) to add a pause (0.0s - 2.0s) when playback switches from one sequence to the next.</li>
-                <li><span class="font-bold">Follows Sequences:</span> Use the Settings (⚙️) to select 2, 3, or 4 active sequences.</li>
+                <li><span class="font-bold">Numbers per sequence:</span> Use the Settings (⚙️) dropdown to change 'X' (the chunk size) from 2 to 5. Default is 3.</li>
+                <li><span class="font-bold">Delay between sequences:</span> Use the Settings (⚙️) dropdown to add a pause (0.0s - 2.0s) when playback switches from one sequence to the next.</li>
+                <li><span class="font-bold">Follows Sequences:</span> Use the Settings (⚙️) dropdown to select 2, 3, or 4 active sequences.</li>
                 <li><span class="font-bold">Autoplay Option:</span> Plays the demo automatically after you add a number to the *last* sequence (On by default).</li>
             </ul>
             
@@ -522,9 +560,8 @@
                 <li><span class="font-bold">Voice Input (🎤):</span> (If enabled) Click to speak commands.</li>
                 <li><span class="font-bold">Speed Deleting:</span> Hold the backspace key to quickly delete many entries (On by default).</li>
                 <li><span class="font-bold">Audio Playback:</span> Speaks the sequence during demo playback (On by default).</li>
-                <li><span class="font-bold">Playback Speeds:</span> Adjust the speed sliders to control how quickly the demo features execute.</li>
-                <li><span class="font-bold">Sequence Size:</span> Adjust the slider to change the visual size of the number boxes.</li>
-                <li><span class="font-bold">Lock Sliders:</span> Prevents accidental changes to the speed and size sliders (On by default).</li>
+                <li><span class="font-bold">Playback Speeds:</span> Use the dropdowns to control how quickly the demo features execute (50% - 150%).</li>
+                <li><span class="font-bold">Sequence Size:</span> Use the dropdown to change the visual size of the number boxes (50% - 200%).</li>
                 <li><span class="font-bold">Dark Mode:</span> Toggles the entire app between Dark and Light visual themes (On by default).</li>
             </ul>
 
@@ -541,8 +578,8 @@
             <p class="font-bold text-gray-900 dark:text-white mt-4">Playback & Speed</p>
             <ul>
                 <li><span class="font-bold">"Play"</span> / <span class="font-bold">"Demo"</span>: Runs the demo for the current mode.</li>
-                <li><span class="font-bold">"Speed Up"</span> / <span class="font-bold">"Faster"</span>: Increases playback speed by 25%.</li>
-                <li><span class="font-bold">"Speed Down"</span> / <span class="font-bold">"Slower"</span>: Decreases playback speed by 25%.</li>
+                <li><span class="font-bold">"Speed Up"</span> / <span class="font-bold">"Faster"</span>: Increases playback speed by 10%.</li>
+                <li><span class="font-bold">"Speed Down"</span> / <span class="font-bold">"Slower"</span>: Decreases playback speed by 10%.</li>
                 <li><span class="font-bold">"Speed Reset"</span> / <span class="font-bold">"Base Speed"</span>: Resets playback speed to 100%.</li>
             </ul>
             
@@ -564,7 +601,6 @@
                 <li><span class="font-bold">"Toggle Audio"</span> / <span class="font-bold">"Toggle Sound"</span></li>
                 <li><span class="font-bold">"Toggle Autoplay"</span>: (Bananas, Follows, Piano)</li>
                 <li><span class="font-bold">"Toggle Auto Clear"</span>: (15 rounds only)</li>
-                <li><span class="font-bold">"Lock/Unlock Sliders"</span></li>
             </ul>
         `;
     }
@@ -574,6 +610,19 @@
         
         helpContentContainer.innerHTML = generateHelpContent();
         
+        // --- UPDATED SECTION ---
+        // Dynamically update the assistant prompts based on current settings
+        const chunkSize = settings.followsChunkSize;
+        const prompt2 = document.getElementById('prompt-follows-2');
+        if (prompt2) prompt2.value = prompt2.value.replace(/in chunks of \d/g, `in chunks of ${chunkSize}`);
+        
+        const prompt3 = document.getElementById('prompt-follows-3');
+        if (prompt3) prompt3.value = prompt3.value.replace(/in chunks of \d/g, `in chunks of ${chunkSize}`);
+        
+        const prompt4 = document.getElementById('prompt-follows-4');
+        if (prompt4) prompt4.value = prompt4.value.replace(/in chunks of \d/g, `in chunks of ${chunkSize}`);
+        // --- END UPDATED SECTION ---
+
         const promptSection = document.getElementById('virtual-assistant-prompts');
         if (promptSection) {
             promptSection.classList.remove('hidden');
@@ -630,36 +679,6 @@
         else if (mode === 'piano') return settings.pianoSpeedMultiplier;
         else if (mode === 'rounds15') return settings.rounds15SpeedMultiplier;
         return 1.0; 
-    }
-
-    function updateModeSpeed(modeKey, multiplier) {
-        settings[`${modeKey}SpeedMultiplier`] = multiplier;
-    }
-
-    function updateSpeedDisplay(multiplier, displayElement) {
-        const percent = Math.round(multiplier * 100);
-        let label = `${percent}%`;
-        if (percent === 100) label += ' (Base)';
-        else if (percent > 100) label += ' (Fast)';
-        else label += ' (Slow)';
-        if (displayElement) displayElement.textContent = label;
-    }
-    
-    function updateScaleDisplay(multiplier, displayElement) {
-        const percent = Math.round(multiplier * 100);
-        let label = `${percent}%`;
-        if (percent === 100) label += ' (Base)';
-        else if (percent > 100) label += ' (Large)';
-        else label += ' (Small)';
-        if (displayElement) displayElement.textContent = label;
-    }
-    
-    function updateSliderLockState() {
-        const locked = settings.areSlidersLocked;
-        if (bananasSpeedSlider) bananasSpeedSlider.disabled = locked;
-        if (pianoSpeedSlider) pianoSpeedSlider.disabled = locked;
-        if (rounds15SpeedSlider) rounds15SpeedSlider.disabled = locked;
-        if (uiScaleSlider) uiScaleSlider.disabled = locked;
     }
 
     function updateMode(newMode) {
@@ -809,23 +828,19 @@
                 if (key) key.classList.add('bananas-flash');
                 if (seqBox) seqBox.className = 'p-4 rounded-xl shadow-md transition-all duration-200 bg-accent-app scale-[1.02] shadow-lg text-gray-900';
                 
-                // --- NEW DELAY LOGIC ---
-                // Determine the pause duration for *after* this item
                 const nextSeqIndex = (i + 1 < playlist.length) ? playlist[i + 1].seqIndex : -1;
                 
                 let timeBetweenItems = pauseDuration - flashDuration; // Base pause
                 
                 if (nextSeqIndex !== -1 && seqIndex !== nextSeqIndex) {
-                    // The next item is from a different sequence. Add the delay.
                     timeBetweenItems += settings.followsInterSequenceDelay;
                 }
-                // --- END NEW DELAY LOGIC ---
 
                 setTimeout(() => {
                     if (key) key.classList.remove('bananas-flash');
                     if (seqBox) seqBox.className = originalClasses;
                     
-                    setTimeout(playNextItem, timeBetweenItems); // <<< MODIFIED
+                    setTimeout(playNextItem, timeBetweenItems);
                 }, flashDuration);
                         
                 i++;
@@ -1003,19 +1018,16 @@
     }
 
     function adjustSpeed(amount, reset = false) {
-        let slider, display, modeKey;
+        let select, modeKey;
         
         if (currentMode === 'bananas' || currentMode === 'follows') {
-            slider = bananasSpeedSlider;
-            display = bananasSpeedDisplay;
+            select = bananasSpeedSelect;
             modeKey = 'bananas';
         } else if (currentMode === 'piano') {
-            slider = pianoSpeedSlider;
-            display = pianoSpeedDisplay;
+            select = pianoSpeedSelect;
             modeKey = 'piano';
         } else if (currentMode === 'rounds15') {
-            slider = rounds15SpeedSlider;
-            display = rounds15SpeedDisplay;
+            select = rounds15SpeedSelect;
             modeKey = 'rounds15';
         } else {
             return;
@@ -1027,12 +1039,20 @@
         if (reset) {
             newMultiplier = 1.0;
         } else {
-            newMultiplier = Math.max(0.5, Math.min(1.5, currentMultiplier + amount));
+            // Find the current index in the dropdown
+            const currentOption = Array.from(select.options).find(opt => parseFloat(opt.value) === currentMultiplier);
+            let newIndex = currentOption ? currentOption.index : -1;
+
+            if (amount > 0) newIndex++;
+            if (amount < 0) newIndex--;
+            
+            // Constrain index
+            newIndex = Math.max(0, Math.min(select.options.length - 1, newIndex));
+            newMultiplier = parseFloat(select.options[newIndex].value);
         }
         
         settings[`${modeKey}SpeedMultiplier`] = newMultiplier;
-        slider.value = newMultiplier * 100;
-        updateSpeedDisplay(newMultiplier, display);
+        select.value = newMultiplier;
         speak(`${Math.round(newMultiplier * 100)}% speed`);
     }
 
@@ -1078,10 +1098,6 @@
 
     // --- Voice Input Functions ---
 
-    /**
-     * Processes the transcript from speech recognition.
-     * *** MODIFIED: Logic is re-prioritized to check for values FIRST. ***
-     */
     function processVoiceTranscript(transcript) {
         if (!transcript) return;
         
@@ -1089,7 +1105,6 @@
         const words = cleanTranscript.split(' ');
         let valuesAdded = 0;
 
-        // --- Priority 1: Check for Sequence Values ---
         for (const word of words) {
             let value = VOICE_VALUE_MAP[word];
             
@@ -1122,28 +1137,22 @@
             }
         }
 
-        // If we added a value, that was the user's intent. Stop here.
         if (valuesAdded > 0) {
             return;
         }
 
-        // --- Priority 2: Check for Action Commands (if no values were added) ---
-        
-        // Check for an exact action command
         if (VOICE_ACTION_MAP[cleanTranscript]) {
             VOICE_ACTION_MAP[cleanTranscript]();
             return;
         }
 
-        // Check for action commands that might be *part* of the transcript
         for (const phrase in VOICE_ACTION_MAP) {
             if (cleanTranscript.includes(phrase)) {
                 VOICE_ACTION_MAP[phrase]();
-                return; // Only execute the first matching command
+                return;
             }
         }
         
-        // If no values AND no commands, log it.
         console.log(`Unknown voice command or value: ${transcript}`);
     }
 
@@ -1307,9 +1316,12 @@
             btn.addEventListener('touchend', handleBackspaceEnd);
         });
         
+        // --- Settings Modal Listeners ---
         settingsModeToggleButton.addEventListener('click', toggleModeDropdown);
-        document.getElementById('close-settings').addEventListener('click', closeSettingsModal);
+        saveSettingsButton.addEventListener('click', saveSettings);
+        restoreDefaultsButton.addEventListener('click', resetSettingsToDefaults);
         
+        // --- Dropdown Listeners ---
         followsCountSelect.addEventListener('change', (event) => {
             const newCount = parseInt(event.target.value);
             const state = appState['follows'];
@@ -1320,16 +1332,44 @@
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
         });
-        followsDelaySelect.addEventListener('change', (event) => { // <<< NEW
+        followsDelaySelect.addEventListener('change', (event) => {
             settings.followsInterSequenceDelay = parseInt(event.target.value);
         });
-        
-        darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
-        speedDeleteToggle.addEventListener('change', (e) => settings.isSpeedDeletingEnabled = e.target.checked);
-        pianoAutoplayToggle.addEventListener('change', (e) => settings.isPianoAutoplayEnabled = e.target.checked);
-        bananasAutoplayToggle.addEventListener('change', (e) => settings.isBananasAutoplayEnabled = e.target.checked);
-        followsAutoplayToggle.addEventListener('change', (e) => settings.isFollowsAutoplayEnabled = e.target.checked);
-        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked);
+
+        bananasSpeedSelect.addEventListener('change', (e) => {
+            settings.bananasSpeedMultiplier = parseFloat(e.target.value);
+        });
+        pianoSpeedSelect.addEventListener('change', (e) => {
+            settings.pianoSpeedMultiplier = parseFloat(e.target.value);
+        });
+        rounds15SpeedSelect.addEventListener('change', (e) => {
+            settings.rounds15SpeedMultiplier = parseFloat(e.target.value);
+        });
+        uiScaleSelect.addEventListener('change', (e) => {
+            settings.uiScaleMultiplier = parseFloat(e.target.value);
+            renderSequences(); // Apply scale change immediately
+        });
+
+        // --- Toggle Listeners ---
+        darkModeToggle.addEventListener('change', (e) => {
+            settings.isDarkMode = e.target.checked;
+            updateTheme(settings.isDarkMode); // Apply theme change immediately
+        });
+        speedDeleteToggle.addEventListener('change', (e) => {
+            settings.isSpeedDeletingEnabled = e.target.checked;
+        });
+        pianoAutoplayToggle.addEventListener('change', (e) => {
+            settings.isPianoAutoplayEnabled = e.target.checked;
+        });
+        bananasAutoplayToggle.addEventListener('change', (e) => {
+            settings.isBananasAutoplayEnabled = e.target.checked;
+        });
+        followsAutoplayToggle.addEventListener('change', (e) => {
+            settings.isFollowsAutoplayEnabled = e.target.checked;
+        });
+        rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => {
+            settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked;
+        });
         audioPlaybackToggle.addEventListener('change', (e) => {
             settings.isAudioPlaybackEnabled = e.target.checked;
             if (settings.isAudioPlaybackEnabled) speak("Audio");
@@ -1346,31 +1386,10 @@
                 }, 'OK', '');
             }
         });
-        sliderLockToggle.addEventListener('change', (e) => {
-            settings.areSlidersLocked = e.target.checked;
-            updateSliderLockState();
-        });
-
-        function setupSpeedSlider(slider, displayElement, modeKey) {
-            slider.addEventListener('input', (event) => {
-                const multiplier = parseInt(event.target.value) / 100;
-                updateModeSpeed(modeKey, multiplier);
-                updateSpeedDisplay(multiplier, displayElement);
-            });
-        }
-        setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
-        setupSpeedSlider(pianoSpeedSlider, pianoSpeedDisplay, 'piano');
-        setupSpeedSlider(rounds15SpeedSlider, rounds15SpeedDisplay, 'rounds15');
         
-        uiScaleSlider.addEventListener('input', (event) => {
-            const multiplier = parseInt(event.target.value) / 100;
-            settings.uiScaleMultiplier = multiplier;
-            updateScaleDisplay(multiplier, uiScaleDisplay);
-            renderSequences();
-        });
-        
+        // --- Other Modal Listeners ---
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
-        document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
+        document.getElementById('close-share').addEventListener('click', closeShareModal);
     }
     
     // --- Initialization ---
@@ -1386,17 +1405,27 @@
                 });
         }
 
-        updateTheme(settings.isDarkMode);
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        updateSliderLockState();
-        updateMicButtonVisibility();
+        loadSettings(); // <-- NEW: Load settings from localStorage
+        applyAllSettings(); // <-- NEW: Apply all loaded settings
         
         if (settings.isVoiceInputEnabled && !recognitionApi) {
             showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                 settings.isVoiceInputEnabled = false;
+                voiceInputToggle.checked = false;
+                updateMicButtonVisibility();
+                closeModal();
+            }, 'OK', '');
+        }
+        
+        initializeListeners();
+        
+        updateMode('bananas');
+        
+        if (settings.isAudioPlaybackEnabled) speak(" "); 
+    };
+
+})(); // End IIFE
+;
                 voiceInputToggle.checked = false;
                 updateMicButtonVisibility();
                 closeModal();
