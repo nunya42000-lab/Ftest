@@ -350,9 +350,7 @@
         else if (settings.currentMode === 'rounds15') {
             const sequence = state.sequences[0];
             if (sequence.length === state.currentRound) {
-                const allKeys = document.querySelectorAll('#rounds15-pad button[data-value]');
-                allKeys.forEach(key => key.disabled = true);
-                
+                // DON'T disable keys here. Let the demo function handle it.
                 setTimeout(() => { handleRounds15Demo(); }, 100); 
             }
         }
@@ -362,13 +360,10 @@
     
     // --- Backspace Speed Deleting Logic (MODIFIED) ---
 
-    // *** NEW: Internal function that performs backspace logic *without* saving ***
-    // Returns true if an item was popped, false otherwise.
     function _internalBackspace() {
         const state = getCurrentState();
         const { sequences, sequenceCount } = state;
 
-        // Check if a demo is running
         if (settings.currentMode === 'rounds15') {
             const demoButton = document.querySelector('#rounds15-pad button[data-action="demo"]');
             if (demoButton && demoButton.disabled) return false;
@@ -393,12 +388,11 @@
             }
 
             renderSequences();
-            return true; // Return true to indicate a change was made
+            return true; 
         }
-        return false; // Return false if no change was made
+        return false; 
     }
     
-    // *** MODIFIED: This is for single-clicks. It calls the internal function AND saves. ***
     function handleBackspace() {
         if (_internalBackspace()) {
             saveState();
@@ -412,40 +406,37 @@
         speedDeleteInterval = null;
     }
 
-    // *** MODIFIED: Calls the internal function (no save) in the interval ***
     function handleBackspaceStart(event) {
         event.preventDefault(); 
         stopSpeedDeleting(); 
 
-        if (!settings.isSpeedDeletingEnabled) return;
-
         // Run the first backspace immediately (but don't save yet)
-        _internalBackspace(); 
+        const didPop = _internalBackspace(); 
 
+        if (!settings.isSpeedDeletingEnabled) {
+            if(didPop) saveState(); // If speed deleting is off, save immediately.
+            return; 
+        }
+        
+        // If speed deleting is on, start the timer
         initialDelayTimer = setTimeout(() => {
-            // Start the interval, calling the function *without* save
             speedDeleteInterval = setInterval(_internalBackspace, SPEED_DELETE_INTERVAL_MS);
             initialDelayTimer = null; 
         }, SPEED_DELETE_INITIAL_DELAY);
     }
 
-    // *** MODIFIED: Saves state ONCE at the end of the operation ***
     function handleBackspaceEnd() {
+        if (!settings.isSpeedDeletingEnabled) {
+            return; // Action already completed (and saved) in handleBackspaceStart
+        }
+        
         if (initialDelayTimer !== null) {
             // This was a single click (or a click before the interval started)
-            // The initial _internalBackspace already ran in handleBackspaceStart.
-            // We just need to stop the pending timer and save.
             stopSpeedDeleting();
             saveState(); 
         } 
-        else if (!settings.isSpeedDeletingEnabled) {
-            // This was a single click when speed deleting is off
-            // handleBackspaceStart did nothing, so we call the full handleBackspace
-            handleBackspace();
-        } 
         else {
             // This was a long press (speed delete)
-            // The interval was running. Stop it, and save state *once*.
             stopSpeedDeleting();
             saveState();
         }
@@ -972,7 +963,6 @@
         saveState(); 
     }
     
-    // *** MODIFIED: Saves state ONCE, after the loop is finished ***
     function clearRounds15Sequence() {
         const state = appState['rounds15'];
         const sequence = state.sequences[0];
@@ -993,7 +983,7 @@
             } else {
                 clearInterval(speedDeleteInterval);
                 speedDeleteInterval = null;
-                saveState(); // <-- SAVE IS MOVED HERE
+                saveState(); 
                 advanceToNextRound(); 
             }
         }
@@ -1013,7 +1003,7 @@
         if (sequenceToPlay.length === 0 || (demoButton.disabled && !settings.isRounds15ClearAfterPlaybackEnabled) ) {
             if (demoButton && demoButton.disabled && !settings.isRounds15ClearAfterPlaybackEnabled) return;
             showModal('No Sequence', 'The sequence is empty. Enter some numbers first!', () => closeModal(), 'OK', '');
-            allKeys.forEach(key => key.disabled = false);
+            // allKeys.forEach(key => key.disabled = false); // <-- This was removed, demo re-enables
             return;
         }
 
@@ -1361,11 +1351,10 @@
             }
         });
         
-        // *** MODIFIED: All backspace listeners point to the new Start/End functions ***
         document.querySelectorAll('button[data-action="backspace"]').forEach(btn => {
             btn.addEventListener('mousedown', handleBackspaceStart);
             btn.addEventListener('mouseup', handleBackspaceEnd);
-            btn.addEventListener('mouseleave', handleBackspaceEnd); // Use End to stop and save
+            btn.addEventListener('mouseleave', handleBackspaceEnd); 
             btn.addEventListener('touchstart', handleBackspaceStart, { passive: false });
             btn.addEventListener('touchend', handleBackspaceEnd);
         });
@@ -1443,7 +1432,10 @@
                 const multiplier = parseInt(event.target.value) / 100;
                 updateModeSpeed(modeKey, multiplier);
                 updateSpeedDisplay(multiplier, displayElement);
-                saveSettings(); 
+            });
+            // *** NEW: Save on 'change' (when user releases slider) ***
+            slider.addEventListener('change', (event) => {
+                saveSettings();
             });
         }
         setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
@@ -1455,7 +1447,10 @@
             settings.uiScaleMultiplier = multiplier;
             updateScaleDisplay(multiplier, uiScaleDisplay);
             renderSequences();
-            saveSettings(); 
+        });
+        // *** NEW: Save on 'change' (when user releases slider) ***
+        uiScaleSlider.addEventListener('change', (event) => {
+             saveSettings();
         });
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
@@ -1497,14 +1492,29 @@
         
         updateMode(settings.currentMode); 
         
+        // *** NEW FIX: Check for "stuck" rounds15 state on load ***
+        if (settings.currentMode === 'rounds15') {
+            const state = appState['rounds15'];
+            // Check if the sequence is full for the current round AND auto-clear is enabled
+            if (state.sequences[0].length >= state.currentRound && settings.isRounds15ClearAfterPlaybackEnabled) {
+                
+                console.log('Fixing stuck "rounds15" state on load...');
+                
+                // Manually clear the sequence data
+                state.sequences[0] = [];
+                state.nextSequenceIndex = 0;
+                
+                // Call advanceToNextRound() to move to the next round,
+                // which also saves the new (cleared) state and re-renders the UI.
+                advanceToNextRound();
+            }
+        }
+        
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
 
 })(); // End IIFE
-ctions now use the loaded 'settings' object ***
-        updateTheme(settings.isDarkMode);
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
+updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
         updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
         updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
         updateSliderLockState();
