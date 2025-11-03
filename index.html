@@ -42,8 +42,8 @@
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
-    <!-- Standard Confirmation Modal (z-60) -->
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- *** MODIFIED: z-index changed from 60 to 10 *** -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
             <p id="modal-message" class="text-gray-700 dark:text-gray-300 mb-6"></p>
@@ -54,8 +54,8 @@
         </div>
     </div>
     
-    <!-- Share Modal (z-60) -->
-    <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-60 transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- *** MODIFIED: z-index changed from 60 to 10 *** -->
+    <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
             <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
@@ -64,8 +64,8 @@
         </div>
     </div>
     
-    <!-- Settings Modal (z-50) -->
-    <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- *** MODIFIED: z-index changed from 50 to 10 *** -->
+    <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
             
             <div class="p-6 pb-4 relative">
@@ -263,9 +263,9 @@
         </div>
     </div>
     
-    <!-- *** MODIFIED: Added 'relative' and 'z-10' to force app behind modals *** -->
-    <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow relative z-10">
-        
+    <!-- *** MODIFIED: z-index changed from 50 to 10 *** -->
+    <div id="help-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
         <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
             <!-- Sequences will be injected by app.js -->
         </main>
@@ -285,18 +285,18 @@
                     <button data-value="8" data-mode="bananas" class="btn-input btn-pad-number">8</button>
                     <button data-value="9" data-mode="bananas" class="btn-input btn-pad-number">9</button>
                 </div>
-                <div class="grid grid-cols-4 gap-3">
-                    <button data-action="play-demo" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">▶</button> 
-                    <button data-action="voice-input" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl hidden" title="Voice Input">🎤</button>
-                    <button id="backspace-button-bananas" data-action="backspace" data-mode="bananas" class="btn-input btn-control text-2xl">&larr;</button>
-                    <button data-action="open-settings" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">⚙️</button>
-                </div>
-            </div>
+    </div>
 
-            <div id="follows-pad" class="max-w-xs mx-auto" style="display: none;">
-                <div class="grid grid-cols-3 gap-3 mb-3">
-                    <button data-value="1" data-mode="follows" class="btn-input btn-pad-number">1</button>
-                    <button data-value="2" data-mode="follows" class="btn-input btn-pad-number">2</button>
+    <!-- *** MODIFIED: 'relative' class added to create stacking context *** -->
+    <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow relative">
+        
+        <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
+            <!-- Sequences will be injected by app.js -->
+        </main>
+
+        <footer id="input-footer" class="sticky bottom-0 left-0 right-0 p-4 rounded-xl shadow-2xl border-t-4 border-primary-app z-40">
+            
+            <div id="bananas-pad" class="max-w-xs mx-auto">
                     <button data-value="3" data-mode="follows" class="btn-input btn-pad-number">3</button>
                     <button data-value="4" data-mode="follows" class="btn-input btn-pad-number">4</button>
                     <button data-value="5" data-mode="follows" class="btn-input btn-pad-number">5</button>
@@ -448,6 +448,7 @@ Let's start with Round 1.</textarea>
 
 </body>
 </html>
+
 
 
 
