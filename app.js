@@ -38,8 +38,9 @@
         isRounds15ClearAfterPlaybackEnabled: true, 
         isAudioPlaybackEnabled: true,
         isVoiceInputEnabled: true,
-        areSlidersLocked: true,
+        // areSlidersLocked: true, // <<< REMOVED
         followsChunkSize: 3, 
+        followsInterSequenceDelay: 500, // <<< NEW: Default 0.5s in ms
     };
 
     // --- Data Store ---
@@ -67,6 +68,7 @@
     const openHelpButton = document.getElementById('open-help-button'); 
     const followsCountSelect = document.getElementById('follows-count-select'); 
     const followsChunkSizeSelect = document.getElementById('follows-chunk-size-select'); 
+    const followsDelaySelect = document.getElementById('follows-delay-select'); // <<< NEW
 
     // Help Modal Elements
     const helpModal = document.getElementById('help-modal');
@@ -81,17 +83,13 @@
     const rounds15ClearAfterPlaybackToggle = document.getElementById('rounds15-clear-after-playback-toggle');
     const audioPlaybackToggle = document.getElementById('audio-playback-toggle'); 
     const voiceInputToggle = document.getElementById('voice-input-toggle');
-    const sliderLockToggle = document.getElementById('slider-lock-toggle'); 
+    // const sliderLockToggle = document.getElementById('slider-lock-toggle'); // <<< REMOVED
 
-    // Sliders and Displays
-    const bananasSpeedSlider = document.getElementById('bananas-speed-slider');
-    const bananasSpeedDisplay = document.getElementById('bananas-speed-display');
-    const pianoSpeedSlider = document.getElementById('piano-speed-slider');
-    const pianoSpeedDisplay = document.getElementById('piano-speed-display');
-    const rounds15SpeedSlider = document.getElementById('rounds15-speed-slider');
-    const rounds15SpeedDisplay = document.getElementById('rounds15-speed-display');
-    const uiScaleSlider = document.getElementById('ui-scale-slider');
-    const uiScaleDisplay = document.getElementById('ui-scale-display');
+    // Selects (Replaced Sliders)
+    const bananasSpeedSelect = document.getElementById('bananas-speed-select');
+    const pianoSpeedSelect = document.getElementById('piano-speed-select');
+    const rounds15SpeedSelect = document.getElementById('rounds15-speed-select');
+    const uiScaleSelect = document.getElementById('ui-scale-select');
     
     // Pad Elements
     const bananasPad = document.getElementById('bananas-pad');
@@ -155,9 +153,9 @@
              else if (currentMode === 'piano') pianoAutoplayToggle.click();
         },
         'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
-        'toggle lock': () => sliderLockToggle.click(),
-        'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
-        'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
+        // 'toggle lock': () => sliderLockToggle.click(), // <<< REMOVED
+        // 'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); }, // <<< REMOVED
+        // 'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); } // <<< REMOVED
     };
 
     // --- Core Functions for State Management ---
@@ -434,6 +432,7 @@
         
         followsCountSelect.value = appState['follows'].sequenceCount;
         followsChunkSizeSelect.value = settings.followsChunkSize;
+        followsDelaySelect.value = settings.followsInterSequenceDelay; // <<< NEW
         
         darkModeToggle.checked = settings.isDarkMode;
         speedDeleteToggle.checked = settings.isSpeedDeletingEnabled; 
@@ -443,19 +442,15 @@
         rounds15ClearAfterPlaybackToggle.checked = settings.isRounds15ClearAfterPlaybackEnabled;
         audioPlaybackToggle.checked = settings.isAudioPlaybackEnabled; 
         voiceInputToggle.checked = settings.isVoiceInputEnabled;
-        sliderLockToggle.checked = settings.areSlidersLocked; 
+        // sliderLockToggle.checked = settings.areSlidersLocked; // <<< REMOVED
 
-        bananasSpeedSlider.value = settings.bananasSpeedMultiplier * 100;
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        pianoSpeedSlider.value = settings.pianoSpeedMultiplier * 100;
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        rounds15SpeedSlider.value = settings.rounds15SpeedMultiplier * 100;
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
+        // Set select values
+        bananasSpeedSelect.value = settings.bananasSpeedMultiplier * 100;
+        pianoSpeedSelect.value = settings.pianoSpeedMultiplier * 100;
+        rounds15SpeedSelect.value = settings.rounds15SpeedMultiplier * 100;
+        uiScaleSelect.value = settings.uiScaleMultiplier * 100;
         
-        uiScaleSlider.value = settings.uiScaleMultiplier * 100;
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        
-        updateSliderLockState();
+        // updateSliderLockState(); // <<< REMOVED
         
         settingsModal.classList.remove('opacity-0', 'pointer-events-none');
         settingsModal.querySelector('div').classList.remove('scale-90');
@@ -490,6 +485,7 @@
                 <li><span class="font-bold">Input:</span> Numbers 1 through 9.</li>
                 <li><span class="font-bold">Demo (▶):</span> Plays back all sequences. It plays 'X' numbers from sequence 1, then 'X' from sequence 2, etc., before moving to the next chunk.</li>
                 <li><span class="font-bold">Numbers per sequence:</span> Use the Settings (⚙️) to change 'X' (the chunk size) from 2 to 5. Default is 3.</li>
+                <li><span class="font-bold">Delay between sequences:</span> Use the Settings (⚙️) to add a pause (0.0s - 2.0s) when playback switches from one sequence to the next.</li>
                 <li><span class="font-bold">Follows Sequences:</span> Use the Settings (⚙️) to select 2, 3, or 4 active sequences.</li>
                 <li><span class="font-bold">Autoplay Option:</span> Plays the demo automatically after you add a number to the *last* sequence (On by default).</li>
             </ul>
@@ -632,31 +628,11 @@
         settings[`${modeKey}SpeedMultiplier`] = multiplier;
     }
 
-    function updateSpeedDisplay(multiplier, displayElement) {
-        const percent = Math.round(multiplier * 100);
-        let label = `${percent}%`;
-        if (percent === 100) label += ' (Base)';
-        else if (percent > 100) label += ' (Fast)';
-        else label += ' (Slow)';
-        if (displayElement) displayElement.textContent = label;
-    }
+    // function updateSpeedDisplay(multiplier, displayElement) { ... } // <<< REMOVED
     
-    function updateScaleDisplay(multiplier, displayElement) {
-        const percent = Math.round(multiplier * 100);
-        let label = `${percent}%`;
-        if (percent === 100) label += ' (Base)';
-        else if (percent > 100) label += ' (Large)';
-        else label += ' (Small)';
-        if (displayElement) displayElement.textContent = label;
-    }
+    // function updateScaleDisplay(multiplier, displayElement) { ... } // <<< REMOVED
     
-    function updateSliderLockState() {
-        const locked = settings.areSlidersLocked;
-        if (bananasSpeedSlider) bananasSpeedSlider.disabled = locked;
-        if (pianoSpeedSlider) pianoSpeedSlider.disabled = locked;
-        if (rounds15SpeedSlider) rounds15SpeedSlider.disabled = locked;
-        if (uiScaleSlider) uiScaleSlider.disabled = locked;
-    }
+    // function updateSliderLockState() { ... } // <<< REMOVED
 
     function updateMode(newMode) {
         currentMode = newMode;
@@ -805,10 +781,23 @@
                 if (key) key.classList.add('bananas-flash');
                 if (seqBox) seqBox.className = 'p-4 rounded-xl shadow-md transition-all duration-200 bg-accent-app scale-[1.02] shadow-lg text-gray-900';
                 
+                // --- NEW DELAY LOGIC ---
+                // Determine the pause duration for *after* this item
+                const nextSeqIndex = (i + 1 < playlist.length) ? playlist[i + 1].seqIndex : -1;
+                
+                let timeBetweenItems = pauseDuration - flashDuration; // Base pause
+                
+                if (nextSeqIndex !== -1 && seqIndex !== nextSeqIndex) {
+                    // The next item is from a different sequence. Add the delay.
+                    timeBetweenItems += settings.followsInterSequenceDelay;
+                }
+                // --- END NEW DELAY LOGIC ---
+
                 setTimeout(() => {
                     if (key) key.classList.remove('bananas-flash');
                     if (seqBox) seqBox.className = originalClasses;
-                    setTimeout(playNextItem, pauseDuration - flashDuration);
+                    
+                    setTimeout(playNextItem, timeBetweenItems); // <<< MODIFIED
                 }, flashDuration);
                         
                 i++;
@@ -986,19 +975,16 @@
     }
 
     function adjustSpeed(amount, reset = false) {
-        let slider, display, modeKey;
+        let select, modeKey;
         
         if (currentMode === 'bananas' || currentMode === 'follows') {
-            slider = bananasSpeedSlider;
-            display = bananasSpeedDisplay;
+            select = bananasSpeedSelect;
             modeKey = 'bananas';
         } else if (currentMode === 'piano') {
-            slider = pianoSpeedSlider;
-            display = pianoSpeedDisplay;
+            select = pianoSpeedSelect;
             modeKey = 'piano';
         } else if (currentMode === 'rounds15') {
-            slider = rounds15SpeedSlider;
-            display = rounds15SpeedDisplay;
+            select = rounds15SpeedSelect;
             modeKey = 'rounds15';
         } else {
             return;
@@ -1014,8 +1000,7 @@
         }
         
         settings[`${modeKey}SpeedMultiplier`] = newMultiplier;
-        slider.value = newMultiplier * 100;
-        updateSpeedDisplay(newMultiplier, display);
+        select.value = newMultiplier * 100; // Update the select dropdown
         speak(`${Math.round(newMultiplier * 100)}% speed`);
     }
 
@@ -1303,6 +1288,9 @@
         followsChunkSizeSelect.addEventListener('change', (event) => {
             settings.followsChunkSize = parseInt(event.target.value);
         });
+        followsDelaySelect.addEventListener('change', (event) => { // <<< NEW
+            settings.followsInterSequenceDelay = parseInt(event.target.value);
+        });
         
         darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
         speedDeleteToggle.addEventListener('change', (e) => settings.isSpeedDeletingEnabled = e.target.checked);
@@ -1326,28 +1314,27 @@
                 }, 'OK', '');
             }
         });
-        sliderLockToggle.addEventListener('change', (e) => {
-            settings.areSlidersLocked = e.target.checked;
-            updateSliderLockState();
-        });
+        // sliderLockToggle.addEventListener('change', (e) => { ... }); // <<< REMOVED
 
-        function setupSpeedSlider(slider, displayElement, modeKey) {
-            slider.addEventListener('input', (event) => {
-                const multiplier = parseInt(event.target.value) / 100;
-                updateModeSpeed(modeKey, multiplier);
-                updateSpeedDisplay(multiplier, displayElement);
-            });
-        }
-        setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
-        setupSpeedSlider(pianoSpeedSlider, pianoSpeedDisplay, 'piano');
-        setupSpeedSlider(rounds15SpeedSlider, rounds15SpeedDisplay, 'rounds15');
-        
-        uiScaleSlider.addEventListener('input', (event) => {
+        // --- NEW Select Listeners ---
+        bananasSpeedSelect.addEventListener('change', (event) => {
+            const multiplier = parseInt(event.target.value) / 100;
+            updateModeSpeed('bananas', multiplier);
+        });
+        pianoSpeedSelect.addEventListener('change', (event) => {
+            const multiplier = parseInt(event.target.value) / 100;
+            updateModeSpeed('piano', multiplier);
+        });
+        rounds15SpeedSelect.addEventListener('change', (event) => {
+            const multiplier = parseInt(event.target.value) / 100;
+            updateModeSpeed('rounds15', multiplier);
+        });
+        uiScaleSelect.addEventListener('change', (event) => {
             const multiplier = parseInt(event.target.value) / 100;
             settings.uiScaleMultiplier = multiplier;
-            updateScaleDisplay(multiplier, uiScaleDisplay);
             renderSequences();
         });
+        // --- END NEW Select Listeners ---
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
         document.getElementById('close-share').addEventListener('click', closeShareModal); // *** NEW ***
@@ -1367,16 +1354,66 @@
         }
 
         updateTheme(settings.isDarkMode);
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        updateSliderLockState();
+        // updateSpeedDisplay(...) // <<< REMOVED
+        // updateScaleDisplay(...) // <<< REMOVED
+        // updateSliderLockState(); // <<< REMOVED
         updateMicButtonVisibility();
         
         if (settings.isVoiceInputEnabled && !recognitionApi) {
             showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
                 settings.isVoiceInputEnabled = false;
+                voiceInputToggle.checked = false;
+                updateMicButtonVisibility();
+                closeModal();
+            }, 'OK', '');
+        }
+        
+        initializeListeners();
+        
+        updateMode('bananas');
+        
+        if (settings.isAudioPlaybackEnabled) speak(" "); 
+    };
+
+})(); // End IIFE
+  document.getElementById('close-help').addEventListener('click', closeHelpModal);
+        document.getElementById('close-share').addEventListener('click', closeShareModal);
+    }
+    
+    // --- Initialization ---
+    window.onload = function() {
+        
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then((registration) => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch((error) => {
+                    console.error('Service Worker registration failed:', error);
+                });
+        }
+
+        loadSettings(); // <-- NEW: Load settings from localStorage
+        applyAllSettings(); // <-- NEW: Apply all loaded settings
+        
+        if (settings.isVoiceInputEnabled && !recognitionApi) {
+            showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
+                settings.isVoiceInputEnabled = false;
+                voiceInputToggle.checked = false;
+                updateMicButtonVisibility();
+                closeModal();
+            }, 'OK', '');
+        }
+        
+        initializeListeners();
+        
+        updateMode('bananas');
+        
+        if (settings.isAudioPlaybackEnabled) speak(" "); 
+    };
+
+})(); // End IIFE
+;
                 voiceInputToggle.checked = false;
                 updateMicButtonVisibility();
                 closeModal();
