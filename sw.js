@@ -12,8 +12,8 @@ const APP_SHELL_URLS = [
     'index.html',
     'app.js',
     'style.css',
-    'manifest.json',
-    '1000021086.jpg' // The QR code
+    'manifest.json'
+    // '1000021086.jpg' has been removed as it's no longer needed
 ];
 
 // --- Install Event ---
@@ -71,7 +71,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     event.respondWith(
-        caches.match(event.request)
+        caches.match(event.Request)
             .then((cachedResponse) => {
                 // 1. Try to get from Cache
                 if (cachedResponse) {
@@ -86,6 +86,11 @@ self.addEventListener('fetch', (event) => {
                         
                         // Check if we received a valid response
                         if (!networkResponse || !networkResponse.ok) {
+                            // Don't cache bad responses (e.g., 404s, 500s)
+                            // Also don't cache chrome-extension:// requests
+                            if (!networkResponse.ok && !event.request.url.startsWith('chrome-extension://')) {
+                                console.warn('[Service Worker] Network request failed:', event.request.url, networkResponse.status);
+                            }
                             return networkResponse;
                         }
 
@@ -97,7 +102,10 @@ self.addEventListener('fetch', (event) => {
                         caches.open(CACHE_NAME)
                             .then((cache) => {
                                 // console.log('[Service Worker] Caching new resource:', event.request.url);
-                                cache.put(event.request, responseToCache);
+                                // Only cache http/https protocols
+                                if (event.request.url.startsWith('http')) {
+                                    cache.put(event.request, responseToCache);
+                                }
                             });
 
                         return networkResponse;
@@ -110,30 +118,4 @@ self.addEventListener('fetch', (event) => {
                     });
             })
     );
-});
-etch(event.request).then((networkResponse) => {
-                    // Use a 'no-cors' request for external resources if needed
-                    const requestToCache = event.request.url.startsWith(self.origin)
-                        ? event.request
-                        : new Request(event.request.url, { mode: 'no-cors' });
-
-                    return caches.open(CACHE_NAME).then((cache) => {
-                         // Check if we got a valid response
-                        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-                            cache.put(requestToCache, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                }).catch(err => {
-                    console.warn('SW Fetch failed (external):', err);
-                });
-            })
-        );
-    }
-    // For other requests, just do a network fetch
-    else {
-        event.respondWith(fetch(event.request));
-    }
-});
-   }
 });

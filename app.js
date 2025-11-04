@@ -198,6 +198,8 @@
             if (storedState) {
                 const loadedState = JSON.parse(storedState);
                 // Merge loaded state into the default structure
+                // IMPORTANT: This happens *after* URL loading, so localStorage
+                // can be overwritten by URL state if `loadedFromUrl` was true.
                 appState.bananas = { ...appState.bananas, ...(loadedState.bananas || {}) };
                 appState.follows = { ...appState.follows, ...(loadedState.follows || {}) };
                 appState.piano = { ...appState.piano, ...(loadedState.piano || {}) };
@@ -666,9 +668,97 @@
         if (shareModal) {
             shareModal.querySelector('div').classList.add('scale-90');
             shareModal.classList.add('opacity-0');
+            
+            // Clear the QR code when closing
+            const qrContainer = document.getElementById("share-qrcode");
+            if (qrContainer) {
+                qrContainer.innerHTML = '';
+            }
+            
             setTimeout(() => shareModal.classList.add('pointer-events-none'), 300);
         }
     }
+    
+    /**
+     * Generates a shareable URL with the current state,
+     * attempts to use the Web Share API, and falls back
+     * to a modal with a dynamic QR code.
+     */
+    async function handleShareClick() {
+        closeSettingsModal(); // Close settings if open
+
+        const stateToShare = getCurrentState();
+        const hasSequences = stateToShare.sequences.some(s => s.length > 0);
+
+        if (!hasSequences) {
+            showModal('Empty Sequence', 'There is no sequence to share. Please enter some values first.', () => closeModal(), 'OK', '');
+            return;
+        }
+
+        let finalUrl;
+        try {
+            // Only share relevant parts of the state
+            const minimalState = {
+                sequences: stateToShare.sequences,
+                sequenceCount: stateToShare.sequenceCount,
+                nextSequenceIndex: stateToShare.nextSequenceIndex,
+                currentRound: stateToShare.currentRound // Relevant for rounds15
+            };
+            
+            const jsonState = JSON.stringify(minimalState);
+            const base64State = btoa(jsonState); // Encode state to Base64
+            
+            const shareUrl = new URL(window.location.pathname, window.location.origin);
+            shareUrl.searchParams.set('mode', currentMode);
+            shareUrl.searchParams.set('data', base64State);
+            finalUrl = shareUrl.toString();
+
+        } catch (error) {
+            console.error('Failed to create share link:', error);
+            showModal('Error', 'Could not create a shareable link.', () => closeModal(), 'OK', '');
+            return;
+        }
+
+        const shareData = {
+            title: 'Follow Me Sequence',
+            text: `Check out my ${MODE_LABELS[currentMode]} sequence!`,
+            url: finalUrl
+        };
+
+        // Try to use the Web Share API (mobile)
+        if (navigator.share && navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+                console.log('Content shared successfully');
+            } catch (err) {
+                console.error('Share failed:', err.message);
+            }
+        } else {
+            // Fallback: Open the modal with the link and dynamic QR code
+            const shareInput = document.getElementById('share-url-input');
+            const qrContainer = document.getElementById('share-qrcode');
+
+            if (shareInput) {
+                shareInput.value = finalUrl;
+            }
+            
+            if (qrContainer && typeof QRCode !== 'undefined') {
+                qrContainer.innerHTML = ''; // Clear previous QR code
+                const isDark = document.body.classList.contains('dark');
+                
+                new QRCode(qrContainer, {
+                    text: finalUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark : isDark ? '#FFFFFF' : '#000000',
+                    colorLight : isDark ? '#1f2937' : '#FFFFFF', // Use dark bg for light QR
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+            openShareModal();
+        }
+    }
+
     
     // --- Theme, Speed, and Scale Control ---
 
@@ -1305,7 +1395,7 @@
                 return;
             }
             if (action === 'open-share') {
-                openShareModal();
+                handleShareClick(); // UPDATED
                 return;
             }
             if (modeSelect) {
@@ -1454,13 +1544,75 @@
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
         document.getElementById('close-share').addEventListener('click', closeShareModal); 
+        
+        // --- NEW: Listener for Share Modal Copy Button ---
+        const copyShareButton = document.getElementById('copy-share-url-button');
+        if (copyShareButton) {
+            copyShareButton.addEventListener('click', () => {
+                const targetElement = document.getElementById('share-url-input');
+                if (targetElement) {
+                    targetElement.select();
+                    try {
+                        // Use modern clipboard API
+                        navigator.clipboard.writeText(targetElement.value).then(() => {
+                            const originalText = copyShareButton.innerHTML;
+                            copyShareButton.innerHTML = "Copied!";
+                            copyShareButton.classList.add('bg-green-500'); // Temp visual feedback
+                            setTimeout(() => {
+                                copyShareButton.innerHTML = originalText;
+                                copyShareButton.classList.remove('bg-green-500');
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Clipboard API failed: ', err);
+                            document.execCommand('copy'); // Fallback
+                        });
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                    }
+                }
+            });
+        }
     }
     
     // --- Initialization ---
     window.onload = function() {
         
-        loadState(); // <<< LOAD STATE FIRST
+        // --- NEW: Check for shared state in URL params FIRST ---
+        let loadedFromUrl = false;
+        let modeFromUrl = 'bananas';
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const data = urlParams.get('data');
 
+            if (mode && data && appState[mode]) {
+                const jsonState = atob(data); // Decode from Base64
+                const loadedState = JSON.parse(jsonState);
+                
+                // Merge the loaded state into the default app state for that mode
+                appState[mode] = { ...appState[mode], ...loadedState };
+                
+                // Set this as the mode to load
+                settings.currentMode = mode;
+                modeFromUrl = mode;
+                loadedFromUrl = true;
+                
+                // Clean the URL so a refresh doesn't reload the same state
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (error) {
+            console.error("Failed to load state from URL:", error);
+            // Clear bad data from URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        loadState(); // <<< LOAD STATE SECOND (will load user settings)
+
+        // If we loaded from a URL, ensure it overwrites any saved 'currentMode'
+        if (loadedFromUrl) {
+            settings.currentMode = modeFromUrl;
+        }
+        
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then((registration) => {
@@ -1492,11 +1644,8 @@
         
         initializeListeners();
         
-        // Load the last used mode
+        // Load the mode (either from URL or last saved mode)
         updateMode(settings.currentMode || 'bananas');
-        
-        // Pre-fill settings modal values (in case it's opened)
-        // This is now done in openSettingsModal()
         
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
