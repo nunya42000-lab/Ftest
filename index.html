@@ -38,8 +38,6 @@
         }
     </script>
     
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
@@ -56,20 +54,11 @@
     </div>
     
     <div id="share-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-left">
-            <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share Sequence</h3>
-            
-            <div id="share-qrcode" class="flex justify-center items-center p-4 bg-white rounded-lg mb-4">
-                <p class="text-gray-500 text-sm">Generating QR Code...</p>
-            </div>
-            
-            <p class="text-gray-700 dark:text-gray-300 mb-2">Share this link to send your current sequence to someone else.</p>
-            <textarea id="share-url-input" class="w-full h-24 p-2 text-sm text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg resize-none mb-4" readonly></textarea>
-            
-            <div class="flex justify-between">
-                <button id="copy-share-url-button" class="px-6 py-2 text-white bg-btn-control-blue rounded-lg hover:bg-btn-control-blue-active transition-colors font-semibold">Copy Link</button>
-                <button id="close-share" class="px-6 py-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors font-semibold">Close</button>
-            </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-90 transition-transform duration-300 text-center">
+            <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Share This App</h3>
+            <p class="text-gray-700 dark:text-gray-300 mb-4">Scan the code to open this app on another device.</p>
+            <img src="1000021086.jpg" alt="Share QR Code" class="w-64 h-64 mx-auto rounded-lg mb-6 border-4 border-white dark:border-gray-700">
+            <button id="close-share" class="px-6 py-2 text-white bg-primary-app rounded-lg hover:bg-secondary-app transition-colors font-semibold">Close</button>
         </div>
     </div>
     
@@ -284,7 +273,6 @@
             
         </div>
     </div>
-    
     <div id="app" class="max-w-7xl w-full mx-auto flex flex-col flex-grow">
         
         <main id="sequence-container" class="flex-grow mb-6 transition-all duration-300 pt-1">
