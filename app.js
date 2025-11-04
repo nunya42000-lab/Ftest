@@ -666,78 +666,9 @@
         if (shareModal) {
             shareModal.querySelector('div').classList.add('scale-90');
             shareModal.classList.add('opacity-0');
-            
-            // Clear the QR code when closing
-            const qrContainer = document.getElementById("share-qrcode");
-            if (qrContainer) {
-                qrContainer.innerHTML = '';
-            }
-            
             setTimeout(() => shareModal.classList.add('pointer-events-none'), 300);
         }
     }
-    
-    /**
-     * --- UPDATED: Simplified Share Function ---
-     * Generates a shareable URL for the app (not the state)
-     * and attempts to use the Web Share API. Falls back to
-     * a modal with a dynamic QR code.
-     */
-    async function handleShareClick() {
-        closeSettingsModal(); // Close settings if open
-
-        let finalUrl;
-        try {
-            // Only share the app's base URL, not the state
-            const shareUrl = new URL(window.location.pathname, window.location.origin);
-            finalUrl = shareUrl.toString();
-
-        } catch (error) {
-            console.error('Failed to create share link:', error);
-            showModal('Error', 'Could not create a shareable link.', () => closeModal(), 'OK', '');
-            return;
-        }
-
-        const shareData = {
-            title: 'Follow Me App',
-            text: `Check out this Follow Me sequence tool!`, // Generic text
-            url: finalUrl
-        };
-
-        // Try to use the Web Share API (mobile)
-        if (navigator.share && navigator.canShare(shareData)) {
-            try {
-                await navigator.share(shareData);
-                console.log('Content shared successfully');
-            } catch (err) {
-                console.error('Share failed:', err.message);
-            }
-        } else {
-            // Fallback: Open the modal with the link and dynamic QR code
-            const shareInput = document.getElementById('share-url-input');
-            const qrContainer = document.getElementById('share-qrcode');
-
-            if (shareInput) {
-                shareInput.value = finalUrl;
-            }
-            
-            if (qrContainer && typeof QRCode !== 'undefined') {
-                qrContainer.innerHTML = ''; // Clear previous QR code
-                const isDark = document.body.classList.contains('dark');
-                
-                new QRCode(qrContainer, {
-                    text: finalUrl,
-                    width: 200,
-                    height: 200,
-                    colorDark : isDark ? '#FFFFFF' : '#000000',
-                    colorLight : isDark ? '#1f2937' : '#FFFFFF', // Use dark bg for light QR
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-            }
-            openShareModal();
-        }
-    }
-
     
     // --- Theme, Speed, and Scale Control ---
 
@@ -1374,7 +1305,7 @@
                 return;
             }
             if (action === 'open-share') {
-                handleShareClick(); // UPDATED
+                openShareModal();
                 return;
             }
             if (modeSelect) {
@@ -1523,43 +1454,13 @@
         
         document.getElementById('close-help').addEventListener('click', closeHelpModal);
         document.getElementById('close-share').addEventListener('click', closeShareModal); 
-        
-        // --- NEW: Listener for Share Modal Copy Button ---
-        const copyShareButton = document.getElementById('copy-share-url-button');
-        if (copyShareButton) {
-            copyShareButton.addEventListener('click', () => {
-                const targetElement = document.getElementById('share-url-input');
-                if (targetElement) {
-                    targetElement.select();
-                    try {
-                        // Use modern clipboard API
-                        navigator.clipboard.writeText(targetElement.value).then(() => {
-                            const originalText = copyShareButton.innerHTML;
-                            copyShareButton.innerHTML = "Copied!";
-                            copyShareButton.classList.add('bg-green-500'); // Temp visual feedback
-                            setTimeout(() => {
-                                copyShareButton.innerHTML = originalText;
-                                copyShareButton.classList.remove('bg-green-500');
-                            }, 2000);
-                        }).catch(err => {
-                            console.error('Clipboard API failed: ', err);
-                            document.execCommand('copy'); // Fallback
-                        });
-                    } catch (err) {
-                        console.error('Failed to copy text: ', err);
-                    }
-                }
-            });
-        }
     }
     
     // --- Initialization ---
     window.onload = function() {
         
-        // --- REMOVED URL State-Loading Logic ---
-        
         loadState(); // <<< LOAD STATE FIRST
-        
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then((registration) => {
@@ -1591,66 +1492,11 @@
         
         initializeListeners();
         
-        // Load the last used mode (this will now be the mode from the URL if it existed)
+        // Load the last used mode
         updateMode(settings.currentMode || 'bananas');
         
-        if (settings.isAudioPlaybackEnabled) speak(" "); 
-    };
-
-})(); // End IIFE
-   settings.currentMode = mode;
-                modeFromUrl = mode;
-                loadedFromUrl = true;
-                
-                // Clean the URL so a refresh doesn't reload the same state
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        } catch (error) {
-            console.error("Failed to load state from URL:", error);
-            // Clear bad data from URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        
-        loadState(); // <<< LOAD STATE SECOND (will load user settings)
-
-        // If we loaded from a URL, ensure it overwrites any saved 'currentMode'
-        if (loadedFromUrl) {
-            settings.currentMode = modeFromUrl;
-        }
-        
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then((registration) => {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                })
-                .catch((error) => {
-                    console.error('Service Worker registration failed:', error);
-                });
-        }
-
-        // --- Update UI based on loaded state ---
-        updateTheme(settings.isDarkMode);
-        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
-        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
-        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
-        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
-        updateSliderLockState();
-        updateMicButtonVisibility();
-        
-        if (settings.isVoiceInputEnabled && !recognitionApi) {
-            showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
-                settings.isVoiceInputEnabled = false;
-                voiceInputToggle.checked = false;
-                updateMicButtonVisibility();
-                closeModal();
-                saveState(); // Save the corrected setting
-            }, 'OK', '');
-        }
-        
-        initializeListeners();
-        
-        // Load the mode (either from URL or last saved mode)
-        updateMode(settings.currentMode || 'bananas');
+        // Pre-fill settings modal values (in case it's opened)
+        // This is now done in openSettingsModal()
         
         if (settings.isAudioPlaybackEnabled) speak(" "); 
     };
