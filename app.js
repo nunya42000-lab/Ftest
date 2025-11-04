@@ -1208,15 +1208,9 @@
                 return;
             }
             
-            // --- NEW: Restore Defaults Listener ---
+            // --- UPDATED: Restore Defaults Listener (no modal) ---
             if (action === 'restore-defaults') {
-                showModal(
-                    'Restore Defaults?', 
-                    'This will reset all settings and clear all sequences for all modes. Are you sure?', 
-                    handleRestoreDefaults, // This function is called if they click "Restore"
-                    'Restore', 
-                    'Cancel'
-                );
+                handleRestoreDefaults(); // Call the function directly
                 return;
             }
 
