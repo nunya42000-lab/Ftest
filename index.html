@@ -150,7 +150,7 @@
                     </div>
                     
                     <div class="flex items-center justify-between mb-6">
-                        <label for="voice-input-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Voice Input (Mic)</label>
+                        <label for="voice-input-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Voice Input (Keyboard)</label>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="voice-input-toggle" class="sr-only peer" checked>
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
@@ -247,7 +247,8 @@
             </div>
             
             <div class="p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-end">
+                <div class="flex justify-between">
+                    <button data-action="restore-defaults" class="px-6 py-2 text-white bg-btn-control-red rounded-lg hover:bg-btn-control-red-active transition-colors font-semibold">Restore Defaults</button>
                     <button id="close-settings" class="px-6 py-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors font-semibold">Close</button>
                 </div>
             </div>
@@ -294,7 +295,9 @@
                 </div>
                 <div class="grid grid-cols-4 gap-3">
                     <button data-action="play-demo" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">▶</button> 
-                    <button data-action="voice-input" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl hidden" title="Voice Input">🎤</button>
+                    
+                    <input type="text" data-mode="bananas" class="voice-text-input btn-input !bg-primary-app !text-white !text-center !text-2xl !px-0 hidden" placeholder="🎤" title="Keyboard Voice Input">
+                    
                     <button id="backspace-button-bananas" data-action="backspace" data-mode="bananas" class="btn-input btn-control text-2xl">&larr;</button>
                     <button data-action="open-settings" data-mode="bananas" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">⚙️</button>
                 </div>
@@ -314,7 +317,9 @@
                 </div>
                 <div class="grid grid-cols-4 gap-3">
                     <button data-action="play-demo" data-mode="follows" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">▶</button>
-                    <button data-action="voice-input" data-mode="follows" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl hidden" title="Voice Input">🎤</button>
+                    
+                    <input type="text" data-mode="follows" class="voice-text-input btn-input !bg-primary-app !text-white !text-center !text-2xl !px-0 hidden" placeholder="🎤" title="Keyboard Voice Input">
+                    
                     <button id="backspace-button-follows" data-action="backspace" data-mode="follows" class="btn-input btn-control text-2xl">&larr;</button>
                     <button data-action="open-settings" data-mode="follows" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">⚙️</button>
                 </div>
@@ -339,7 +344,9 @@
                 </div>
                 <div class="grid grid-cols-4 gap-3 max-w-xs mx-auto">
                     <button data-action="demo" data-mode="piano" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">▶</button>
-                    <button data-action="voice-input" data-mode="piano" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl hidden" title="Voice Input">🎤</button>
+                    
+                    <input type="text" data-mode="piano" class="voice-text-input btn-input !bg-primary-app !text-white !text-center !text-2xl !px-0 hidden" placeholder="🎤" title="Keyboard Voice Input">
+
                     <button id="backspace-button-piano" data-action="backspace" data-mode="piano" class="btn-input btn-control text-2xl">&larr;</button>
                     <button data-action="open-settings" data-mode="piano" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">⚙️</button>
                 </div>
@@ -366,7 +373,9 @@
                     <button id="rounds15-reset" data-action="reset-rounds" data-mode="rounds15" class="btn-input btn-control !bg-btn-control-red hover:!bg-btn-control-red-active text-white font-bold rounded-xl text-xl">
                         RESET
                     </button> 
-                    <button data-action="voice-input" data-mode="rounds15" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl hidden" title="Voice Input">🎤</button>
+                    
+                    <input type="text" data-mode="rounds15" class="voice-text-input btn-input !bg-primary-app !text-white !text-center !text-2xl !px-0 hidden" placeholder="🎤" title="Keyboard Voice Input">
+
                     <button id="backspace-button-rounds15" data-action="backspace" data-mode="rounds15" class="btn-input btn-control text-2xl">&larr;</button>
                     <button data-action="open-settings" data-mode="rounds15" class="btn-input btn-control !bg-primary-app hover:!bg-secondary-app text-2xl">⚙️</button>
                 </div>

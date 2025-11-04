@@ -28,10 +28,10 @@
         '1': '1', '2': '2', '3': '3', '4': '4', '5': '5'
     };
     
-    // Settings State (All toggles ON by default)
-    let settings = {
+    // --- NEW: Default settings constant ---
+    const DEFAULT_SETTINGS = {
         isDarkMode: true,
-        bananasSpeedMultiplier: 1.0, // Used for Bananas and Follows
+        bananasSpeedMultiplier: 1.0,
         pianoSpeedMultiplier: 1.0, 
         rounds15SpeedMultiplier: 1.0,
         uiScaleMultiplier: 1.0, 
@@ -45,8 +45,11 @@
         areSlidersLocked: true,
         followsChunkSize: 3, 
         followsInterSequenceDelay: 500,
-        currentMode: 'bananas', // <<< NEW: Track last mode
+        currentMode: 'bananas',
     };
+    
+    // Settings State (All toggles ON by default)
+    let settings = { ...DEFAULT_SETTINGS };
 
     // --- Data Store ---
     let appState = {
@@ -105,15 +108,11 @@
     const followsPad = document.getElementById('follows-pad');
     const pianoPad = document.getElementById('piano-pad');
     const rounds15Pad = document.getElementById('rounds15-pad');
-    const allMicButtons = document.querySelectorAll('button[data-action="voice-input"]');
 
-    // --- Speech Recognition ---
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognitionApi = SpeechRecognition ? new SpeechRecognition() : null;
-    let isListening = false;
+    // --- NEW: Select text inputs instead of mic buttons ---
+    const allVoiceInputs = document.querySelectorAll('.voice-text-input');
 
-    // --- Voice Command Mapping ---
-
+    // --- Voice Command Mapping (VALUES ONLY) ---
     const VOICE_VALUE_MAP = {
         'one': '1', 'two': '2', 'to': '2', 'three': '3', 'four': '4', 'for': '4', 'five': '5',
         'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
@@ -122,50 +121,7 @@
         'c': 'C', 'd': 'D', 'f': 'F', 'g': 'G', 'a': 'A', 'b': 'B'
     };
     
-    const VOICE_ACTION_MAP = {
-        'settings': openSettingsModal,
-        'open settings': openSettingsModal,
-        'close settings': closeSettingsModal,
-        'help': openHelpModal,
-        'open help': openHelpModal,
-        'close help': closeHelpModal,
-        'mode bananas': () => handleModeSelection('bananas'),
-        'switch to bananas': () => handleModeSelection('bananas'),
-        'mode follows': () => handleModeSelection('follows'),
-        'switch to follows': () => handleModeSelection('follows'),
-        'mode piano': () => handleModeSelection('piano'),
-        'switch to piano': () => handleModeSelection('piano'),
-        'mode rounds': () => handleModeSelection('rounds15'),
-        'switch to rounds': () => handleModeSelection('rounds15'),
-        'play': handleCurrentDemo,
-        'demo': handleCurrentDemo,
-        'play demo': handleCurrentDemo,
-        'clear': handleBackspace,
-        'delete': handleBackspace,
-        'back': handleBackspace,
-        'backspace': handleBackspace,
-        'reset': () => { if (currentMode === 'rounds15') resetRounds15(); },
-        'reset rounds': () => { if (currentMode === 'rounds15') resetRounds15(); },
-        'speed up': () => adjustSpeed(0.25),
-        'faster': () => adjustSpeed(0.25),
-        'speed down': () => adjustSpeed(-0.25),
-        'slower': () => adjustSpeed(-0.25),
-        'speed reset': () => adjustSpeed(0, true),
-        'base speed': () => adjustSpeed(0, true),
-        'toggle dark mode': () => darkModeToggle.click(),
-        'toggle light mode': () => darkModeToggle.click(),
-        'toggle audio': () => audioPlaybackToggle.click(),
-        'toggle sound': () => audioPlaybackToggle.click(),
-        'toggle autoplay': () => {
-             if (currentMode === 'bananas') bananasAutoplayToggle.click();
-             else if (currentMode === 'follows') followsAutoplayToggle.click();
-             else if (currentMode === 'piano') pianoAutoplayToggle.click();
-        },
-        'toggle auto clear': () => { if (currentMode === 'rounds15') rounds15ClearAfterPlaybackToggle.click(); },
-        'toggle lock': () => sliderLockToggle.click(),
-        'lock sliders': () => { if (!settings.areSlidersLocked) sliderLockToggle.click(); },
-        'unlock sliders': () => { if (settings.areSlidersLocked) sliderLockToggle.click(); }
-    };
+    // --- All SpeechRecognition API code has been REMOVED ---
 
     // --- NEW: State Persistence Functions ---
     
@@ -192,16 +148,16 @@
             if (storedSettings) {
                 const loadedSettings = JSON.parse(storedSettings);
                 // Merge to preserve defaults if new settings are added
-                settings = { ...settings, ...loadedSettings };
+                settings = { ...DEFAULT_SETTINGS, ...loadedSettings };
             }
 
             if (storedState) {
                 const loadedState = JSON.parse(storedState);
                 // Merge loaded state into the default structure
-                appState.bananas = { ...appState.bananas, ...(loadedState.bananas || {}) };
-                appState.follows = { ...appState.follows, ...(loadedState.follows || {}) };
-                appState.piano = { ...appState.piano, ...(loadedState.piano || {}) };
-                appState.rounds15 = { ...appState.rounds15, ...(loadedState.rounds15 || {}) };
+                appState.bananas = { ...getInitialState('bananas'), ...(loadedState.bananas || {}) };
+                appState.follows = { ...getInitialState('follows'), ...(loadedState.follows || {}) };
+                appState.piano = { ...getInitialState('piano'), ...(loadedState.piano || {}) };
+                appState.rounds15 = { ...getInitialState('rounds15'), ...(loadedState.rounds15 || {}) };
             }
         } catch (error) {
             console.error("Failed to load state from localStorage:", error);
@@ -527,7 +483,7 @@
     // --- Help Modal Logic ---
 
     function generateHelpContent() {
-        // This function ALREADY contains the voice command list.
+        // --- UPDATED Help content to remove old voice commands and fix error ---
         return `
             <h4 class="text-primary-app">App Overview</h4>
             <p>This is a multi-mode number/sequence tracker designed to help you practice memorization and pattern recognition. Use the Settings menu (⚙️) to switch between four distinct modes.</p>
@@ -567,58 +523,19 @@
                 <li><span class="font-bold">Workflow:</span> Enter the sequence for the current round (e.g., 3 numbers for Round 3).</li>
                 <li><span class="font-bold">Automatic Playback:</span> As soon as you enter the last number for the round, the app will automatically play back the sequence for you.</li>
                 <li><span class="font-bold">Automatic Clear/Advance:</span> After playback, the sequence automatically clears, and the app advances to the next round (On by default).</li>
-                <li><span class="font-bold">Reset:</span> Hit the <span class="font-bold" style="color: ${tailwind.config.theme.extend.colors['btn-control-red']};">RESET</span> button to go back to Round 1.</li>
+                <li><span class="font-bold" style="color: #dc2626;">RESET</span>: Hit the RESET button to go back to Round 1.</li>
             </ul>
 
             <h4 class="text-primary-app">Global Features & Settings</h4>
             <ul>
                 <li><span class="font-bold">Backspace (←):</span> Removes the last entered value.</li>
-                <li><span class="font-bold">Voice Input (🎤):</span> (If enabled) Click to speak commands.</li>
+                <li><span class="font-bold">Voice Input (🎤):</span> (If enabled) A text field appears. Tap it to use your **keyboard's** microphone (dictation) to enter numbers. The sequence updates instantly.</li>
                 <li><span class="font-bold">Speed Deleting:</span> Hold the backspace key to quickly delete many entries (On by default).</li>
                 <li><span class="font-bold">Audio Playback:</span> Speaks the sequence during demo playback (On by default).</li>
                 <li><span class="font-bold">Playback Speeds:</span> Adjust the speed sliders to control how quickly the demo features execute.</li>
                 <li><span class="font-bold">Sequence Size:</span> Adjust the slider to change the visual size of the number boxes.</li>
                 <li><span class="font-bold">Lock Sliders:</span> Prevents accidental changes to the speed and size sliders (On by default).</li>
                 <li><span class="font-bold">Dark Mode:</span> Toggles the entire app between Dark and Light visual themes (On by default).</li>
-            </ul>
-
-            <h4 class="text-primary-app">Voice Commands (🎤)</h4>
-            <p>When enabled, you can speak commands to the app. The app prioritizes adding sequence values first. If no values are heard, it checks for action commands.</p>
-            
-            <p class="font-bold text-gray-900 dark:text-white mt-4">Sequence Input (Top Priority)</p>
-            <ul>
-                <li>Say numbers ("one", "five", "twelve") or notes ("C", "E", "F") to add them to the current sequence.</li>
-                <li><span class="font-bold">"Clear"</span> / <span class="font-bold">"Delete"</span> / <span class="font-bold">"Back"</span>: Deletes the last entry.</li>
-                <li><span class="font-bold">"Reset"</span> / <span class="font-bold">"Reset Rounds"</span>: (15 rounds only) Resets the game to Round 1.</li>
-            </ul>
-            
-            <p class="font-bold text-gray-900 dark:text-white mt-4">Playback & Speed</p>
-            <ul>
-                <li><span class="font-bold">"Play"</span> / <span class="font-bold">"Demo"</span>: Runs the demo for the current mode.</li>
-                <li><span class="font-bold">"Speed Up"</span> / <span class="font-bold">"Faster"</span>: Increases playback speed by 25%.</li>
-                <li><span class="font-bold">"Speed Down"</span> / <span class="font-bold">"Slower"</span>: Decreases playback speed by 25%.</li>
-                <li><span class="font-bold">"Speed Reset"</span> / <span class="font-bold">"Base Speed"</span>: Resets playback speed to 100%.</li>
-            </ul>
-            
-            <p class="font-bold text-gray-900 dark:text-white mt-4">App Control</p>
-            <ul>
-                <li><span class="font-bold">"Mode Bananas"</span> / <span class="font-bold">"Switch to Bananas"</span></li>
-                <li><span class="font-bold">"Mode Follows"</span> / <span class="font-bold">"Switch to Follows"</span></li>
-                <li><span class="font-bold">"Mode Piano"</span> / <span class="font-bold">"Switch to Piano"</span></li>
-                <li><span class="font-bold">"Mode Rounds"</span> / <span class="font-bold">"Switch to Rounds"</span></li>
-                <li><span class="font-bold">"Settings"</span> / <span class="font-bold">"Open Settings"</span></li>
-                <li><span class="font-bold">"Close Settings"</span></li>
-                <li><span class="font-bold">"Help"</span> / <span class="font-bold">"Open Help"</span></li>
-                <li><span class="font-bold">"Close Help"</span></li>
-            </ul>
-            
-            <p class="font-bold text-gray-900 dark:text-white mt-4">Toggles</p>
-            <ul>
-                <li><span class="font-bold">"Toggle Dark/Light Mode"</span></li>
-                <li><span class="font-bold">"Toggle Audio"</span> / <span class="font-bold">"Toggle Sound"</span></li>
-                <li><span class="font-bold">"Toggle Autoplay"</span>: (Bananas, Follows, Piano)</li>
-                <li><span class="font-bold">"Toggle Auto Clear"</span>: (15 rounds only)</li>
-                <li><span class="font-bold">"Lock/Unlock Sliders"</span></li>
             </ul>
         `;
     }
@@ -716,8 +633,6 @@
         if (pianoSpeedSlider) pianoSpeedSlider.disabled = locked;
         if (rounds15SpeedSlider) rounds15SpeedSlider.disabled = locked;
         if (uiScaleSlider) uiScaleSlider.disabled = locked;
-        
-        // No need to save state here, the toggle handler does it
     }
 
     function updateMode(newMode) {
@@ -739,18 +654,18 @@
         saveState(); // <<< SAVE STATE
     }
 
-    function updateMicButtonVisibility() {
+    // --- UPDATED Function: Renamed and simplified ---
+    function updateVoiceInputVisibility() {
         const isEnabled = settings.isVoiceInputEnabled;
-        allMicButtons.forEach(btn => {
-            btn.classList.toggle('hidden', !isEnabled);
+        allVoiceInputs.forEach(input => {
+            input.classList.toggle('hidden', !isEnabled);
         });
-        // No need to save state here, the toggle handler does it
     }
     
     // --- Audio Playback ---
     
     function speak(text) {
-        if (!settings.isAudioPlaybackEnabled || !('speechSynthesis' in window)) return;
+        if (!settings.isAudioPlaybackEnabled || !('speechSynthesis'in window)) return;
         try {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
@@ -1123,6 +1038,9 @@
         newCancelBtn.style.display = cancelText ? 'inline-block' : 'none';
         
         newConfirmBtn.className = 'px-4 py-2 text-white rounded-lg transition-colors font-semibold bg-primary-app hover:bg-secondary-app';
+        if (confirmText === 'Restore') {
+             newConfirmBtn.className = 'px-4 py-2 text-white rounded-lg transition-colors font-semibold bg-btn-control-red hover:bg-btn-control-red-active';
+        }
         
         setTimeout(() => {
             customModal.classList.remove('opacity-0', 'pointer-events-none');
@@ -1138,10 +1056,11 @@
         }
     }
 
-    // --- Voice Input Functions ---
+    // --- Voice Input Functions (NOW TEXT-BASED) ---
 
     /**
-     * Processes the transcript from speech recognition.
+     * Processes the transcript from the text input field.
+     * This function only processes VALUES, not commands.
      */
     function processVoiceTranscript(transcript) {
         if (!transcript) return;
@@ -1150,7 +1069,7 @@
         const words = cleanTranscript.split(' ');
         let valuesAdded = 0;
 
-        // --- Priority 1: Check for Sequence Values ---
+        // --- Check for Sequence Values ---
         for (const word of words) {
             let value = VOICE_VALUE_MAP[word];
             
@@ -1182,84 +1101,60 @@
                 }
             }
         }
-
-        if (valuesAdded > 0) {
-            return;
-        }
-
-        // --- Priority 2: Check for Action Commands (if no values were added) ---
-        if (VOICE_ACTION_MAP[cleanTranscript]) {
-            VOICE_ACTION_MAP[cleanTranscript]();
-            return;
-        }
-
-        for (const phrase in VOICE_ACTION_MAP) {
-            if (cleanTranscript.includes(phrase)) {
-                VOICE_ACTION_MAP[phrase]();
-                return; 
-            }
-        }
-        
-        console.log(`Unknown voice command or value: ${transcript}`);
-    }
-
-
-    function handleVoiceResult(event) {
-        const transcript = event.results[0][0].transcript.trim();
-        processVoiceTranscript(transcript);
-    }
-
-    function handleVoiceError(event) {
-        console.error('Voice Error:', event.error);
-        if (event.error === 'not-allowed') {
-            showModal('Permission Denied', 'You have blocked microphone access. To use voice input, please allow microphone access in your browser settings.', () => closeModal(), 'OK', '');
-            settings.isVoiceInputEnabled = false;
-            voiceInputToggle.checked = false;
-            updateMicButtonVisibility();
-            saveState(); // <<< SAVE STATE
-        }
-        stopListening();
     }
     
-    function stopListening() {
-        if (!isListening) return;
-        isListening = false;
-        if(recognitionApi) recognitionApi.stop();
+    // --- NEW: Restore Defaults Function ---
+    function handleRestoreDefaults() {
+        // 1. Reset settings and state
+        settings = { ...DEFAULT_SETTINGS };
+        appState = {
+            'bananas': getInitialState('bananas'),
+            'follows': getInitialState('follows'),
+            'piano': getInitialState('piano'), 
+            'rounds15': getInitialState('rounds15'),
+        };
+        currentMode = settings.currentMode; // 'bananas'
         
-        allMicButtons.forEach(btn => {
-            btn.classList.remove('voice-active');
-            btn.innerHTML = '🎤';
-        });
-    }
-    
-    function startListening() {
-        if (!recognitionApi || isListening) return;
+        // 2. Save the new defaults
+        saveState();
         
-        isListening = true;
-        
-        const currentMicButton = document.querySelector(`#${currentMode}-pad button[data-action="voice-input"]`);
-        if (currentMicButton) {
-            currentMicButton.classList.add('voice-active');
-            currentMicButton.innerHTML = '...';
-        }
+        // 3. Update all UI elements in the settings panel
+        updateTheme(settings.isDarkMode);
+        updateVoiceInputVisibility();
+        updateSliderLockState();
 
-        try {
-            recognitionApi.lang = 'en-US';
-            recognitionApi.continuous = false;
-            recognitionApi.interimResults = false;
-            recognitionApi.maxAlternatives = 1;
-            
-            recognitionApi.onresult = handleVoiceResult;
-            recognitionApi.onend = stopListening;
-            recognitionApi.onerror = handleVoiceError;
-            
-            recognitionApi.start();
-        } catch (err) {
-            console.error("Failed to start recognition:", err);
-            stopListening();
-        }
-    }
+        // Toggles
+        darkModeToggle.checked = settings.isDarkMode;
+        speedDeleteToggle.checked = settings.isSpeedDeletingEnabled;
+        pianoAutoplayToggle.checked = settings.isPianoAutoplayEnabled;
+        bananasAutoplayToggle.checked = settings.isBananasAutoplayEnabled;
+        followsAutoplayToggle.checked = settings.isFollowsAutoplayEnabled;
+        rounds15ClearAfterPlaybackToggle.checked = settings.isRounds15ClearAfterPlaybackEnabled;
+        audioPlaybackToggle.checked = settings.isAudioPlaybackEnabled;
+        voiceInputToggle.checked = settings.isVoiceInputEnabled;
+        sliderLockToggle.checked = settings.areSlidersLocked;
 
+        // Sliders
+        bananasSpeedSlider.value = settings.bananasSpeedMultiplier * 100;
+        updateSpeedDisplay(settings.bananasSpeedMultiplier, bananasSpeedDisplay);
+        pianoSpeedSlider.value = settings.pianoSpeedMultiplier * 100;
+        updateSpeedDisplay(settings.pianoSpeedMultiplier, pianoSpeedDisplay);
+        rounds15SpeedSlider.value = settings.rounds15SpeedMultiplier * 100;
+        updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
+        uiScaleSlider.value = settings.uiScaleMultiplier * 100;
+        updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
+
+        // Follows Selects
+        followsCountSelect.value = appState['follows'].sequenceCount;
+        followsChunkSizeSelect.value = settings.followsChunkSize;
+        followsDelaySelect.value = settings.followsInterSequenceDelay;
+        
+        // 4. Update the main UI
+        updateMode(settings.currentMode); // This also calls renderSequences
+        
+        // 5. Close the modal
+        closeSettingsModal();
+    }
 
     // --- Event Listeners Setup ---
     
@@ -1312,6 +1207,18 @@
                 handleModeSelection(modeSelect);
                 return;
             }
+            
+            // --- NEW: Restore Defaults Listener ---
+            if (action === 'restore-defaults') {
+                showModal(
+                    'Restore Defaults?', 
+                    'This will reset all settings and clear all sequences for all modes. Are you sure?', 
+                    handleRestoreDefaults, // This function is called if they click "Restore"
+                    'Restore', 
+                    'Cancel'
+                );
+                return;
+            }
 
             if (action === 'reset-rounds' && mode === 'rounds15') {
                 resetRounds15(); // Already saves state
@@ -1333,20 +1240,14 @@
                 handleRounds15Demo();
                 return;
             }
-
-            if (action === 'voice-input' && mode === currentMode) {
-                if (isListening) {
-                    stopListening();
-                } else {
-                    startListening();
-                }
-                return;
-            }
+            
+            // --- REMOVED: data-action="voice-input" listener ---
             
             if (value && mode === currentMode) {
                 if ((currentMode === 'bananas' || currentMode === 'follows') && /^[1-9]$/.test(value)) {
                     addValue(value); // Already saves state
                 }
+                // ### THIS IS THE FIX: Changed [1S-5] to [1-5] ###
                 else if (currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                     if (!settings.isPianoAutoplayEnabled) flashKey(value, 200);
                     addValue(value); // Already saves state
@@ -1355,6 +1256,23 @@
                     addValue(value); // Already saves state
                 }
             }
+        });
+        
+        // --- NEW: Add listeners for the text inputs ---
+        allVoiceInputs.forEach(input => {
+            // ### THIS IS THE FIX: Use 'input' instead of 'change' ###
+            input.addEventListener('input', (event) => {
+                const transcript = event.target.value;
+                if (transcript && transcript.length > 0) {
+                    // Check that the input is for the *currently active* mode
+                    if (event.target.dataset.mode === currentMode) {
+                        processVoiceTranscript(transcript);
+                        event.target.value = ''; // Clear after processing
+                    } else {
+                        event.target.value = ''; // Clear if not in the right mode
+                    }
+                }
+            });
         });
         
         document.querySelectorAll('button[data-action="backspace"]').forEach(btn => {
@@ -1412,20 +1330,14 @@
             if (settings.isAudioPlaybackEnabled) speak("Audio");
             saveState(); // <<< SAVE STATE
         });
+        
+        // --- UPDATED: voiceInputToggle listener (simplified) ---
         voiceInputToggle.addEventListener('change', (e) => {
             settings.isVoiceInputEnabled = e.target.checked;
-            updateMicButtonVisibility();
-            if (settings.isVoiceInputEnabled && !recognitionApi) {
-                showModal('Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
-                    settings.isVoiceInputEnabled = false;
-                    voiceInputToggle.checked = false;
-                    updateMicButtonVisibility();
-                    closeModal();
-                    saveState(); // <<< SAVE STATE (in callback)
-                }, 'OK', '');
-            }
+            updateVoiceInputVisibility();
             saveState(); // <<< SAVE STATE
         });
+        
         sliderLockToggle.addEventListener('change', (e) => {
             settings.areSlidersLocked = e.target.checked;
             updateSliderLockState();
@@ -1478,17 +1390,11 @@
         updateSpeedDisplay(settings.rounds15SpeedMultiplier, rounds15SpeedDisplay);
         updateScaleDisplay(settings.uiScaleMultiplier, uiScaleDisplay);
         updateSliderLockState();
-        updateMicButtonVisibility();
         
-        if (settings.isVoiceInputEnabled && !recognitionApi) {
-            showModal('Voice Not Supported', 'Your browser does not support the Web Speech API. The mic button will be hidden.', () => {
-                settings.isVoiceInputEnabled = false;
-                voiceInputToggle.checked = false;
-                updateMicButtonVisibility();
-                closeModal();
-                saveState(); // Save the corrected setting
-            }, 'OK', '');
-        }
+        // --- RENAMED function call ---
+        updateVoiceInputVisibility();
+        
+        // --- REMOVED old recognitionApi check ---
         
         initializeListeners();
         
