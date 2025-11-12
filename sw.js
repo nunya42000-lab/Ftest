@@ -3,17 +3,22 @@
   Uses a "Cache, falling back to Network, then update cache" strategy.
 */
 
-const CACHE_NAME = 'follow-me-cache-v1';
+// UPDATED: Cache name changed to v3 to force old cache deletion
+const CACHE_NAME = 'follow-me-cache-v3';
 
-// These are the core files for the app shell.
-// They will be pre-cached on install.
+// UPDATED: All paths are now absolute to the domain.
 const APP_SHELL_URLS = [
-    '.', // Alias for index.html
-    'index.html',
-    'app.js',
-    'style.css',
-    'manifest.json',
-    '1000021086.jpg' // The QR code
+    '/Follow/',
+    '/Follow/index.html',
+    '/Follow/style.css',
+    '/Follow/manifest.json',
+    '/Follow/1000021086.jpg',
+    '/Follow/js/config.js',
+    '/Follow/js/state.js',
+    '/Follow/js/ui.js',
+    '/Follow/js/core.js',
+    '/Follow/js/demo.js',
+    '/Follow/js/main.js'
 ];
 
 // --- Install Event ---
@@ -46,6 +51,7 @@ self.addEventListener('activate', (event) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     // If this cache's name isn't the current one, delete it.
+                    // This will delete 'follow-me-cache-v1' and 'v2'
                     if (cacheName !== CACHE_NAME) {
                         console.log('[Service Worker] Clearing old cache:', cacheName);
                         return caches.delete(cacheName);
@@ -61,11 +67,9 @@ self.addEventListener('activate', (event) => {
 
 // --- Fetch Event ---
 // Implements a "Cache, falling back to Network" strategy.
-// For assets not pre-cached (like fonts), it will fetch, cache, and serve.
 self.addEventListener('fetch', (event) => {
     // We only want to cache GET requests.
     if (event.request.method !== 'GET') {
-        // For non-GET requests, just do the network request
         event.respondWith(fetch(event.request));
         return;
     }
@@ -75,12 +79,10 @@ self.addEventListener('fetch', (event) => {
             .then((cachedResponse) => {
                 // 1. Try to get from Cache
                 if (cachedResponse) {
-                    // console.log('[Service Worker] Serving from Cache:', event.request.url);
                     return cachedResponse;
                 }
 
                 // 2. If not in Cache, try to fetch from Network
-                // console.log('[Service Worker] Fetching from Network:', event.request.url);
                 return fetch(event.request)
                     .then((networkResponse) => {
                         
@@ -90,50 +92,20 @@ self.addEventListener('fetch', (event) => {
                         }
 
                         // 3. If Network fetch succeeds, cache the response and return it
-                        // We need to clone the response because it's a stream
-                        // that can only be consumed once.
                         const responseToCache = networkResponse.clone();
 
                         caches.open(CACHE_NAME)
                             .then((cache) => {
-                                // console.log('[Service Worker] Caching new resource:', event.request.url);
                                 cache.put(event.request, responseToCache);
                             });
 
                         return networkResponse;
                     })
                     .catch((error) => {
-                        // 4. If Network fetch fails (offline) and it wasn't in cache...
                         console.error('[Service Worker] Fetch failed, and not in cache:', error);
-                        // We could return a generic offline page here if we had one.
-                        // For now, just let the request fail.
+                        // Let the request fail
                     });
             })
     );
 });
-etch(event.request).then((networkResponse) => {
-                    // Use a 'no-cors' request for external resources if needed
-                    const requestToCache = event.request.url.startsWith(self.origin)
-                        ? event.request
-                        : new Request(event.request.url, { mode: 'no-cors' });
-
-                    return caches.open(CACHE_NAME).then((cache) => {
-                         // Check if we got a valid response
-                        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-                            cache.put(requestToCache, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                }).catch(err => {
-                    console.warn('SW Fetch failed (external):', err);
-                });
-            })
-        );
-    }
-    // For other requests, just do a network fetch
-    else {
-        event.respondWith(fetch(event.request));
-    }
-});
-   }
-});
+                      
