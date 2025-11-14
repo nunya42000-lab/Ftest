@@ -1,3 +1,22 @@
+// --- GLOBAL ERROR CATCHER ---
+// If the app fails, this will show the error on the screen.
+window.onerror = function(message, source, lineno, colno, error) {
+    document.body.innerHTML = `
+        <div style="padding: 20px; font-family: monospace; color: red; background-color: #fff; font-size: 16px; border: 2px solid red; margin: 10px;">
+            <p style="font-weight: bold; font-size: 18px;">APP FAILED TO LOAD</p>
+            <p>Please send this error message back:</p>
+            <p style="background: #eee; padding: 10px; border-radius: 5px;">
+                <strong>Error:</strong> ${message}<br>
+                <strong>File:</strong> ${source}<br>
+                <strong>Line:</strong> ${lineno}
+            </p>
+        </div>
+    `;
+    return true; // Prevents the browser's default error handling
+};
+// --- END OF ERROR CATCHER ---
+
+
 /**
  * Main application entry point.
  * Initializes all event listeners and loads the application state.
@@ -53,7 +72,7 @@ function assignDomElements() {
     speedDeleteToggle = document.getElementById('speed-delete-toggle');
     pianoAutoplayToggle = document.getElementById('piano-autoplay-toggle');
     bananasAutoplayToggle = document.getElementById('bananas-autoplay-toggle');
-    rounds15ClearAfterPlaybackToggle = document.getElementById('rounds15-clear-after-playback-toggle'); // <-- CORRECTED
+    rounds15ClearAfterPlaybackToggle = document.getElementById('rounds15-clear-after-playback-toggle');
     audioPlaybackToggle = document.getElementById('audio-playback-toggle');
     voiceInputToggle = document.getElementById('voice-input-toggle');
     sliderLockToggle = document.getElementById('slider-lock-toggle');
@@ -90,7 +109,26 @@ function initializeListeners() {
         const { value, action, mode, modeSelect, copyTarget } = button.dataset;
 
         if (copyTarget) {
-            // ... (Clipboard logic) ...
+            // ... (Clipboard logic for help prompts - no state changes) ...
+            const targetElement = document.getElementById(copyTarget);
+            if (targetElement) {
+                targetElement.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = "Copied!";
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    navigator.clipboard.writeText(targetElement.value).catch(err => {
+                        console.error('Clipboard API failed: ', err);
+                    });
+                }
+            }
             return;
         }
         
@@ -110,12 +148,30 @@ function initializeListeners() {
 
         // --- Share Modal Actions ---
         if (action === 'copy-link') {
-            // ... (Clipboard logic) ...
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                button.disabled = true;
+                button.classList.add('!bg-btn-control-green'); // Uses Tailwind's "!important" override
+                button.innerHTML = `
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    Copied!
+                `;
+            }).catch(err => {
+                console.error('Failed to copy link: ', err);
+                button.innerHTML = 'Error Copying';
+            });
             return;
         }
         
         if (action === 'native-share') {
-            // ... (Share logic) ...
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Follow Me App',
+                    text: 'Check out this sequence memorization app!',
+                    url: window.location.href,
+                })
+                .then(() => console.log('Successful share'))
+                .catch((error) => console.log('Error sharing:', error));
+            }
             return;
         }
         // --- End Share Modal Actions ---
@@ -126,18 +182,19 @@ function initializeListeners() {
         }
         
         if (action === 'restore-defaults') {
-            handleRestoreDefaults();
+            handleRestoreDefaults(); // Call the function directly
             return;
         }
 
         if (action === 'reset-rounds' && mode === 'rounds15') {
-            resetRounds15();
+            resetRounds15(); // Already saves state
             return;
         }
         if (action === 'play-demo' && mode === 'bananas') {
             handleBananasDemo();
             return;
         }
+        // play-demo for follows removed
         if (action === 'demo' && mode === 'piano') {
             handlePianoDemo();
             return;
@@ -149,26 +206,42 @@ function initializeListeners() {
         
         if (value && mode === currentMode) {
             if (currentMode === 'bananas' && /^[1-9]$/.test(value)) {
-                addValue(value);
+                addValue(value); // Already saves state
             }
             else if (currentMode === 'piano' && (/^[1-5]$/.test(value) || /^[A-G]$/.test(value))) {
                 if (!settings.isPianoAutoplayEnabled) flashKey(value, 200);
-                addValue(value);
+                addValue(value); // Already saves state
             }
             else if (currentMode === 'rounds15' && /^(?:[1-9]|1[0-2])$/.test(value)) {
-                addValue(value);
+                addValue(value); // Already saves state
             }
         }
     });
     
     // Voice (Text) Input Listeners
     if (allVoiceInputs) {
-        // ... (Listener logic) ...
+        allVoiceInputs.forEach(input => {
+            input.addEventListener('input', (event) => {
+                const transcript = event.target.value;
+                if (transcript && transcript.length > 0) {
+                    if (event.target.dataset.mode === currentMode) {
+                        processVoiceTranscript(transcript);
+                        event.target.value = ''; // Clear after processing
+                    } else {
+                        event.target.value = ''; // Clear if not in the right mode
+                    }
+                }
+            });
+        });
     }
     
     // Backspace Listeners
     document.querySelectorAll('button[data-action="backspace"]').forEach(btn => {
-        // ... (Listeners: mousedown, mouseup, etc.) ...
+        btn.addEventListener('mousedown', handleBackspaceStart);
+        btn.addEventListener('mouseup', handleBackspaceEnd);
+        btn.addEventListener('mouseleave', stopSpeedDeleting);
+        btn.addEventListener('touchstart', handleBackspaceStart, { passive: false });
+        btn.addEventListener('touchend', handleBackspaceEnd);
     });
     
     // --- Modal & Settings Listeners ---
@@ -177,7 +250,7 @@ function initializeListeners() {
     if (closeWelcomeModalBtn) closeWelcomeModalBtn.addEventListener('click', closeWelcomeModal);
     if (dontShowWelcomeToggle) dontShowWelcomeToggle.addEventListener('change', (e) => {
         settings.showWelcomeScreen = !e.target.checked;
-        if (showWelcomeToggle) showWelcomeToggle.checked = settings.showWelcomeScreen;
+        if (showWelcomeToggle) showWelcomeToggle.checked = settings.showWelcomeScreen; // Sync settings toggle
         saveState();
     });
     
@@ -187,25 +260,25 @@ function initializeListeners() {
     
     if (followsCountSelect) followsCountSelect.addEventListener('change', (event) => {
         const newCount = parseInt(event.target.value);
-        const state = appState['bananas']; // <-- UPDATED
+        const state = appState['bananas']; // <-- UPDATED TO BANANAS
         state.sequenceCount = newCount;
         state.nextSequenceIndex = 0;
         renderSequences();
-        saveState();
+        saveState(); // <<< SAVE STATE
     });
     if (followsChunkSizeSelect) followsChunkSizeSelect.addEventListener('change', (event) => {
         settings.followsChunkSize = parseInt(event.target.value);
-        saveState();
+        saveState(); // <<< SAVE STATE
     });
     if (followsDelaySelect) followsDelaySelect.addEventListener('change', (event) => { 
         settings.followsInterSequenceDelay = parseInt(event.target.value);
-        saveState();
+        saveState(); // <<< SAVE STATE
     });
     
     // Toggles
     if (showWelcomeToggle) showWelcomeToggle.addEventListener('change', (e) => {
         settings.showWelcomeScreen = e.target.checked;
-        if (dontShowWelcomeToggle) dontShowWelcomeToggle.checked = !settings.showWelcomeScreen;
+        if (dontShowWelcomeToggle) dontShowWelcomeToggle.checked = !settings.showWelcomeScreen; // Sync welcome modal toggle
         saveState();
     });
     if (darkModeToggle) darkModeToggle.addEventListener('change', (e) => updateTheme(e.target.checked));
@@ -221,7 +294,7 @@ function initializeListeners() {
         settings.isBananasAutoplayEnabled = e.target.checked;
         saveState();
     });
-    // <-- followsAutoplayToggle listener REMOVED
+    // followsAutoplayToggle removed
     if (rounds15ClearAfterPlaybackToggle) rounds15ClearAfterPlaybackToggle.addEventListener('change', (e) => {
         settings.isRounds15ClearAfterPlaybackEnabled = e.target.checked;
         saveState();
@@ -249,14 +322,25 @@ function initializeListeners() {
 
     // Sliders
     function setupSpeedSlider(slider, displayElement, modeKey) {
-        // ... (function unchanged) ...
+        if (!slider) return;
+        slider.addEventListener('input', (event) => {
+            const multiplier = parseInt(event.target.value) / 100;
+            updateModeSpeed(modeKey, multiplier);
+            updateSpeedDisplay(multiplier, displayElement);
+        });
     }
     setupSpeedSlider(bananasSpeedSlider, bananasSpeedDisplay, 'bananas');
     setupSpeedSlider(pianoSpeedSlider, pianoSpeedDisplay, 'piano');
     setupSpeedSlider(rounds15SpeedSlider, rounds15SpeedDisplay, 'rounds15');
     
     if (uiScaleSlider) {
-        // ... (listener unchanged) ...
+        uiScaleSlider.addEventListener('input', (event) => {
+            const multiplier = parseInt(event.target.value) / 100;
+            settings.uiScaleMultiplier = multiplier;
+            updateScaleDisplay(multiplier, uiScaleDisplay);
+            renderSequences();
+            saveState();
+        });
     }
     
     // Other Modals
@@ -272,8 +356,14 @@ window.onload = function() {
     assignDomElements(); // <<< ASSIGN ALL DOM VARIABLES
  
     if ('serviceWorker' in navigator) {
+        // UPDATED: Register with absolute path and explicit scope
         navigator.serviceWorker.register('/Follow/sw.js', { scope: '/Follow/' })
-            // ... (registration logic) ...
+            .then((registration) => {
+                console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch((error) => {
+                console.error('Service Worker registration failed:', error);
+            });
     }
 
     // --- Update UI based on loaded state ---
@@ -287,15 +377,14 @@ window.onload = function() {
     
     initializeListeners();
     
-    // Load the last used mode (loadState already fixes it if it was 'follows')
+    // Load the last used mode
     updateMode(settings.currentMode || 'bananas');
     
     // --- Show Welcome Modal ---
     if (settings.showWelcomeScreen) {
-        setTimeout(openWelcomeModal, 500);
+        setTimeout(openWelcomeModal, 500); // Give a slight delay
     }
     
     // Pre-load audio
     if (settings.isAudioPlaybackEnabled) speak(" "); 
 };
-        
