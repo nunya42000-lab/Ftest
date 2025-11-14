@@ -6,8 +6,10 @@
     <title>Follow Me</title>
     
     <meta name="theme-color" content="#4f46e5">
-    <link rel="manifest" href="/Follow/manifest.json">
-    <link rel="apple-touch-icon" href="/Follow/icons/apple-touch-icon.png">
+
+    <link rel="manifest" href="/Ftest/manifest.json">
+
+    <link rel="apple-touch-icon" href="/Ftest/icons/apple-touch-icon.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -37,112 +39,16 @@
         }
     </script>
     
-    <link rel="stylesheet" href="/Follow/style.css">
+    <link rel="stylesheet" href="/Ftest/style.css">
 </head>
 <body class="dark min-h-screen flex flex-col font-sans p-4">
 
-    <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full m-4 transform scale-90 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-hidden">
-            
-            <div class="p-6 pt-2 overflow-y-auto flex-grow">
-                
-                <div class="mb-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p class="block text-gray-700 dark:text-gray-300 text-xl font-bold mb-4">Toggles</p>
-                    
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="show-welcome-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Show Welcome Screen</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="show-welcome-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-                                    
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="dark-mode-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Dark Mode</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="dark-mode-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="speed-delete-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Speed Deleting</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="speed-delete-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="audio-playback-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Audio Playback (Speak)</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="audio-playback-toggle" class="sr-only peer" checked> 
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="voice-input-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Voice Input (Keyboard)</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="voice-input-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="haptics-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Vibration (Haptics)</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="haptics-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-
-                    <div class="flex items-center justify-between mb-6">
-                        <label for="slider-lock-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Lock Sliders</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="slider-lock-toggle" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between mb-6">
-                            <label for="bananas-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Bananas Autoplay</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="bananas-autoplay-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-6">
-                            <label for="piano-autoplay-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">Piano Autoplay</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="piano-autoplay-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-8">
-                            <label for="rounds15-clear-after-playback-toggle" class="text-gray-700 dark:text-gray-300 text-lg font-semibold">15 rounds Auto-Clear/Advance</label>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="rounds15-clear-after-playback-toggle" class="sr-only peer" checked> 
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-app/50 dark:peer-focus:ring-primary-app rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-app"></div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-            
-            </div>
-    </div>
-    
-    <script src="/Follow/js/config.js"></script>
-    <script src="/Follow/js/state.js"></script>
-    <script src="/Follow/js/ui.js"></script>
-    <script src="/Follow/js/core.js"></script>
-    <script src="/Follow/js/demo.js"></script>
-    <script src="/Follow/js/main.js"></script>
+    <script src="/Ftest/js/config.js"></script>
+    <script src="/Ftest/js/state.js"></script>
+    <script src="/Ftest/js/ui.js"></script>
+    <script src="/Ftest/js/core.js"></script>
+    <script src="/Ftest/js/demo.js"></script>
+    <script src="/Ftest/js/main.js"></script>
 
 </body>
 </html>
