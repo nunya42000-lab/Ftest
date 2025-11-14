@@ -23,15 +23,14 @@ var openHelpButton = null, openShareButton = null, closeSettings = null;
 var followsCountSelect = null, followsChunkSizeSelect = null, followsDelaySelect = null; 
 var helpModal = null, helpContentContainer = null, helpTabNav = null, closeHelp = null;
 var darkModeToggle = null, speedDeleteToggle = null, pianoAutoplayToggle = null;
-var bananasAutoplayToggle = null, rounds15ClearAfterPlaybackToggle = null;
-// followsAutoplayToggle is removed
+var bananasAutoplayToggle = null, rounds15ClearAfterPlaybackToggle = null; // <-- CORRECTED
 var audioPlaybackToggle = null, voiceInputToggle = null, sliderLockToggle = null, hapticsToggle = null;
 var showWelcomeToggle = null;
 var bananasSpeedSlider = null, bananasSpeedDisplay = null;
 var pianoSpeedSlider = null, pianoSpeedDisplay = null;
 var rounds15SpeedSlider = null, rounds15SpeedDisplay = null;
 var uiScaleSlider = null, uiScaleDisplay = null;
-var bananasPad = null, pianoPad = null, rounds15Pad = null; // followsPad removed
+var bananasPad = null, pianoPad = null, rounds15Pad = null;
 var allVoiceInputs = null;
 
 
@@ -64,6 +63,10 @@ function loadState() {
             const loadedSettings = JSON.parse(storedSettings);
             // Merge to preserve defaults if new settings are added
             settings = { ...DEFAULT_SETTINGS, ...loadedSettings };
+            // Clean up obsolete setting if it exists from a previous version
+            if (settings.isFollowsAutoplayEnabled !== undefined) {
+                delete settings.isFollowsAutoplayEnabled;
+            }
         } else {
             settings = { ...DEFAULT_SETTINGS };
         }
@@ -74,6 +77,15 @@ function loadState() {
             appState.bananas = { ...getInitialState('bananas'), ...(loadedState.bananas || {}) };
             appState.piano = { ...getInitialState('piano'), ...(loadedState.piano || {}) };
             appState.rounds15 = { ...getInitialState('rounds15'), ...(loadedState.rounds15 || {}) };
+            
+            // Clean up obsolete state if it exists
+            if (loadedState.follows) {
+                delete loadedState.follows;
+            }
+            if (appState.follows) {
+                delete appState.follows;
+            }
+
         } else {
              appState = {
                 'bananas': getInitialState('bananas'),
@@ -95,6 +107,11 @@ function loadState() {
     }
     
     currentMode = settings.currentMode || 'bananas';
+    // Fix currentMode if it was stuck on 'follows'
+    if (currentMode === 'follows') {
+        currentMode = 'bananas';
+        settings.currentMode = 'bananas';
+    }
 }
 
 // --- Core Functions for State Management ---
@@ -123,4 +140,5 @@ function getInitialState(mode) {
                 nextSequenceIndex: 0 
             };
     }
-                                                                    }
+    }
+    
