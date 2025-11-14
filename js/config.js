@@ -8,11 +8,10 @@ const SPEED_DELETE_INTERVAL_MS = 10;
 const SETTINGS_KEY = 'followMeAppSettings';
 const STATE_KEY = 'followMeAppState';
 
-// Mode Definitions
-const MODES = ['bananas', 'follows', 'piano', 'rounds15']; 
+// Mode Definitions (UPDATED: 'follows' removed)
+const MODES = ['bananas', 'piano', 'rounds15']; 
 const MODE_LABELS = {
     'bananas': 'Bananas',
-    'follows': 'follows',
     'piano': 'piano',
     'rounds15': '15 rounds',
 };
@@ -42,7 +41,7 @@ const DEFAULT_SETTINGS = {
     isSpeedDeletingEnabled: true, 
     isPianoAutoplayEnabled: true, 
     isBananasAutoplayEnabled: true, 
-    isFollowsAutoplayEnabled: true, 
+    // isFollowsAutoplayEnabled is no longer needed
     isRounds15ClearAfterPlaybackEnabled: true, 
     isAudioPlaybackEnabled: true,
     isVoiceInputEnabled: true,
@@ -50,6 +49,6 @@ const DEFAULT_SETTINGS = {
     followsChunkSize: 3, 
     followsInterSequenceDelay: 500,
     currentMode: 'bananas',
-    isHapticsEnabled: true, // NEW
-    showWelcomeScreen: true, // NEW
+    isHapticsEnabled: true,
+    showWelcomeScreen: true,
 };
