@@ -1,22 +1,3 @@
-// --- GLOBAL ERROR CATCHER ---
-// If the app fails, this will show the error on the screen.
-window.onerror = function(message, source, lineno, colno, error) {
-    document.body.innerHTML = `
-        <div style="padding: 20px; font-family: monospace; color: red; background-color: #fff; font-size: 16px; border: 2px solid red; margin: 10px;">
-            <p style="font-weight: bold; font-size: 18px;">APP FAILED TO LOAD</p>
-            <p>Please send this error message back:</p>
-            <p style="background: #eee; padding: 10px; border-radius: 5px;">
-                <strong>Error:</strong> ${message}<br>
-                <strong>File:</strong> ${source}<br>
-                <strong>Line:</strong> ${lineno}
-            </p>
-        </div>
-    `;
-    return true; // Prevents the browser's default error handling
-};
-// --- END OF ERROR CATCHER ---
-
-
 /**
  * Main application entry point.
  * Initializes all event listeners and loads the application state.
@@ -357,7 +338,7 @@ window.onload = function() {
  
     if ('serviceWorker' in navigator) {
         // UPDATED: Register with absolute path and explicit scope
-        navigator.serviceWorker.register('/Follow/sw.js', { scope: '/Follow/' })
+        navigator.serviceWorker.register('/Ftest/sw.js', { scope: '/Ftest/' })
             .then((registration) => {
                 console.log('Service Worker registered with scope:', registration.scope);
             })
@@ -388,3 +369,4 @@ window.onload = function() {
     // Pre-load audio
     if (settings.isAudioPlaybackEnabled) speak(" "); 
 };
+                                       
