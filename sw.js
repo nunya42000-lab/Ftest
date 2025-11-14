@@ -3,8 +3,8 @@
   Uses a "Cache, falling back to Network, then update cache" strategy.
 */
 
-// UPDATED: Cache name changed to v3 to force old cache deletion
-const CACHE_NAME = 'follow-me-cache-v4';
+// UPDATED: Cache name changed to v5 to force old cache deletion
+const CACHE_NAME = 'follow-me-cache-v5';
 
 // UPDATED: All paths are now absolute to the domain.
 const APP_SHELL_URLS = [
