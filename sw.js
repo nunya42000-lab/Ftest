@@ -3,31 +3,31 @@
   Uses a "Cache, falling back to Network, then update cache" strategy.
 */
 
-// UPDATED: Cache name changed to v5 to force old cache deletion
+// UPDATED: Cache name changed to v5
 const CACHE_NAME = 'follow-me-cache-v5';
 
-// UPDATED: All paths are now absolute to the domain.
+// UPDATED: All paths are now absolute to the /Ftest/ domain.
 const APP_SHELL_URLS = [
-    '/Follow/',
-    '/Follow/index.html',
-    '/Follow/style.css',
-    '/Follow/manifest.json',
-    '/Follow/1000021086.jpg',
-    '/Follow/js/config.js',
-    '/Follow/js/state.js',
-    '/Follow/js/ui.js',
-    '/Follow/js/core.js',
-    '/Follow/js/demo.js',
-    '/Follow/js/main.js',
+    '/Ftest/',
+    '/Ftest/index.html',
+    '/Ftest/style.css',
+    '/Ftest/manifest.json',
+    '/Ftest/1000021086.jpg',
+    '/Ftest/js/config.js',
+    '/Ftest/js/state.js',
+    '/Ftest/js/ui.js',
+    '/Ftest/js/core.js',
+    '/Ftest/js/demo.js',
+    '/Ftest/js/main.js',
     
-    // --- ICONS ADDED HERE ---
-    '/Follow/icons/android-launchericon-48-48.png',
-    '/Follow/icons/android-launchericon-72-72.png',
-    '/Follow/icons/android-launchericon-96-96.png',
-    '/Follow/icons/android-launchericon-144-144.png',
-    '/Follow/icons/android-launchericon-192-192.png',
-    '/Follow/icons/android-launchericon-512-512.png',
-    '/Follow/icons/apple-touch-icon.png'
+    // --- ICONS ---
+    '/Ftest/icons/android-launchericon-48-48.png',
+    '/Ftest/icons/android-launchericon-72-72.png',
+    '/Ftest/icons/android-launchericon-96-96.png',
+    '/Ftest/icons/android-launchericon-144-144.png',
+    '/Ftest/icons/android-launchericon-192-192.png',
+    '/Ftest/icons/android-launchericon-512-512.png',
+    '/Ftest/icons/apple-touch-icon.png'
 ];
 
 // --- Install Event ---
@@ -60,7 +60,6 @@ self.addEventListener('activate', (event) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     // If this cache's name isn't the current one, delete it.
-                    // This will delete 'follow-me-cache-v1' and 'v2'
                     if (cacheName !== CACHE_NAME) {
                         console.log('[Service Worker] Clearing old cache:', cacheName);
                         return caches.delete(cacheName);
@@ -117,3 +116,4 @@ self.addEventListener('fetch', (event) => {
             })
     );
 });
+      
