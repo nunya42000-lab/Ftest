@@ -23,7 +23,7 @@ var openHelpButton = null, openShareButton = null, closeSettings = null;
 var followsCountSelect = null, followsChunkSizeSelect = null, followsDelaySelect = null; 
 var helpModal = null, helpContentContainer = null, helpTabNav = null, closeHelp = null;
 var darkModeToggle = null, speedDeleteToggle = null, pianoAutoplayToggle = null;
-var bananasAutoplayToggle = null, rounds15ClearAfterPlaybackToggle = null; // <-- CORRECTED
+var bananasAutoplayToggle = null, rounds15ClearAfterPlaybackToggle = null;
 var audioPlaybackToggle = null, voiceInputToggle = null, sliderLockToggle = null, hapticsToggle = null;
 var showWelcomeToggle = null;
 var bananasSpeedSlider = null, bananasSpeedDisplay = null;
@@ -73,18 +73,32 @@ function loadState() {
 
         if (storedState) {
             const loadedState = JSON.parse(storedState);
-            // Merge loaded state into the default structure
-            appState.bananas = { ...getInitialState('bananas'), ...(loadedState.bananas || {}) };
-            appState.piano = { ...getInitialState('piano'), ...(loadedState.piano || {}) };
-            appState.rounds15 = { ...getInitialState('rounds15'), ...(loadedState.rounds15 || {}) };
             
-            // Clean up obsolete state if it exists
+            // --- ROBUSTNESS CHECKS ---
+            // 1. Initialize all modes with defaults first
+            appState.bananas = getInitialState('bananas');
+            appState.piano = getInitialState('piano');
+            appState.rounds15 = getInitialState('rounds15');
+
+            // 2. Safely merge loaded state
+            if (loadedState.bananas) {
+                appState.bananas = { ...appState.bananas, ...loadedState.bananas };
+            }
+            if (loadedState.piano) {
+                appState.piano = { ...appState.piano, ...loadedState.piano };
+            }
+            if (loadedState.rounds15) {
+                appState.rounds15 = { ...appState.rounds15, ...loadedState.rounds15 };
+            }
+            
+            // 3. Delete obsolete 'follows' state
             if (loadedState.follows) {
                 delete loadedState.follows;
             }
             if (appState.follows) {
                 delete appState.follows;
             }
+            // --- END ROBUSTNESS CHECKS ---
 
         } else {
              appState = {
@@ -140,5 +154,5 @@ function getInitialState(mode) {
                 nextSequenceIndex: 0 
             };
     }
-    }
-    
+            }
+                
