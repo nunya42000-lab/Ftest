@@ -3,184 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevCompanion Pro Suite</title>
+    <title>DevCompanion | Project OS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --accent: #58a6ff; --success: #3fb950; --warn: #d29922; --danger: #f85149; --text: #c9d1d9; --border: #30363d; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Dashboard Layout */
-        header { background: var(--panel); padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .main-container { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
-        @media (max-width: 800px) { .main-container { grid-template-columns: 1fr; } }
-
-        /* Sidebar Tools */
-        .sidebar { background: var(--panel); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        .tool-card { background: #000; padding: 15px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
-        .tool-card:hover { border-color: var(--accent); }
-        .tool-card.active { border-left: 4px solid var(--accent); background: #1c2128; }
+        /* Top Navigation */
+        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .tabs { display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+        .tab { padding: 8px 15px; background: #000; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
         /* Workspace */
-        .workspace { padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        .editor-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        @media (max-width: 1000px) { .editor-group { grid-template-columns: 1fr; } }
+        .workspace { display: flex; flex: 1; overflow: hidden; }
         
-        textarea { width: 100%; height: 350px; background: #000; color: #d1d5da; border: 1px solid var(--border); border-radius: 6px; font-family: 'Fira Code', monospace; padding: 12px; box-sizing: border-box; font-size: 13px; resize: none; }
+        /* Sidebar: File Explorer */
+        .sidebar { width: 250px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+        @media (max-width: 768px) { .sidebar { width: 150px; } }
+        .file-list { flex: 1; padding: 10px; overflow-y: auto; font-size: 13px; font-family: monospace; }
+        .file-item { padding: 6px; cursor: pointer; border-radius: 4px; border: 1px solid transparent; margin-bottom: 2px; }
+        .file-item:hover { background: #1c2128; }
+        .file-item.active { background: #1f6feb33; border-color: var(--accent); color: #58a6ff; }
+
+        /* Main Editor Area */
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; }
+        textarea { flex: 1; background: #000; color: #d1d5da; border: 1px solid var(--border); border-radius: 6px; font-family: 'Fira Code', monospace; padding: 12px; font-size: 13px; resize: none; width: 100%; box-sizing: border-box; }
         
-        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        button { padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        /* Control Panels */
+        .panel-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: none; }
+        .panel-box.active { display: block; }
+        
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        button { padding: 10px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; transition: 0.2s; }
         .btn-primary { background: var(--success); color: white; }
         .btn-action { background: var(--accent); color: white; }
-        .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
 
-        #console { background: #000; border: 1px solid var(--border); padding: 10px; font-family: monospace; font-size: 12px; min-height: 80px; color: #8b949e; overflow-y: auto; }
-        .stat-badge { background: #388bfd33; color: var(--accent); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        /* Custom File Upload Button */
+        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; padding: 10px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border); }
+        .file-upload-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        .file-upload-btn { font-size: 12px; font-weight: bold; color: var(--accent); pointer-events: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-size: 20px; font-weight: bold;">DevCompanion <span style="font-weight: 200; color: var(--accent);">Pro Suite</span></div>
-    <div id="file-stats">No files analyzed</div>
+    <div style="font-weight: bold; font-size: 16px;">DevOS <span style="color:var(--accent)">Workspace</span></div>
+    <button class="btn-primary" onclick="exportProject()">DOWNLOAD PROJECT (.ZIP)</button>
 </header>
 
-<div class="main-container">
+<div class="tabs" style="padding: 10px 15px; background: var(--panel);">
+    <div class="tab active" onclick="switchTab('editor')">Code Editor</div>
+    <div class="tab" onclick="switchTab('router')">Auto-Router (Add Logic)</div>
+    <div class="tab" onclick="switchTab('pwa')">PWA Maker</div>
+</div>
+
+<div class="workspace">
     <aside class="sidebar">
-        <div class="tool-card active" onclick="switchTool('assembler')">
-            <strong>Code Assembler</strong>
-            <p style="font-size: 11px; margin: 5px 0;">Merge files & fill placeholders</p>
+        <div class="file-upload-wrapper">
+            <span class="file-upload-btn">📁 LOAD FILES</span>
+            <input type="file" id="folder-upload" multiple webkitdirectory directory onchange="loadFiles(event)">
         </div>
-        <div class="tool-card" onclick="switchTool('optimizer')">
-            <strong>Logic Optimizer</strong>
-            <p style="font-size: 11px; margin: 5px 0;">Clean redundancies & refactor</p>
-        </div>
-        <div class="tool-card" onclick="switchTool('modularizer')">
-            <strong>Project Exporter</strong>
-            <p style="font-size: 11px; margin: 5px 0;">Create ZIP modules</p>
+        <div class="file-list" id="file-explorer">
+            <div style="color:var(--muted); text-align:center; margin-top:20px;">No files loaded</div>
         </div>
     </aside>
 
-    <main class="workspace">
-        <div id="console">System Ready. Paste your Master code to begin optimization.</div>
-
-        <div class="editor-group">
-            <div>
-                <label style="font-size: 12px; font-weight: bold;">Master / Target File</label>
-                <textarea id="input-master" placeholder="Paste your main app file here..."></textarea>
+    <main class="main-view">
+        
+        <div id="view-editor" class="panel-box active" style="height: 100%; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <strong id="current-file-label" style="color:var(--accent);">Select a file to edit</strong>
+                <button class="btn-outline" style="padding: 4px 10px;" onclick="saveCurrentFile()">Save to RAM</button>
             </div>
-            <div>
-                <label style="font-size: 12px; font-weight: bold;">Source / Snippets</label>
-                <textarea id="input-source" placeholder="Paste snippets or old versions here..."></textarea>
+            <textarea id="main-editor" placeholder="Code will appear here..."></textarea>
+        </div>
+
+        <div id="view-router" class="panel-box">
+            <h3 style="margin-top:0; color:var(--accent)">Auto-Router</h3>
+            <p style="font-size: 12px; color:var(--muted);">Paste a new function, constant, or class. The router will extract its name, append 'export', inject it into the correct file, and format the imports.</p>
+            <textarea id="router-input" style="height: 150px;" placeholder="function calculatePattern() { ... }"></textarea>
+            
+            <div style="margin-top: 10px;">
+                <label style="font-size: 12px;">Target File to insert into:</label>
+                <select id="router-target" style="background:#000; color:#fff; padding:8px; border:1px solid var(--border); border-radius:4px; width:100%; margin-top:5px;"></select>
+            </div>
+            
+            <div class="btn-row">
+                <button class="btn-action" onclick="routeCode()">INJECT & AUTO-EXPORT</button>
+            </div>
+            <div id="router-log" style="margin-top:10px; font-family:monospace; font-size:11px; color:var(--success);"></div>
+        </div>
+
+        <div id="view-pwa" class="panel-box">
+            <h3 style="margin-top:0; color:var(--accent)">PWA Generator</h3>
+            <p style="font-size: 12px; color:var(--muted);">Generates manifest.json and a Service Worker for offline capability.</p>
+            
+            <div style="display: grid; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="pwa-name" placeholder="App Name (e.g. Sequence Tracker)" style="padding:8px; background:#000; border:1px solid var(--border); color:#fff;">
+                <input type="text" id="pwa-color" placeholder="Theme Color (e.g. #000000)" style="padding:8px; background:#000; border:1px solid var(--border); color:#fff;">
+            </div>
+
+            <div class="btn-row">
+                <button class="btn-action" onclick="generatePWA()">GENERATE MANIFEST & SW.JS</button>
             </div>
         </div>
 
-        <div class="btn-row">
-            <button class="btn-primary" onclick="runSuite()">RUN FULL OPTIMIZATION</button>
-            <button class="btn-action" onclick="refactorLogic()">SMART REFACTOR</button>
-            <button class="btn-ghost" onclick="downloadProject()">EXPORT AS ZIP</button>
-            <button class="btn-ghost" style="color:var(--danger)" onclick="clearAll()">CLEAR ALL</button>
-        </div>
-
-        <label style="font-size: 12px; font-weight: bold;">Optimized Output</label>
-        <textarea id="output-final" style="height: 400px;" readonly></textarea>
     </main>
 </div>
 
 <script>
-    let currentModules = [];
+    // Virtual File System (VFS)
+    let vfs = {};
+    let currentFileName = null;
 
-    function log(msg, type = 'info') {
-        const con = document.getElementById('console');
-        const color = type === 'warn' ? 'var(--warn)' : type === 'success' ? 'var(--success)' : '#8b949e';
-        con.innerHTML = `<span style="color:${color}">[${new Date().toLocaleTimeString()}] ${msg}</span><br>` + con.innerHTML;
+    // --- Core UI Navigation ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel-box').forEach(p => p.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById('view-' + tabId).classList.add('active');
+        
+        if(tabId === 'editor' && document.getElementById('view-editor').style.display !== 'none') {
+            document.getElementById('view-editor').style.display = 'flex'; 
+        }
     }
 
-    function runSuite() {
-        log("Starting full assembly and deduplication...", "info");
-        const master = document.getElementById('input-master').value;
-        const source = document.getElementById('input-source').value;
+    // --- File System Operations ---
+    function loadFiles(event) {
+        const files = event.target.files;
+        if(files.length === 0) return;
 
-        if(!master) return log("Error: Master file is empty", "warn");
+        vfs = {}; // Reset VFS
+        const explorer = document.getElementById('file-explorer');
+        const routerSelect = document.getElementById('router-target');
+        explorer.innerHTML = '';
+        routerSelect.innerHTML = '';
 
-        const masterBlocks = parseCode(master);
-        const sourceBlocks = parseCode(source);
-        let finalCode = master;
-        let mergeCount = 0;
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Store in virtual file system
+                vfs[file.name] = e.target.result;
+                
+                // Add to sidebar
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerText = file.name;
+                div.onclick = () => openFile(file.name, div);
+                explorer.appendChild(div);
 
-        sourceBlocks.forEach(src => {
-            const match = masterBlocks.find(m => m.name === src.name);
-            if(match && match.isPlaceholder) {
-                const regex = new RegExp(`${src.name}\\s*[:=]?\\s*\\(.*?\\)\\s*{[\\s\\S]*?(\\.\\.\\.|placeholder)[\\s\\S]*?}`, 'g');
-                finalCode = finalCode.replace(regex, src.content);
-                mergeCount++;
-            }
+                // Add to Auto-Router dropdown (JS files only)
+                if(file.name.endsWith('.js')) {
+                    const opt = document.createElement('option');
+                    opt.value = file.name;
+                    opt.innerText = file.name;
+                    routerSelect.appendChild(opt);
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    function openFile(filename, element) {
+        // Save current open file automatically before switching
+        if(currentFileName) saveCurrentFile();
+
+        currentFileName = filename;
+        document.getElementById('main-editor').value = vfs[filename];
+        document.getElementById('current-file-label').innerText = filename;
+
+        document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    function saveCurrentFile() {
+        if(!currentFileName) return;
+        vfs[currentFileName] = document.getElementById('main-editor').value;
+    }
+
+    // --- The Auto-Router ---
+    function routeCode() {
+        const input = document.getElementById('router-input').value.trim();
+        const targetFile = document.getElementById('router-target').value;
+        const log = document.getElementById('router-log');
+
+        if(!input || !targetFile) return log.innerText = "Error: Missing code or target file.";
+
+        // 1. Extract the name of the function/constant
+        const regex = /(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=)/;
+        const match = input.match(regex);
+        const name = match ? (match[1] || match[2]) : null;
+
+        if(!name) return log.innerText = "Error: Could not detect function/variable name.";
+
+        // 2. Format as an export if it isn't already
+        let codeToInject = input;
+        if (!codeToInject.startsWith('export')) {
+            codeToInject = `export ${codeToInject}`;
+        }
+
+        // 3. Inject into target file in the VFS
+        let fileContent = vfs[targetFile] || '';
+        vfs[targetFile] = fileContent + `\n\n/* Auto-Routed: ${name} */\n${codeToInject}`;
+
+        // 4. Provide the Import statement for the user to copy
+        const importStatement = `import { ${name} } from './${targetFile}';`;
+        
+        log.innerHTML = `Successfully injected <b>${name}</b> into ${targetFile}.<br><br>
+                         <b>Import string (Copy this if needed elsewhere):</b><br>
+                         <input type="text" value="${importStatement}" style="width:100%; background:#000; color:var(--accent); border:none; margin-top:5px;" readonly onclick="this.select(); document.execCommand('copy'); alert('Import copied!');">`;
+        
+        document.getElementById('router-input').value = '';
+        if(currentFileName === targetFile) openFile(targetFile, document.querySelector('.file-item.active')); // Refresh view
+    }
+
+    // --- PWA Maker ---
+    function generatePWA() {
+        const name = document.getElementById('pwa-name').value || "My App";
+        const shortName = name.substring(0, 12);
+        const color = document.getElementById('pwa-color').value || "#000000";
+
+        const manifest = `{
+    "name": "${name}",
+    "short_name": "${shortName}",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "${color}",
+    "theme_color": "${color}",
+    "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    ]
+}`;
+
+        const sw = `const CACHE_NAME = '${name.replace(/\s+/g, '-').toLowerCase()}-v1';
+const urlsToCache = [ '/', '/index.html', '/main.js' ];
+
+self.addEventListener('install', event => {
+    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+});
+
+self.addEventListener('fetch', event => {
+    event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+});`;
+
+        vfs['manifest.json'] = manifest;
+        vfs['sw.js'] = sw;
+
+        // Refresh File Explorer manually
+        const explorer = document.getElementById('file-explorer');
+        ['manifest.json', 'sw.js'].forEach(file => {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.innerText = file;
+            div.style.color = 'var(--success)';
+            div.onclick = () => openFile(file, div);
+            explorer.appendChild(div);
         });
 
-        document.getElementById('output-final').value = finalCode;
-        log(`Success! Merged ${mergeCount} blocks and resolved redundancies.`, "success");
+        alert("manifest.json and sw.js generated and added to workspace!");
     }
 
-    function refactorLogic() {
-        let code = document.getElementById('output-final').value || document.getElementById('input-master').value;
-        if(!code) return log("No code found to refactor", "warn");
-
-        log("Running Smart Refactor...", "info");
-        
-        // 1. Remove double negatives and simplify common patterns
-        code = code.replace(/!!/g, ''); 
-        // 2. Convert old function styles to arrow functions where safe (simplified)
-        // 3. Strip console logs for production optimization
-        const logCount = (code.match(/console\.log/g) || []).length;
-        code = code.replace(/console\.log\(.*?\);?/g, '');
-        
-        // 4. Optimize loops: basic for to forEach/map suggestion
-        const forCount = (code.match(/for\s*\(var/g) || []).length;
-        code = code.replace(/for\s*\(var/g, 'for (let');
-
-        document.getElementById('output-final').value = code;
-        log(`Refactor complete: Cleaned ${logCount} logs and updated ${forCount} loop declarations.`, "success");
-    }
-
-    async function downloadProject() {
-        const code = document.getElementById('output-final').value;
-        if(!code) return log("Nothing to export!", "warn");
+    // --- Project Export ---
+    async function exportProject() {
+        if(currentFileName) saveCurrentFile(); // Catch un-saved edits
 
         const zip = new JSZip();
-        const blocks = parseCode(code);
-        
-        log("Generating module ZIP...", "info");
-        blocks.forEach(b => {
-            zip.file(`${b.name}.js`, `export const ${b.name} = ${b.content}`);
-        });
-        zip.file("main_app.js", code);
+        for (const [filename, content] of Object.entries(vfs)) {
+            zip.file(filename, content);
+        }
 
         const content = await zip.generateAsync({type: "blob"});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(content);
-        a.download = "DevCompanion_Project.zip";
+        a.download = "Fixed_Project.zip";
         a.click();
-        log("Project ZIP downloaded.", "success");
-    }
-
-    function parseCode(text) {
-        const blocks = [];
-        const regex = /(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=\s*(?:\([^)]*\)|[\w$]+)\s*=>|([\w$]+)\s*\(.*?\)\s*\{)\s*\{?([\s\S]*?(\n\}|\n\s*\}))/g;
-        let m;
-        while ((m = regex.exec(text)) !== null) {
-            const name = m[1] || m[2] || m[3];
-            const content = m[0];
-            const isPlaceholder = /\.\.\.|placeholder/i.test(content);
-            if(name) blocks.push({ name, content, isPlaceholder });
-        }
-        return blocks;
-    }
-
-    function clearAll() {
-        if(confirm("Clear workspace?")) {
-            document.querySelectorAll('textarea').forEach(t => t.value = '');
-            log("Workspace cleared.");
-        }
     }
 </script>
 </body>
-</html>
+                </html>
