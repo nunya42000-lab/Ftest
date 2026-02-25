@@ -3,52 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Follow Me</title>
-    
-    <meta name="theme-color" content="#4f46e5">
-
-    <link rel="manifest" href="/Ftest/manifest.json">
-
-    <link rel="apple-touch-icon" href="/Ftest/icons/apple-touch-icon.png">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // --- Tailwind Configuration ---
-        tailwind.config = {
-            darkMode: 'class', // Enable class-based dark mode
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        // Base Colors
-                        'primary-app': '#4f46e5', // Indigo
-                        'secondary-app': '#6366f1',
-                        'accent-app': '#a5b4fc',
-                        
-                        // Control Button Colors (fixed for consistency)
-                        'btn-control-red': '#dc2626', 
-                        'btn-control-red-active': '#b91c1c',
-                        'btn-control-blue': '#2563eb', 
-                        'btn-control-blue-active': '#1e40af',
-                        'btn-control-green': '#10b981', // For "Copied!"
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <link rel="stylesheet" href="/Ftest/style.css">
+    <title>DevCompanion | Master Architect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #ff7b72; --success: #3fb950; --warn: #d29922; --text: #c9d1d9; --border: #30363d; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; }
+        .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 1400px; margin: auto; }
+        @media (max-width: 1000px) { .app-grid { grid-template-columns: 1fr; } }
+        
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        textarea { width: 100%; height: 300px; background: #000; color: #d1d5da; border: 1px solid var(--border); border-radius: 6px; font-family: 'Fira Code', monospace; padding: 10px; box-sizing: border-box; font-size: 13px; }
+        
+        .controls { grid-column: 1 / -1; display: flex; gap: 8px; background: var(--panel); padding: 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
+        button { flex: 1; min-width: 120px; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .btn-merge { background: var(--success); color: white; }
+        .btn-extract { background: var(--accent); color: white; }
+        .btn-zip { background: #58a6ff; color: white; display: none; }
+        .btn-sec { background: #21262d; color: var(--text); border: 1px solid var(--border); }
+        
+        #log { grid-column: 1 / -1; font-size: 12px; color: #8b949e; font-family: monospace; padding: 12px; background: #000; border-radius: 8px; border: 1px solid var(--border); }
+        .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+        .module-card { background: #1c2128; border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .module-card:hover { border-color: var(--accent); }
+    </style>
 </head>
-<body class="dark min-h-screen flex flex-col font-sans p-4">
+<body>
 
-    <script src="/Ftest/js/config.js"></script>
-    <script src="/Ftest/js/state.js"></script>
-    <script src="/Ftest/js/ui.js"></script>
-    <script src="/Ftest/js/core.js"></script>
-    <script src="/Ftest/js/demo.js"></script>
-    <script src="/Ftest/js/main.js"></script>
+<div class="app-grid">
+    <div class="controls">
+        <button class="btn-merge" onclick="scrubAndMerge()">MERGE & RESOLVE</button>
+        <button class="btn-extract" onclick="extractToModules()">EXTRACT MODULES</button>
+        <button id="zip-btn" class="btn-zip" onclick="downloadZip()">DOWNLOAD ALL (.ZIP)</button>
+        <button class="btn-sec" onclick="copyOutput()">COPY MAIN</button>
+    </div>
 
+    <div id="log">Console: Waiting for input...</div>
+
+    <div class="panel">
+        <h2 style="color:var(--accent); font-size: 16px; margin: 0;">Master File</h2>
+        <textarea id="master-input" placeholder="Paste Master code here..."></textarea>
+    </div>
+
+    <div class="panel">
+        <h2 style="color:var(--success); font-size: 16px; margin: 0;">Snippets</h2>
+        <textarea id="sources-input" placeholder="Paste fragmented files here..."></textarea>
+    </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
+        <h2 style="font-size: 16px; margin: 0;">Extracted Module View</h2>
+        <div id="module-display" class="module-grid"></div>
+        <textarea id="final-output" style="height: 350px; margin-top:10px;" readonly placeholder="Merged code here..."></textarea>
+    </div>
+</div>
+
+<script>
+    let extractedModules = [];
+
+    function scrubAndMerge() {
+        const masterText = document.getElementById('master-input').value;
+        const sourceText = document.getElementById('sources-input').value;
+        const log = document.getElementById('log');
+        log.innerHTML = "<b>Merging...</b><br>";
+
+        const masterBlocks = extractBlocks(masterText);
+        const sourceBlocks = extractBlocks(sourceText);
+        let finalCode = masterText;
+
+        sourceBlocks.forEach(srcBlock => {
+            const matchInMaster = masterBlocks.find(m => m.name === srcBlock.name);
+            if (matchInMaster) {
+                if (matchInMaster.isPlaceholder) {
+                    const pattern = new RegExp(`${srcBlock.name}\\s*[:=]?\\s*\\(.*?\\)\\s*{[\\s\\S]*?(\\.\\.\\.|placeholder)[\\s\\S]*?}`, 'g');
+                    finalCode = finalCode.replace(pattern, srcBlock.fullText);
+                    log.innerHTML += `✓ Filled: ${srcBlock.name}<br>`;
+                } else if (matchInMaster.fullText.trim() !== srcBlock.fullText.trim()) {
+                    log.innerHTML += `<span style="color:var(--warn)">⚠ CONFLICT:</span> ${srcBlock.name} differs. Master preserved.<br>`;
+                }
+            } else {
+                finalCode += `\n\n/* Appended Logic */\n${srcBlock.fullText}`;
+                log.innerHTML += `+ New Logic Added: ${srcBlock.name}<br>`;
+            }
+        });
+        document.getElementById('final-output').value = finalCode;
+    }
+
+    function extractToModules() {
+        const text = document.getElementById('master-input').value;
+        const blocks = extractBlocks(text);
+        const display = document.getElementById('module-display');
+        const zipBtn = document.getElementById('zip-btn');
+        
+        display.innerHTML = "";
+        extractedModules = [];
+
+        blocks.forEach(block => {
+            if (!block.isPlaceholder) {
+                extractedModules.push(block);
+                const div = document.createElement('div');
+                div.className = 'module-card';
+                div.innerHTML = `<strong>${block.name}.js</strong>`;
+                div.onclick = () => {
+                    navigator.clipboard.writeText(`export const ${block.name} = ${block.fullText}`);
+                    alert(`Copied ${block.name} module!`);
+                };
+                display.appendChild(div);
+            }
+        });
+
+        if(extractedModules.length > 0) zipBtn.style.display = 'block';
+        document.getElementById('log').innerHTML = `Indexed ${extractedModules.length} modules for export.`;
+    }
+
+    async function downloadZip() {
+        const zip = new JSZip();
+        extractedModules.forEach(mod => {
+            zip.file(`${mod.name}.js`, `export const ${mod.name} = ${mod.fullText}`);
+        });
+
+        const content = await zip.generateAsync({type: "blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "DevCompanion_Modules.zip";
+        link.click();
+    }
+
+    function extractBlocks(text) {
+        const blocks = [];
+        const regex = /(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=\s*(?:\([^)]*\)|[\w$]+)\s*=>|([\w$]+)\s*\(.*?\)\s*\{)\s*\{?([\s\S]*?(\n\}|\n\s*\}))/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const name = match[1] || match[2] || match[3];
+            const fullText = match[0];
+            const isPlaceholder = /\.\.\.|placeholder/i.test(fullText);
+            if(name) blocks.push({ name, fullText, isPlaceholder });
+        }
+        return blocks;
+    }
+
+    function copyOutput() {
+        const out = document.getElementById('final-output');
+        out.select(); document.execCommand('copy');
+    }
+</script>
 </body>
 </html>
