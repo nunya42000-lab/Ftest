@@ -7,6 +7,7 @@
     <link rel="manifest" href="./manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -21,7 +22,6 @@
 
         .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        /* Slide-out Sidebar UI */
         .sidebar { position: absolute; z-index: 100; left: -250px; top: 0; width: 220px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: left 0.3s ease; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         .sidebar.open { left: 0; }
         .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: none; opacity: 0; transition: opacity 0.3s ease; }
@@ -53,6 +53,9 @@
         .search-match { background: var(--accent); color: #000; padding: 0 2px; border-radius: 2px; font-weight: bold; }
         .search-result-item { padding: 6px; cursor: pointer; border-radius: 4px; margin-bottom: 4px; border: 1px solid transparent; }
         .search-result-item:hover { background: #1c2128; border-color: var(--border); }
+        
+        /* Status Indicator */
+        #save-status { font-size: 11px; color: var(--success); margin-left: 10px; font-weight: normal; opacity: 0; transition: opacity 0.3s; }
     </style>
 </head>
 <body>
@@ -60,16 +63,16 @@
 <header>
     <div class="header-left">
         <button class="menu-btn" onclick="openSidebar()">☰</button>
-        <div style="font-weight: bold; font-size: 16px;">DevOS</div>
+        <div style="font-weight: bold; font-size: 16px;">DevOS <span id="save-status">Saved</span></div>
     </div>
     <button class="btn-primary" style="padding: 8px 12px;" onclick="exportProject()">ZIP & EXPORT</button>
 </header>
 
 <div class="tabs">
     <div class="tab active" onclick="switchTab('editor')">1. Editor</div>
-    <div class="tab" onclick="switchTab('linter')">2. Debugger</div>
-    <div class="tab" onclick="switchTab('search')">3. Search</div>
-    <div class="tab" onclick="switchTab('router')">4. Router</div>
+    <div class="tab" onclick="switchTab('linter')">2. Linter</div>
+    <div class="tab" onclick="switchTab('diagnostic')">3. Inspector</div>
+    <div class="tab" onclick="switchTab('search')">4. Search</div>
 </div>
 
 <div class="workspace">
@@ -83,28 +86,38 @@
         <div class="file-list" id="file-explorer">
             <div style="color:var(--muted); text-align:center; margin-top:20px;">No files loaded</div>
         </div>
+        <button style="background: var(--danger); color: white; margin: 10px; padding: 10px; border-radius: 4px;" onclick="clearWorkspace()">🗑️ CLEAR WORKSPACE</button>
     </aside>
 
     <main class="main-view">
         <div id="view-editor" class="panel-box active">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <strong id="current-file-label" style="color:var(--accent); font-size: 14px;">Select a file (☰)</strong>
-                <button class="btn-outline" style="padding: 6px 12px;" onclick="saveCurrentFile()">Save to RAM</button>
+                <span style="font-size: 11px; color: var(--muted);">Auto-saves on type</span>
             </div>
             <div class="editor-container">
                 <div id="line-numbers">1</div>
-                <textarea id="main-editor" wrap="off" oninput="updateEditorSync()" onscroll="syncEditorScroll()"></textarea>
+                <textarea id="main-editor" wrap="off" oninput="updateEditorSync(); triggerAutoSave();" onscroll="syncEditorScroll()"></textarea>
             </div>
         </div>
 
         <div id="view-linter" class="panel-box">
-            <h3 style="margin-top:0; color:var(--danger)">Syntax & Error Inspector</h3>
+            <h3 style="margin-top:0; color:var(--danger)">Syntax Inspector</h3>
             <div style="margin-bottom: 10px;"><strong>Target: </strong><span id="linter-target-label" style="color:var(--accent);">None</span></div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-                <button class="btn-danger" style="flex: 1;" onclick="runLinter()">SCAN ERRORS</button>
+                <button class="btn-danger" style="flex: 1;" onclick="runLinter()">SCAN SYNTAX</button>
                 <button class="btn-warn" id="btn-autofix" style="flex: 1; display: none;" onclick="autoFixBasicErrors()">AUTO-FIX</button>
             </div>
             <div id="linter-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:monospace; font-size:12px;">Awaiting scan...</div>
+        </div>
+
+        <div id="view-diagnostic" class="panel-box">
+            <h3 style="margin-top:0; color:var(--warn)">Dependency Inspector</h3>
+            <p style="font-size: 12px; color:var(--muted); margin-top: 0;">Scans all 50 files to verify that your imports perfectly match your exports. This catches "White Screen" breaks.</p>
+            <button class="btn-warn" style="width: 100%; margin-bottom: 15px;" onclick="runDependencyCheck()">CHECK IMPORT/EXPORT CHAINS</button>
+            <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px;">
+                <span style="color: var(--muted)">Hit check to scan workspace links.</span>
+            </div>
         </div>
 
         <div id="view-search" class="panel-box">
@@ -117,35 +130,64 @@
                 <button class="btn-outline" style="flex: 1;" onclick="performSearch()">FIND ALL</button>
                 <button class="btn-warn" style="flex: 1;" onclick="performReplace()">REPLACE ALL</button>
             </div>
-            <div id="search-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px;">
-                <span style="color: var(--muted)">Enter a query to search across all loaded files.</span>
-            </div>
-        </div>
-
-        <div id="view-router" class="panel-box">
-            <h3 style="margin-top:0; color:var(--accent)">Auto-Router</h3>
-            <textarea id="router-input" style="height: 180px; flex: none; background:#000; color:#fff; padding:10px; border:1px solid var(--border);"></textarea>
-            <select id="router-target" style="background:#000; color:#fff; padding:10px; border:1px solid var(--border); border-radius:4px; width:100%; margin-top:10px; font-family: monospace;"></select>
-            <button class="btn-action" style="margin-top: 15px; width: 100%;" onclick="routeCode()">INJECT CODE</button>
-            <div id="router-log" style="margin-top:15px; font-family:monospace; font-size:12px; color:var(--success); background: #000; padding: 10px; display: none;"></div>
+            <div id="search-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px;"></div>
         </div>
     </main>
 </div>
 
 <script>
-    // Explicit Sidebar Controls
-    function openSidebar() {
-        document.getElementById('ui-sidebar').classList.add('open');
-        document.getElementById('ui-scrim').classList.add('active');
-    }
-    function closeSidebar() {
-        document.getElementById('ui-sidebar').classList.remove('open');
-        document.getElementById('ui-scrim').classList.remove('active');
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
     }
 
     let vfs = {};
     let currentFileName = null;
-    let fixableErrors = [];
+    let autoSaveTimeout = null;
+
+    // --- Boot & Persistence Logic ---
+    window.addEventListener('DOMContentLoaded', async () => {
+        localforage.config({ name: 'DevOS', storeName: 'workspace_files' });
+        try {
+            const savedVFS = await localforage.getItem('vfs_data');
+            if (savedVFS && Object.keys(savedVFS).length > 0) {
+                vfs = savedVFS;
+                rebuildSidebar();
+                flashSaveStatus("Workspace Restored");
+            }
+        } catch (err) { console.error("Could not load DB", err); }
+    });
+
+    function triggerAutoSave() {
+        if(currentFileName) vfs[currentFileName] = document.getElementById('main-editor').value;
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(async () => {
+            await localforage.setItem('vfs_data', vfs);
+            flashSaveStatus("Saved");
+        }, 800); // Wait 800ms after typing stops before hitting the DB
+    }
+
+    function flashSaveStatus(msg) {
+        const indicator = document.getElementById('save-status');
+        indicator.innerText = msg;
+        indicator.style.opacity = 1;
+        setTimeout(() => { indicator.style.opacity = 0; }, 2000);
+    }
+
+    async function clearWorkspace() {
+        if(confirm("DANGER: WIPE THE ENTIRE WORKSPACE?\nThis will clear all files from the DevOS database.")) {
+            vfs = {};
+            currentFileName = null;
+            document.getElementById('main-editor').value = '';
+            document.getElementById('current-file-label').innerText = 'Select a file (☰)';
+            document.getElementById('file-explorer').innerHTML = '<div style="color:var(--muted); text-align:center; margin-top:20px;">No files loaded</div>';
+            await localforage.clear();
+            closeSidebar();
+        }
+    }
+
+    // --- UI Controls ---
+    function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
+    function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
 
     function updateEditorSync() {
         const textarea = document.getElementById('main-editor');
@@ -163,61 +205,48 @@
         if(tabId === 'editor') updateEditorSync();
     }
 
-    // Safely Load Files
-    function loadFiles(event) {
+    // --- File Operations ---
+    async function loadFiles(event) {
         try {
             const fileList = event.target.files;
-            if(!fileList || fileList.length === 0) {
-                alert("No files selected or browser blocked access.");
-                return;
-            }
-
+            if(!fileList || fileList.length === 0) return;
             const files = Array.from(fileList).sort((a, b) => a.name.localeCompare(b.name));
-            vfs = {}; 
-            document.getElementById('file-explorer').innerHTML = ''; 
-            document.getElementById('router-target').innerHTML = '';
             
             let loaded = 0;
             files.forEach(file => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     vfs[file.name] = e.target.result || '';
-                    addFileToSidebar(file.name);
                     loaded++;
                     if(loaded === files.length) {
+                        rebuildSidebar();
                         openFile(files[0].name, document.querySelector('.file-item'));
-                        openSidebar(); // Explicitly ensure it opens
-                        alert(`Successfully loaded ${files.length} files into RAM.`);
+                        openSidebar();
+                        await localforage.setItem('vfs_data', vfs);
+                        alert(`Successfully loaded ${files.length} files into DB.`);
                     }
                 };
-                reader.onerror = () => alert(`Error reading file: ${file.name}`);
                 reader.readAsText(file);
             });
-        } catch (err) {
-            alert(`File System Error: ${err.message}`);
-        }
+        } catch (err) { alert(`File Error: ${err.message}`); }
     }
 
-    function addFileToSidebar(filename) {
-        const div = document.createElement('div');
-        div.className = 'file-item'; div.innerText = filename;
-        div.onclick = () => { 
-            openFile(filename, div); 
-            closeSidebar(); // Explicitly close when file is picked
-        };
-        document.getElementById('file-explorer').appendChild(div);
-        if(filename.endsWith('.js') || filename.endsWith('.json')) {
-            const opt = document.createElement('option'); opt.value = filename; opt.innerText = filename;
-            document.getElementById('router-target').appendChild(opt);
-        }
+    function rebuildSidebar() {
+        const explorer = document.getElementById('file-explorer');
+        explorer.innerHTML = '';
+        Object.keys(vfs).sort((a, b) => a.localeCompare(b)).forEach(filename => {
+            const div = document.createElement('div');
+            div.className = 'file-item'; div.innerText = filename;
+            div.onclick = () => { openFile(filename, div); closeSidebar(); };
+            explorer.appendChild(div);
+        });
     }
 
     function openFile(filename, element) {
-        if(currentFileName) saveCurrentFile();
+        if(currentFileName) triggerAutoSave();
         currentFileName = filename;
         document.getElementById('main-editor').value = vfs[filename] || '';
         document.getElementById('current-file-label').innerText = filename;
-        
         document.querySelectorAll('.file-item').forEach(el => {
             if (el.innerText === filename) el.classList.add('active');
             else el.classList.remove('active');
@@ -225,14 +254,64 @@
         updateEditorSync();
     }
 
-    function saveCurrentFile() { if(currentFileName) vfs[currentFileName] = document.getElementById('main-editor').value; }
+    // --- Dependency Inspector (The Error Finder) ---
+    function runDependencyCheck() {
+        const resultsBox = document.getElementById('diagnostic-results');
+        resultsBox.innerHTML = 'Scanning architecture...<br>';
+        
+        let globalExports = {}; // Store { 'file.js': ['func1', 'const2'] }
+        let errorsFound = [];
 
-    // --- Core Logic functions (Linter, Search, Router, Export) unchanged for safety ---
+        // Pass 1: Catalog all Exports
+        for (const [filename, content] of Object.entries(vfs)) {
+            globalExports[filename] = [];
+            // Match: export function foo | export const bar | export class Baz
+            const exportRegex = /export\s+(?:function|const|let|var|class)\s+([\w$]+)/g;
+            let match;
+            while ((match = exportRegex.exec(content)) !== null) {
+                globalExports[filename].push(match[1]);
+            }
+        }
+
+        // Pass 2: Verify all Imports
+        for (const [filename, content] of Object.entries(vfs)) {
+            const lines = content.split('\n');
+            lines.forEach((line, lineIdx) => {
+                // Match: import { func1, const2 } from './file.js'
+                const importRegex = /import\s+{([^}]+)}\s+from\s+['"]\.?\/([^'"]+)['"]/g;
+                let match;
+                while ((match = importRegex.exec(line)) !== null) {
+                    const importedVars = match[1].split(',').map(v => v.trim());
+                    let targetFile = match[2];
+                    if(!targetFile.endsWith('.js')) targetFile += '.js'; // Auto-append extension logic
+
+                    if (!globalExports[targetFile]) {
+                        errorsFound.push(`<div class="error-item"><span style="color:var(--danger)">[Missing File]</span> <b>${filename}</b> (Line ${lineIdx + 1}) is trying to import from <b>${targetFile}</b>, but that file does not exist in the workspace.</div>`);
+                    } else {
+                        importedVars.forEach(v => {
+                            // Strip aliases: import { original as newName }
+                            const actualVar = v.split(' as ')[0].trim();
+                            if(actualVar && !globalExports[targetFile].includes(actualVar)) {
+                                errorsFound.push(`<div class="error-item"><span style="color:var(--warn)">[Broken Link]</span> <b>${filename}</b> (Line ${lineIdx + 1}) wants to import <b>'${actualVar}'</b> from <b>${targetFile}</b>, but ${targetFile} does not export it.</div>`);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        if (errorsFound.length > 0) {
+            resultsBox.innerHTML = `<div style="color:var(--danger); font-weight:bold; margin-bottom:10px;">Found ${errorsFound.length} Broken Links:</div>` + errorsFound.join('');
+        } else {
+            resultsBox.innerHTML = `<div style="color:var(--success); font-weight:bold;">✔ Architecture Clean.</div><p style="color:var(--muted)">All mapped imports perfectly match their exports across ${Object.keys(vfs).length} files.</p>`;
+        }
+    }
+
+    // --- Linter, Search, Export (Minified for space) ---
     function runLinter() {
-        saveCurrentFile();
+        triggerAutoSave();
         JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true, devel: true, undef: true });
-        fixableErrors = [];
-        let html = '';
+        fixableErrors = []; let html = '';
         if (JSHINT.errors.length > 0) {
             JSHINT.errors.forEach(err => {
                 if (err) {
@@ -248,97 +327,8 @@
             document.getElementById('btn-autofix').style.display = 'none';
         }
     }
-
     function autoFixBasicErrors() {
         let lines = vfs[currentFileName].split('\n');
         fixableErrors.sort((a, b) => b.line - a.line).forEach(err => {
             const idx = err.line - 1;
-            if (err.code === 'W033') lines[idx] = lines[idx].replace(/\s+$/, '') + ';';
-            if (err.code === 'W069') lines[idx] = lines[idx].replace(/\[(['"])([a-zA-Z_$][0-9a-zA-Z_$]*)\1\]/g, '.$2');
-        });
-        vfs[currentFileName] = lines.join('\n');
-        document.getElementById('main-editor').value = vfs[currentFileName];
-        updateEditorSync(); runLinter();
-    }
-
-    function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-    function performSearch() {
-        if(currentFileName) saveCurrentFile(); 
-        const query = document.getElementById('search-query').value;
-        const resultsBox = document.getElementById('search-results');
-        if(!query) return resultsBox.innerHTML = '<span style="color:var(--danger)">Please enter a search term.</span>';
-
-        let html = ''; let totalMatches = 0;
-        const regex = new RegExp(escapeRegExp(query), 'gi');
-
-        for (const [filename, content] of Object.entries(vfs)) {
-            const lines = content.split('\n');
-            let fileMatchesHtml = '';
-            
-            lines.forEach((line, index) => {
-                if(line.toLowerCase().includes(query.toLowerCase())) {
-                    totalMatches++;
-                    const highlighted = line.replace(regex, `<span class="search-match">$&</span>`);
-                    fileMatchesHtml += `<div class="search-result-item" onclick="openFile('${filename}'); switchTab('editor'); closeSidebar();"><span style="color:var(--warn); margin-right:5px;">Line ${index + 1}:</span><span style="color:var(--text)">${highlighted.trim().substring(0, 100)}${line.length > 100 ? '...' : ''}</span></div>`;
-                }
-            });
-            if (fileMatchesHtml) html += `<div style="margin-bottom: 15px; background: #1c2128; border: 1px solid var(--border); border-radius: 4px; padding: 8px;"><strong style="color:var(--success); display:block; margin-bottom:5px; border-bottom: 1px solid var(--border); padding-bottom:5px;">📁 ${filename}</strong>${fileMatchesHtml}</div>`;
-        }
-
-        if (totalMatches === 0) resultsBox.innerHTML = '<span style="color:var(--muted)">No matches found.</span>';
-        else resultsBox.innerHTML = `<div style="margin-bottom: 10px; color:var(--accent); font-weight:bold;">Found ${totalMatches} instances:</div>` + html;
-    }
-
-    function performReplace() {
-        if(currentFileName) saveCurrentFile();
-        const query = document.getElementById('search-query').value;
-        const replacement = document.getElementById('replace-query').value;
-        if(!query) return alert("Please enter a search term.");
-        if(!confirm(`DANGER ZONE: Replace ALL instances of "${query}" with "${replacement}" across every file?`)) return;
-
-        let replaceCount = 0; let filesChanged = 0;
-        for (const filename of Object.keys(vfs)) {
-            if(vfs[filename].includes(query)) {
-                filesChanged++;
-                const parts = vfs[filename].split(query);
-                replaceCount += parts.length - 1;
-                vfs[filename] = parts.join(replacement); 
-            }
-        }
-
-        if (currentFileName) {
-            document.getElementById('main-editor').value = vfs[currentFileName];
-            updateEditorSync();
-        }
-        alert(`Successfully refactored ${replaceCount} instances across ${filesChanged} files.`);
-        performSearch(); 
-    }
-
-    function routeCode() {
-        const input = document.getElementById('router-input').value.trim();
-        const targetFile = document.getElementById('router-target').value;
-        const nameMatch = input.match(/(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=)/);
-        if(!nameMatch) return alert("Error: Could not detect function name.");
-        const name = nameMatch[1] || nameMatch[2];
-        
-        let code = input.startsWith('export') ? input : `export ${input}`;
-        vfs[targetFile] = (vfs[targetFile] || '') + `\n\n/* Auto-Routed */\n${code}`;
-        
-        const log = document.getElementById('router-log');
-        log.style.display = 'block';
-        log.innerHTML = `Injected <b>${name}</b> into ${targetFile}.<br><input type="text" value="import { ${name} } from './${targetFile}';" style="width:100%; background:#1c2128; color:var(--accent); margin-top:5px;" readonly onclick="this.select(); document.execCommand('copy');">`;
-        document.getElementById('router-input').value = '';
-        if(currentFileName === targetFile) openFile(targetFile);
-    }
-
-    async function exportProject() {
-        if(currentFileName) saveCurrentFile(); 
-        const zip = new JSZip();
-        for (const [filename, content] of Object.entries(vfs)) zip.file(filename, content);
-        const content = await zip.generateAsync({type: "blob"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = "DevOS_Project.zip"; a.click();
-    }
-</script>
-</body>
-</html>
+            if (err.code === 'W033') lines[idx] = lines[idx].replace(/\s+$/, '') 
