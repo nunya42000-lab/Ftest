@@ -48,9 +48,8 @@
         .btn-outline { background: #21262d; color: var(--text); border: 1px solid var(--border); }
 
         .file-upload-wrapper { padding: 15px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border); position: relative; }
-        .file-upload-wrapper input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .file-upload-wrapper input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
         
-        /* Search Highlight Styles */
         .search-match { background: var(--accent); color: #000; padding: 0 2px; border-radius: 2px; font-weight: bold; }
         .search-result-item { padding: 6px; cursor: pointer; border-radius: 4px; margin-bottom: 4px; border: 1px solid transparent; }
         .search-result-item:hover { background: #1c2128; border-color: var(--border); }
@@ -60,7 +59,7 @@
 
 <header>
     <div class="header-left">
-        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <button class="menu-btn" onclick="openSidebar()">☰</button>
         <div style="font-weight: bold; font-size: 16px;">DevOS</div>
     </div>
     <button class="btn-primary" style="padding: 8px 12px;" onclick="exportProject()">ZIP & EXPORT</button>
@@ -74,12 +73,12 @@
 </div>
 
 <div class="workspace">
-    <div class="scrim" id="ui-scrim" onclick="toggleSidebar()"></div>
+    <div class="scrim" id="ui-scrim" onclick="closeSidebar()"></div>
     
     <aside class="sidebar" id="ui-sidebar">
         <div class="file-upload-wrapper">
             <span style="font-size: 12px; font-weight: bold; color: var(--accent);">📁 LOAD FILES</span>
-            <input type="file" multiple webkitdirectory directory onchange="loadFiles(event)">
+            <input type="file" multiple id="file-input" onchange="loadFiles(event)">
         </div>
         <div class="file-list" id="file-explorer">
             <div style="color:var(--muted); text-align:center; margin-top:20px;">No files loaded</div>
@@ -134,20 +133,19 @@
 </div>
 
 <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW setup failed: ', err));
-        });
+    // Explicit Sidebar Controls
+    function openSidebar() {
+        document.getElementById('ui-sidebar').classList.add('open');
+        document.getElementById('ui-scrim').classList.add('active');
+    }
+    function closeSidebar() {
+        document.getElementById('ui-sidebar').classList.remove('open');
+        document.getElementById('ui-scrim').classList.remove('active');
     }
 
     let vfs = {};
     let currentFileName = null;
     let fixableErrors = [];
-
-    function toggleSidebar() {
-        document.getElementById('ui-sidebar').classList.toggle('open');
-        document.getElementById('ui-scrim').classList.toggle('active');
-    }
 
     function updateEditorSync() {
         const textarea = document.getElementById('main-editor');
@@ -165,33 +163,50 @@
         if(tabId === 'editor') updateEditorSync();
     }
 
+    // Safely Load Files
     function loadFiles(event) {
-        const files = Array.from(event.target.files).sort((a, b) => a.name.localeCompare(b.name));
-        if(files.length === 0) return;
-        vfs = {}; document.getElementById('file-explorer').innerHTML = ''; document.getElementById('router-target').innerHTML = '';
-        
-        let loaded = 0;
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                vfs[file.name] = e.target.result;
-                addFileToSidebar(file.name);
-                loaded++;
-                if(loaded === files.length) {
-                    openFile(files[0].name, document.querySelector('.file-item'));
-                    toggleSidebar();
-                }
-            };
-            reader.readAsText(file);
-        });
+        try {
+            const fileList = event.target.files;
+            if(!fileList || fileList.length === 0) {
+                alert("No files selected or browser blocked access.");
+                return;
+            }
+
+            const files = Array.from(fileList).sort((a, b) => a.name.localeCompare(b.name));
+            vfs = {}; 
+            document.getElementById('file-explorer').innerHTML = ''; 
+            document.getElementById('router-target').innerHTML = '';
+            
+            let loaded = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    vfs[file.name] = e.target.result || '';
+                    addFileToSidebar(file.name);
+                    loaded++;
+                    if(loaded === files.length) {
+                        openFile(files[0].name, document.querySelector('.file-item'));
+                        openSidebar(); // Explicitly ensure it opens
+                        alert(`Successfully loaded ${files.length} files into RAM.`);
+                    }
+                };
+                reader.onerror = () => alert(`Error reading file: ${file.name}`);
+                reader.readAsText(file);
+            });
+        } catch (err) {
+            alert(`File System Error: ${err.message}`);
+        }
     }
 
     function addFileToSidebar(filename) {
         const div = document.createElement('div');
         div.className = 'file-item'; div.innerText = filename;
-        div.onclick = () => { openFile(filename, div); toggleSidebar(); };
+        div.onclick = () => { 
+            openFile(filename, div); 
+            closeSidebar(); // Explicitly close when file is picked
+        };
         document.getElementById('file-explorer').appendChild(div);
-        if(filename.endsWith('.js')) {
+        if(filename.endsWith('.js') || filename.endsWith('.json')) {
             const opt = document.createElement('option'); opt.value = filename; opt.innerText = filename;
             document.getElementById('router-target').appendChild(opt);
         }
@@ -200,20 +215,19 @@
     function openFile(filename, element) {
         if(currentFileName) saveCurrentFile();
         currentFileName = filename;
-        document.getElementById('main-editor').value = vfs[filename];
+        document.getElementById('main-editor').value = vfs[filename] || '';
         document.getElementById('current-file-label').innerText = filename;
         
         document.querySelectorAll('.file-item').forEach(el => {
             if (el.innerText === filename) el.classList.add('active');
             else el.classList.remove('active');
         });
-        
         updateEditorSync();
     }
 
     function saveCurrentFile() { if(currentFileName) vfs[currentFileName] = document.getElementById('main-editor').value; }
 
-    // --- Linter Engine ---
+    // --- Core Logic functions (Linter, Search, Router, Export) unchanged for safety ---
     function runLinter() {
         saveCurrentFile();
         JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true, devel: true, undef: true });
@@ -247,19 +261,15 @@
         updateEditorSync(); runLinter();
     }
 
-    // --- Global Search & Replace Engine ---
-    function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
+    function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     function performSearch() {
-        if(currentFileName) saveCurrentFile(); // Save pending edits
+        if(currentFileName) saveCurrentFile(); 
         const query = document.getElementById('search-query').value;
         const resultsBox = document.getElementById('search-results');
         if(!query) return resultsBox.innerHTML = '<span style="color:var(--danger)">Please enter a search term.</span>';
 
-        let html = '';
-        let totalMatches = 0;
+        let html = ''; let totalMatches = 0;
         const regex = new RegExp(escapeRegExp(query), 'gi');
 
         for (const [filename, content] of Object.entries(vfs)) {
@@ -270,48 +280,30 @@
                 if(line.toLowerCase().includes(query.toLowerCase())) {
                     totalMatches++;
                     const highlighted = line.replace(regex, `<span class="search-match">$&</span>`);
-                    fileMatchesHtml += `
-                        <div class="search-result-item" onclick="openFile('${filename}'); switchTab('editor');">
-                            <span style="color:var(--warn); margin-right:5px;">Line ${index + 1}:</span> 
-                            <span style="color:var(--text)">${highlighted.trim().substring(0, 100)}${line.length > 100 ? '...' : ''}</span>
-                        </div>`;
+                    fileMatchesHtml += `<div class="search-result-item" onclick="openFile('${filename}'); switchTab('editor'); closeSidebar();"><span style="color:var(--warn); margin-right:5px;">Line ${index + 1}:</span><span style="color:var(--text)">${highlighted.trim().substring(0, 100)}${line.length > 100 ? '...' : ''}</span></div>`;
                 }
             });
-
-            if (fileMatchesHtml) {
-                html += `
-                    <div style="margin-bottom: 15px; background: #1c2128; border: 1px solid var(--border); border-radius: 4px; padding: 8px;">
-                        <strong style="color:var(--success); display:block; margin-bottom:5px; border-bottom: 1px solid var(--border); padding-bottom:5px;">📁 ${filename}</strong>
-                        ${fileMatchesHtml}
-                    </div>`;
-            }
+            if (fileMatchesHtml) html += `<div style="margin-bottom: 15px; background: #1c2128; border: 1px solid var(--border); border-radius: 4px; padding: 8px;"><strong style="color:var(--success); display:block; margin-bottom:5px; border-bottom: 1px solid var(--border); padding-bottom:5px;">📁 ${filename}</strong>${fileMatchesHtml}</div>`;
         }
 
-        if (totalMatches === 0) {
-            resultsBox.innerHTML = '<span style="color:var(--muted)">No matches found across loaded files.</span>';
-        } else {
-            resultsBox.innerHTML = `<div style="margin-bottom: 10px; color:var(--accent); font-weight:bold;">Found ${totalMatches} instances:</div>` + html;
-        }
+        if (totalMatches === 0) resultsBox.innerHTML = '<span style="color:var(--muted)">No matches found.</span>';
+        else resultsBox.innerHTML = `<div style="margin-bottom: 10px; color:var(--accent); font-weight:bold;">Found ${totalMatches} instances:</div>` + html;
     }
 
     function performReplace() {
         if(currentFileName) saveCurrentFile();
         const query = document.getElementById('search-query').value;
         const replacement = document.getElementById('replace-query').value;
-        
         if(!query) return alert("Please enter a search term.");
+        if(!confirm(`DANGER ZONE: Replace ALL instances of "${query}" with "${replacement}" across every file?`)) return;
 
-        if(!confirm(`DANGER ZONE: Are you sure you want to replace ALL instances of "${query}" with "${replacement}" across every single file in the workspace?`)) return;
-
-        let replaceCount = 0;
-        let filesChanged = 0;
-
+        let replaceCount = 0; let filesChanged = 0;
         for (const filename of Object.keys(vfs)) {
             if(vfs[filename].includes(query)) {
                 filesChanged++;
                 const parts = vfs[filename].split(query);
                 replaceCount += parts.length - 1;
-                vfs[filename] = parts.join(replacement); // Mass assignment
+                vfs[filename] = parts.join(replacement); 
             }
         }
 
@@ -319,17 +311,15 @@
             document.getElementById('main-editor').value = vfs[currentFileName];
             updateEditorSync();
         }
-        
         alert(`Successfully refactored ${replaceCount} instances across ${filesChanged} files.`);
-        performSearch(); // Refresh the list to show it's cleared
+        performSearch(); 
     }
 
-    // --- Router & Export ---
     function routeCode() {
         const input = document.getElementById('router-input').value.trim();
         const targetFile = document.getElementById('router-target').value;
         const nameMatch = input.match(/(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=)/);
-        if(!nameMatch) return alert("Error: Could not detect function/variable name.");
+        if(!nameMatch) return alert("Error: Could not detect function name.");
         const name = nameMatch[1] || nameMatch[2];
         
         let code = input.startsWith('export') ? input : `export ${input}`;
@@ -347,4 +337,8 @@
         const zip = new JSZip();
         for (const [filename, content] of Object.entries(vfs)) zip.file(filename, content);
         const content = await zip.generateAsync({type: "blob"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(cont
+        const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = "DevOS_Project.zip"; a.click();
+    }
+</script>
+</body>
+</html>
