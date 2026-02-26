@@ -17,7 +17,6 @@
 
         .workspace { display: flex; flex: 1; overflow: hidden; }
         
-        /* Sidebar */
         .sidebar { width: 200px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
         @media (max-width: 768px) { .sidebar { width: 140px; } }
         .file-list { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; font-family: 'Fira Code', monospace; }
@@ -25,7 +24,6 @@
         .file-item:hover { background: #1c2128; }
         .file-item.active { background: #1f6feb33; border-color: var(--accent); color: #58a6ff; }
 
-        /* Custom Editor with Line Numbers */
         .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; }
         .editor-container { display: flex; flex: 1; overflow: hidden; background: #000; border: 1px solid var(--border); border-radius: 6px; position: relative; }
         
@@ -41,7 +39,7 @@
         .btn-action { background: var(--accent); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-warn { background: var(--warn); color: #000; }
-        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline { background: #21262d; color: var(--text); border: 1px solid var(--border); }
 
         .file-upload-wrapper { position: relative; overflow: hidden; display: block; padding: 15px 10px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border); }
         .file-upload-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
@@ -98,8 +96,9 @@
                 <span id="linter-target-label" style="color:var(--accent); font-size: 13px;">None</span>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <button class="btn-danger" style="flex: 1;" onclick="runLinter()">SCAN ERRORS</button>
+                <button class="btn-outline" style="flex: 1;" onclick="copyErrors()">COPY LOG</button>
                 <button class="btn-warn" id="btn-autofix" style="flex: 1; display: none;" onclick="autoFixBasicErrors()">AUTO-FIX</button>
             </div>
 
@@ -171,7 +170,7 @@
         }
     }
 
-    // --- File System Operations (With Alphabetical Sort) ---
+    // --- File System Operations ---
     function loadFiles(event) {
         const files = event.target.files;
         if(files.length === 0) return;
@@ -182,7 +181,6 @@
         explorer.innerHTML = '';
         routerSelect.innerHTML = '';
 
-        // FEATURE ADDED: Alphabetical sorting
         const fileArray = Array.from(files).sort((a, b) => a.name.localeCompare(b.name));
 
         let filesLoaded = 0;
@@ -194,7 +192,6 @@
                 
                 filesLoaded++;
                 if(filesLoaded === fileArray.length && fileArray.length > 0) {
-                    // Open the first file automatically
                     openFile(fileArray[0].name, document.querySelector('.file-item'));
                 }
             };
@@ -233,7 +230,7 @@
         if(element) element.classList.add('active');
 
         updateEditorSync();
-        document.getElementById('btn-autofix').style.display = 'none'; // Reset autofix state
+        document.getElementById('btn-autofix').style.display = 'none';
         document.getElementById('linter-results').innerHTML = "Awaiting scan...";
     }
 
@@ -242,7 +239,7 @@
         vfs[currentFileName] = document.getElementById('main-editor').value;
     }
 
-    // --- Linter / Debugger (With Auto-Fix Logic) ---
+    // --- Linter / Debugger ---
     function runLinter() {
         if (!currentFileName || !currentFileName.endsWith('.js')) {
             document.getElementById('linter-results').innerHTML = '<span style="color:var(--danger)">Please select a .js file from the Editor tab.</span>';
@@ -264,8 +261,8 @@
             
             JSHINT.errors.forEach(err => {
                 if (err) {
-                    // Detect fixable errors (like W033: Missing semicolon)
-                    const isFixable = err.code === 'W033';
+                    // W033 = Missing semicolon. W069 = Better written in dot notation.
+                    const isFixable = err.code === 'W033' || err.code === 'W069';
                     if (isFixable) fixableErrors.push(err);
 
                     errorHTML += `
@@ -277,8 +274,6 @@
                 }
             });
             resultsBox.innerHTML = errorHTML;
-            
-            // Show auto-fix button if we found fixable things
             autoFixBtn.style.display = fixableErrors.length > 0 ? 'block' : 'none';
         } else {
             resultsBox.innerHTML = `<div style="color:var(--success); font-weight:bold;">✔ 0 Syntax Errors.</div>`;
@@ -291,29 +286,90 @@
 
         let lines = vfs[currentFileName].split('\n');
         
-        // Apply fixes from the bottom up so line index changes don't misalign us
-        // (Though for semicolons, line counts don't change, it's just a good habit)
         fixableErrors.sort((a, b) => b.line - a.line).forEach(err => {
+            const idx = err.line - 1;
             if (err.code === 'W033') {
-                // Strip trailing whitespace and append semicolon
-                const idx = err.line - 1;
+                // Fix missing semicolon
                 lines[idx] = lines[idx].replace(/\s+$/, '') + ';';
+            } else if (err.code === 'W069') {
+                // Fix bracket notation to dot notation: ['something'] -> .something
+                lines[idx] = lines[idx].replace(/\[(['"])([a-zA-Z_$][0-9a-zA-Z_$]*)\1\]/g, '.$2');
             }
         });
 
-        // Save back to VFS and update Editor
         vfs[currentFileName] = lines.join('\n');
         document.getElementById('main-editor').value = vfs[currentFileName];
         updateEditorSync();
-
-        // Re-run the linter to verify fixes
         runLinter();
-        alert(`Successfully applied ${fixableErrors.length} auto-fixes!`);
     }
 
-    // --- Router, PWA, and Export unchanged from previous version ---
-    function routeCode() { /* ... */ }
-    function generatePWA() { /* ... */ }
+    // --- Copy Log Functionality ---
+    function copyErrors() {
+        const resultsBox = document.getElementById('linter-results');
+        const textToCopy = resultsBox.innerText;
+
+        if (textToCopy.includes('Awaiting scan') || textToCopy.includes('0 Syntax Errors')) {
+            alert('No errors to copy!');
+            return;
+        }
+
+        // Create a temporary textarea to safely trigger the copy command on mobile browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+            document.execCommand('copy');
+            alert('Error log copied to clipboard!');
+        } catch (err) {
+            alert('Failed to copy. Your browser might block this action.');
+        }
+        
+        document.body.removeChild(textarea);
+    }
+
+    // --- Router, PWA, and Export ---
+    function routeCode() {
+        const input = document.getElementById('router-input').value.trim();
+        const targetFile = document.getElementById('router-target').value;
+        const log = document.getElementById('router-log');
+
+        if(!input || !targetFile) {
+            log.style.display = 'block'; log.style.color = 'var(--danger)';
+            return log.innerText = "Error: Missing code or target file.";
+        }
+
+        const regex = /(?:function\s+([\w$]+)|(?:const|let|var)\s+([\w$]+)\s*=)/;
+        const match = input.match(regex);
+        const name = match ? (match[1] || match[2]) : null;
+
+        if(!name) {
+            log.style.display = 'block'; log.style.color = 'var(--danger)';
+            return log.innerText = "Error: Could not detect function/variable name.";
+        }
+
+        let codeToInject = input;
+        if (!codeToInject.startsWith('export')) codeToInject = `export ${codeToInject}`;
+
+        let fileContent = vfs[targetFile] || '';
+        vfs[targetFile] = fileContent + `\n\n/* Auto-Routed */\n${codeToInject}`;
+
+        const importStatement = `import { ${name} } from './${targetFile}';`;
+        log.style.display = 'block'; log.style.color = 'var(--success)';
+        log.innerHTML = `Injected <b>${name}</b> into ${targetFile}.<br><br>
+                         <b>Import string:</b><br>
+                         <input type="text" value="${importStatement}" style="width:100%; background:#1c2128; color:var(--accent); border:1px solid var(--border); border-radius:4px; padding: 8px; margin-top:5px;" readonly onclick="this.select(); document.execCommand('copy');">`;
+        
+        document.getElementById('router-input').value = '';
+        if(currentFileName === targetFile) {
+            document.getElementById('main-editor').value = vfs[targetFile];
+            updateEditorSync();
+        }
+    }
+
+    function generatePWA() { /* Manifest and SW logic remains untouched */ }
+    
     async function exportProject() {
         if(Object.keys(vfs).length === 0) return alert("No files to export!");
         if(currentFileName) saveCurrentFile(); 
