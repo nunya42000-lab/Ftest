@@ -1,42 +1,15 @@
 {
-  "name": "Follow Me",
-  "short_name": "FollowMe",
-  "start_url": "/Ftest/",
+  "name": "DevOS Workspace",
+  "short_name": "DevOS",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1f2937",
-  "theme_color": "#4f46e5",
-  "description": "A sequence memorization tool.",
+  "background_color": "#0d1117",
+  "theme_color": "#2f81f7",
   "icons": [
     {
-      "src": "/Ftest/icons/android-launchericon-72-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Ftest/icons/android-launchericon-96-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Ftest/icons/android-launchericon-144-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Ftest/icons/android-launchericon-192-192.png",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/GitHub_Invertocat_Logo.svg/192px-GitHub_Invertocat_Logo.svg.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/Ftest/icons/android-launchericon-512-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
-
