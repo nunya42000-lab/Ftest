@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevCompanion | Project OS</title>
@@ -57,7 +58,10 @@
     <div class="tab active" onclick="switchTab('editor')">Code Editor</div>
     <div class="tab" onclick="switchTab('router')">Auto-Router (Add Logic)</div>
     <div class="tab" onclick="switchTab('pwa')">PWA Maker</div>
+<div class="tab" onclick="switchTab('linter')">Error Inspector</div>
+    
 </div>
+
 
 <div class="workspace">
     <aside class="sidebar">
@@ -109,7 +113,20 @@
                 <button class="btn-action" onclick="generatePWA()">GENERATE MANIFEST & SW.JS</button>
             </div>
         </div>
+<div id="view-linter" class="panel-box">
+    <h3 style="margin-top:0; color:#f85149">Syntax & Error Inspector</h3>
+    <p style="font-size: 12px; color:var(--muted);">Select a file from the sidebar, then scan it for missing brackets, undefined variables, and broken syntax.</p>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <strong id="linter-target-label" style="color:var(--accent);">No file selected</strong>
+        <button class="btn-action" style="background:#f85149;" onclick="runLinter()">SCAN CURRENT FILE</button>
+    </div>
 
+    <div id="linter-results" style="background:#000; border:1px solid var(--border); border-radius:6px; height:250px; overflow-y:auto; padding:10px; font-family:monospace; font-size:12px;">
+        Awaiting scan...
+    </div>
+</div>
+        
     </main>
 </div>
 
@@ -282,6 +299,36 @@ self.addEventListener('fetch', event => {
         a.download = "Fixed_Project.zip";
         a.click();
     }
+    function runLinter() {
+    if (!currentFileName || !currentFileName.endsWith('.js')) {
+        document.getElementById('linter-results').innerHTML = '<span style="color:#f85149">Please select a .js file from the sidebar first.</span>';
+        return;
+    }
+
+    // Save current editor state to VFS before scanning
+    saveCurrentFile(); 
+    const code = vfs[currentFileName];
+    const resultsBox = document.getElementById('linter-results');
+
+    // Run JSHint
+    JSHINT(code, { esversion: 11, browser: true, module: true, devel: true });
+
+    if (JSHINT.errors && JSHINT.errors.length > 0) {
+        let errorHTML = `<div style="color:#f85149; margin-bottom:10px;">Found ${JSHINT.errors.length} issues in ${currentFileName}:</div>`;
+        JSHINT.errors.forEach(err => {
+            if (err) {
+                errorHTML += `<div style="margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:5px;">
+                    <strong style="color:#d29922">Line ${err.line}:</strong> ${err.reason}<br>
+                    <span style="color:#8b949e; font-size:11px;">${err.evidence ? err.evidence.trim() : ''}</span>
+                </div>`;
+            }
+        });
+        resultsBox.innerHTML = errorHTML;
+    } else {
+        resultsBox.innerHTML = `<span style="color:#238636">✔ 0 Errors. ${currentFileName} looks clean!</span>`;
+    }
+    }
+    4
 </script>
 </body>
                 </html>
