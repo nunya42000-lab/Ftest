@@ -1,174 +1,135 @@
-y-<⁹w<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevOS Workspace | Pro</title>
-    <link rel="manifest" href="./manifest.json">
-    
+    <title>DevOS Neural IDE | Performance</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
 
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; z-index: 110; }
-        .tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding: 10px 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
-        .tab { padding: 8px 12px; background: #000; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; color: var(--muted); }
-        .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .tabs { display: flex; gap: 5px; overflow-x: auto; padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
+        .tab { padding: 8px 15px; background: #000; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .tab.active { background: var(--accent); color: #fff; }
 
-        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
-        .sidebar { position: absolute; z-index: 105; left: -260px; top: 0; width: 240px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: left 0.3s ease; }
-        .sidebar.open { left: 0; }
-        .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 104; display: none; }
-        .scrim.active { display: block; }
+        .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
+        
+        /* Optimized Sidebar for Scrolling */
+        .sidebar { position: absolute; left: -260px; width: 240px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; display: flex; flex-direction: column; will-change: transform; }
+        .sidebar.open { transform: translateX(260px); }
+        
+        .file-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 5px; }
+        .file-item { padding: 12px 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; contain: content; }
+        .file-item.active { background: #1f6feb33; color: var(--accent); }
+        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; }
+        .dot.error { background: var(--danger); }
+        .dot.valid { background: var(--success); }
 
-        .file-list { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; font-family: 'Fira Code', monospace; }
-        .file-item { padding: 6px 4px; cursor: pointer; border-radius: 4px; border-bottom: 1px solid #1c2128; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .file-item.error { color: var(--danger) !important; font-weight: bold; }
-        .file-item.valid { color: var(--success) !important; }
-        .file-item.active { background: #1f6feb33; border-color: var(--accent); }
-
-        .main-view { flex: 1; display: flex; flex-direction: column; padding: 12px; width: 100%; overflow: hidden; box-sizing: border-box;}
-        .editor-container { flex: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #272822; }
-        .CodeMirror { height: 100%; font-size: 13px; }
-
-        .panel-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; overflow: hidden;}
+        .panel-box { display: none; flex-direction: column; height: 100%; background: var(--panel); border-radius: 8px; border: 1px solid var(--border); padding: 10px; }
         .panel-box.active { display: flex; }
-        
-        button { padding: 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; }
-        .btn-primary { background: var(--success); color: white; }
-        .btn-action { background: var(--accent); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-warn { background: var(--warn); color: #000; }
-        
-        #sandbox-console { height: 140px; background: #000; color: #0f0; font-family: monospace; font-size: 11px; padding: 8px; overflow-y: auto; border-top: 2px solid #333; }
-        .diagnostic-card { background: #0d1117; border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 8px; position: relative; }
+
+        .CodeMirror { flex: 1; border-radius: 4px; font-size: 14px; height: 100%; }
+        button { border: none; border-radius: 4px; padding: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <button onclick="openSidebar()" style="background:transparent; color:white; font-size:20px; border:1px solid #333;">☰</button>
-        <div style="font-weight: bold; font-size: 14px;">DevOS v9</div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <button onclick="toggleSidebar()" style="background:transparent; color:white; font-size:24px; padding: 0 10px;">☰</button>
+        <div style="font-weight: bold;">NeuralDev v10.1</div>
     </div>
-    <div style="display: flex; gap: 6px;">
-        <button class="btn-warn" onclick="createSnapshot()">📸 SNAP</button>
-        <button class="btn-primary" onclick="exportProject()">ZIP</button>
-    </div>
+    <button class="btn-primary" style="background:var(--success); color:#fff; padding: 5px 15px;" onclick="exportProject()">ZIP</button>
 </header>
 
 <div class="tabs">
     <div class="tab active" onclick="switchTab('editor')">EDITOR</div>
     <div class="tab" onclick="switchTab('diag')">DIAGNOSTICS</div>
     <div class="tab" onclick="switchTab('run')">SANDBOX</div>
-    <div class="tab" onclick="switchTab('search')">GLOBAL</div>
-    <div class="tab" onclick="switchTab('architect')">ARCHITECT</div>
 </div>
 
 <div class="workspace">
-    <div class="scrim" id="ui-scrim" onclick="closeSidebar()"></div>
-    <aside class="sidebar" id="ui-sidebar">
-        <div style="padding: 15px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border);">
-            <span style="font-size: 11px; font-weight: bold; color: var(--accent);">LOAD FILES/FOLDERS</span>
-            <input type="file" multiple id="file-input" style="position:absolute; inset:0; opacity:0;" onchange="loadFiles(event)">
+    <aside class="sidebar" id="sidebar">
+        <div style="padding: 15px; border-bottom: 1px solid var(--border);">
+            <input type="file" multiple onchange="loadFiles(event)" style="font-size: 10px; width: 100%;">
         </div>
-        <div class="file-list" id="file-explorer"></div>
-        <button class="btn-danger" style="margin: 8px;" onclick="clearWorkspace()">WIPE STORAGE</button>
+        <div id="file-explorer" class="file-list"></div>
     </aside>
 
     <main class="main-view">
         <div id="view-editor" class="panel-box active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <span id="current-file-label" style="color:var(--accent); font-size: 11px; font-family: monospace;">No File</span>
-                <span id="save-indicator" style="font-size: 10px; color: var(--success); opacity: 0;">Saved</span>
+            <div id="editor-meta" style="font-size: 11px; color: var(--accent); margin-bottom: 5px; display: flex; justify-content: space-between;">
+                <span>No file selected</span>
+                <span id="save-status" style="color:var(--success); opacity:0;">Saved</span>
             </div>
-            <div class="editor-container"><textarea id="main-editor"></textarea></div>
+            <textarea id="editor-raw"></textarea>
         </div>
 
         <div id="view-diag" class="panel-box">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                <button class="btn-action" onclick="runFullDiagnostic()">Deep Scan Project</button>
-                <button class="btn-warn" onclick="copyDiagLog()">Copy Log</button>
-            </div>
-            <div id="diag-out"></div>
+            <button onclick="runGlobalScan()" style="background:var(--accent); color:#fff; margin-bottom:10px;">RUN GLOBAL HEALTH CHECK</button>
+            <div id="diag-log" style="overflow-y:auto; font-size:12px; font-family:monospace;"></div>
         </div>
 
-        <div id="view-architect" class="panel-box">
-            <h3 style="margin:0; color:var(--accent);">Re-Architect</h3>
-            <p style="font-size: 11px; color:var(--muted);">Take a massive "everything" file and explode it into pieces based on logic blocks.</p>
-            <textarea id="architect-input" style="height: 150px; background:#000; color:#fff; font-family:monospace; margin-bottom:10px;" placeholder="Paste big code block here..."></textarea>
-            <button class="btn-primary" onclick="explodeCode()">Explode into Modules</button>
-        </div>
-
-        <div id="view-run" class="panel-box" style="padding: 0;">
-            <div style="padding: 8px; background: var(--panel); display: flex; justify-content: space-between;">
-                <button class="btn-danger" onclick="stopSandbox()">STOP</button>
-                <button class="btn-primary" onclick="launchSandbox()">RUN APP</button>
+        <div id="view-run" class="panel-box" style="padding:0;">
+            <div style="padding:10px; background:var(--panel); border-bottom:1px solid var(--border); display:flex; gap:10px;">
+                <button style="background:var(--success); color:#fff;" onclick="runApp()">RUN</button>
+                <button style="background:var(--danger); color:#fff;" onclick="stopApp()">STOP</button>
             </div>
             <iframe id="sandbox-frame" style="flex:1; background:#fff; border:none;"></iframe>
-            <div id="sandbox-console">Console Ready.</div>
-        </div>
-
-        <div id="view-search" class="panel-box">
-            <input type="text" id="sq" placeholder="Find..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:5px;">
-            <input type="text" id="rq" placeholder="Replace..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:10px;">
-            <div style="display: flex; gap: 5px;"><button class="btn-action" style="flex:1" onclick="performSearch()">Find</button><button class="btn-warn" style="flex:1" onclick="performReplace()">Replace All</button></div>
-            <div id="sr" style="margin-top:10px;"></div>
+            <div id="sandbox-console" style="height:100px; background:#000; color:#0f0; padding:8px; font-size:11px; overflow-y:auto;"></div>
         </div>
     </main>
 </div>
 
 <script>
-    localforage.config({ name: 'DevOS_v9' });
-    let vfs = {}; let currentFile = null; let snapshots = [];
-    let cm = CodeMirror.fromTextArea(document.getElementById("main-editor"), {
-        mode: "javascript", theme: "monokai", lineNumbers: true, foldGutter: true,
-        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"], lineWrapping: false
+    localforage.config({ name: 'DevOS_Neural' });
+    let vfs = {}; let currentFile = null; let fileStatus = {};
+    
+    let cm = CodeMirror.fromTextArea(document.getElementById("editor-raw"), {
+        mode: "javascript", theme: "monokai", lineNumbers: true, 
+        inputStyle: "contenteditable", // Better for mobile performance
+        viewportMargin: 20 // Only renders what is visible
     });
 
-    cm.on('change', () => { if(currentFile) { vfs[currentFile] = cm.getValue(); autoSave(); } });
+    cm.on('change', () => { if(currentFile) { vfs[currentFile] = cm.getValue(); debounceSave(); } });
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    window.onload = async () => {
         vfs = await localforage.getItem('vfs_data') || {};
-        snapshots = await localforage.getItem('snapshots') || [];
-        if (Object.keys(vfs).length > 0) rebuildSidebar();
-    });
+        if (Object.keys(vfs).length) rebuildSidebar();
+    };
 
-    function autoSave() {
-        clearTimeout(window.asT);
-        window.asT = setTimeout(async () => {
+    function debounceSave() {
+        clearTimeout(window.saveT);
+        window.saveT = setTimeout(async () => {
             await localforage.setItem('vfs_data', vfs);
-            const si = document.getElementById('save-indicator');
-            si.style.opacity = 1; setTimeout(() => si.style.opacity = 0, 1000);
-            updateFileStatus();
-        }, 500);
+            document.getElementById('save-status').style.opacity = 1;
+            setTimeout(() => document.getElementById('save-status').style.opacity = 0, 1000);
+        }, 1000);
+    }
+
+    function toggleSidebar() { 
+        const sb = document.getElementById('sidebar');
+        sb.classList.toggle('open');
     }
 
     function switchTab(t) {
         document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.panel-box').forEach(x => x.classList.remove('active'));
-        event.target.classList.add('active'); document.getElementById('view-' + t).classList.add('active');
+        event.target.classList.add('active'); 
+        document.getElementById('view-' + t).classList.add('active');
         if(t === 'editor') cm.refresh();
     }
-
-    function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
-    function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
 
     function loadFiles(e) {
         const files = Array.from(e.target.files);
@@ -176,138 +137,69 @@ y-<⁹w<!DOCTYPE html>
         files.forEach(f => {
             const r = new FileReader();
             r.onload = (ev) => {
-                // Support path preservation if browser provides f.webkitRelativePath
-                const path = f.webkitRelativePath || f.name;
-                vfs[path] = ev.target.result;
-                loaded++;
-                if(loaded === files.length) { rebuildSidebar(); updateFileStatus(); openSidebar(); }
+                vfs[f.name] = ev.target.result; loaded++;
+                if(loaded === files.length) { rebuildSidebar(); toggleSidebar(); }
             };
             r.readAsText(f);
         });
     }
 
+    // High-performance sidebar render
     function rebuildSidebar() {
-        const exp = document.getElementById('file-explorer'); exp.innerHTML = '';
+        const exp = document.getElementById('file-explorer');
+        const fragment = document.createDocumentFragment();
         Object.keys(vfs).sort().forEach(fn => {
-            const div = document.createElement('div'); div.className = 'file-item'; div.innerText = fn;
-            div.onclick = () => { openFile(fn, div); closeSidebar(); }; exp.appendChild(div);
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.innerHTML = `<span>${fn}</span><span class="dot" id="dot-${fn.replace(/\./g,'_')}"></span>`;
+            div.onclick = () => { openFile(fn); toggleSidebar(); };
+            fragment.appendChild(div);
         });
+        exp.innerHTML = '';
+        exp.appendChild(fragment);
     }
 
     function openFile(fn) {
         currentFile = fn;
-        const ext = fn.split('.').pop();
-        const modes = { 'js': 'javascript', 'html': 'htmlmixed', 'css': 'css', 'json': 'application/json' };
-        cm.setOption("mode", modes[ext] || 'javascript');
         cm.setValue(vfs[fn] || '');
-        document.getElementById('current-file-label').innerText = fn;
-        document.querySelectorAll('.file-item').forEach(e => e.innerText === fn ? e.classList.add('active') : e.classList.remove('active'));
+        document.getElementById('editor-meta').children[0].innerText = fn;
     }
 
-    function updateFileStatus() {
-        const items = document.querySelectorAll('.file-item');
-        items.forEach(div => {
-            const fn = div.innerText;
-            if (fn.endsWith('.js')) {
-                JSHINT(vfs[fn], { esversion: 11, browser: true, module: true });
-                div.classList.toggle('error', JSHINT.errors.length > 0);
-                div.classList.toggle('valid', JSHINT.errors.length === 0);
+    // On-Demand Scan (Won't lag the scroll)
+    function runGlobalScan() {
+        const log = document.getElementById('diag-log');
+        log.innerHTML = 'Scanning files...';
+        
+        Object.keys(vfs).forEach(fn => {
+            if(!fn.endsWith('.js')) return;
+            JSHINT(vfs[fn], { esversion: 11, browser: true, module: true });
+            const dot = document.getElementById(`dot-${fn.replace(/\./g,'_')}`);
+            if(dot) {
+                dot.className = JSHINT.errors.length > 0 ? 'dot error' : 'dot valid';
             }
         });
+        log.innerHTML = 'Scan Complete. Check the sidebar dots.';
     }
 
-    // --- Diagnostic Hub ---
-    function runFullDiagnostic() {
-        const out = document.getElementById('diag-out');
-        out.innerHTML = '';
-        let errors = [];
-
-        // Check Imports / Paths
-        for (const [fn, code] of Object.entries(vfs)) {
-            if (!fn.endsWith('.js')) continue;
-            const rx = /from\s+['"]\.?\/([^'"]+)['"]/g;
-            let m;
-            while ((m = rx.exec(code)) !== null) {
-                let path = m[1]; if (!path.includes('.')) path += '.js';
-                // Check relative vs absolute VFS paths
-                if (!vfs[path] && !vfs['./'+path]) {
-                    errors.push(`<div class="diagnostic-card"><span style="color:var(--danger)">[Path Error]</span> ${fn} tries to import ${path} (File Missing).</div>`);
-                }
-            }
-            // Check Semicolons / Syntax
-            JSHINT(code, { esversion: 11, browser: true, module: true });
-            JSHINT.errors.forEach(err => {
-                if(err && err.code === 'W033') {
-                    errors.push(`<div class="diagnostic-card"><span style="color:var(--warn)">[Auto-Fixable]</span> ${fn} (Line ${err.line}): Missing Semicolon <button onclick="fixLine('${fn}', ${err.line}, 'semicolon')">FIX</button></div>`);
-                }
-            });
-        }
-        out.innerHTML = errors.length ? errors.join('') : '<div style="color:var(--success)">Architecture Validated.</div>';
-    }
-
-    function fixLine(fn, line, type) {
-        let lines = vfs[fn].split('\n');
-        if (type === 'semicolon') lines[line-1] = lines[line-1].trimEnd() + ';';
-        vfs[fn] = lines.join('\n');
-        if (currentFile === fn) cm.setValue(vfs[fn]);
-        runFullDiagnostic();
-        autoSave();
-    }
-
-    function copyDiagLog() {
-        navigator.clipboard.writeText(document.getElementById('diag-out').innerText);
-        alert('Log Copied');
-    }
-
-    // --- Architect Tool ---
-    function explodeCode() {
-        const input = document.getElementById('architect-input').value;
-        const rx = /(?:export\s+)?(?:function|const|class)\s+([\w$]+)/g;
-        let m;
-        while ((m = rx.exec(input)) !== null) {
-            const name = m[1];
-            // Simple block matching - finding the next balanced closing brace
-            const startIdx = m.index;
-            let braceCount = 0; let endIdx = -1;
-            for (let i = startIdx; i < input.length; i++) {
-                if (input[i] === '{') braceCount++;
-                if (input[i] === '}') {
-                    braceCount--;
-                    if (braceCount === 0) { endIdx = i + 1; break; }
-                }
-            }
-            if (endIdx !== -1) {
-                const code = input.substring(startIdx, endIdx);
-                vfs[name + '.js'] = `export ${code.startsWith('export') ? code : code}`;
-            }
-        }
-        rebuildSidebar();
-        alert('Code exploded into modules in sidebar.');
-    }
-
-    // --- Sandbox / Export / Snap ---
-    function launchSandbox() {
+    // Sandbox (Same as before, optimized)
+    function runApp() {
         const frame = document.getElementById('sandbox-frame');
-        const out = document.getElementById('sandbox-console');
-        out.innerHTML = 'Mounting VFS...';
         let map = { imports: {} };
         for (const [n, c] of Object.entries(vfs)) {
-            const blob = new Blob([c], { type: n.endsWith('.css') ? 'text/css' : 'application/javascript' });
-            map.imports[n] = URL.createObjectURL(blob);
+            const b = new Blob([c], { type: n.endsWith('.css') ? 'text/css' : 'application/javascript' });
+            map.imports[n] = URL.createObjectURL(b);
             map.imports['./'+n] = map.imports[n];
         }
-        let html = vfs['index.html'] || '<html><body>index.html not found</body></html>';
+        let html = vfs['index.html'] || '<html><body>No index.html</body></html>';
         html = html.replace('<head>', `<head><script type="importmap">${JSON.stringify(map)}<\/script>`);
         frame.src = URL.createObjectURL(new Blob([html], {type:'text/html'}));
     }
-    function stopSandbox() { document.getElementById('sandbox-frame').src = 'about:blank'; }
-    async function createSnapshot() { snapshots.push({t: new Date().toLocaleString(), d: JSON.parse(JSON.stringify(vfs))}); await localforage.setItem('snapshots', snapshots); alert('Snapshot Saved'); }
+    function stopApp() { document.getElementById('sandbox-frame').src = 'about:blank'; }
     async function exportProject() {
         const zip = new JSZip(); Object.entries(vfs).forEach(([n,c])=>zip.file(n,c));
         const b = await zip.generateAsync({type:"blob"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download="Project.zip"; a.click();
     }
-    function clearWorkspace() { if(confirm('Delete everything?')) { localforage.clear(); location.reload(); }}
 </script>
 </body>
-        </html>
+</html>
