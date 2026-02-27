@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOS Workspace</title>
+    <link rel="manifest" href="./manifest.json">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
+
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .menu-btn { background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 18px; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        
+        .tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding: 10px 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+        .tab { padding: 8px 12px; background: #000; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .sidebar { position: absolute; z-index: 100; left: -250px; top: 0; width: 230px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: left 0.3s ease; }
+        .sidebar.open { left: 0; }
+        .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: none; }
+        .scrim.active { display: block; }
+
+        .file-list { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; font-family: 'Fira Code', monospace; }
+        .file-item { padding: 8px 6px; cursor: pointer; border-radius: 4px; border: 1px solid transparent; margin-bottom: 2px; transition: color 0.3s; }
+        
+        /* Sidebar Status Colors */
+        .file-item.error { color: var(--danger) !important; font-weight: bold; }
+        .file-item.valid { color: var(--success) !important; }
+        .file-item.active { background: #1f6feb33; border-color: var(--accent); }
+
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; width: 100%; overflow: hidden; }
+        .editor-container { flex: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #272822; }
+        .CodeMirror { height: 100%; font-size: 14px; }
+        
+        /* Fold Gutter Customization */
+        .CodeMirror-foldgutter { width: 1.5em; cursor: pointer; }
+        .CodeMirror-foldgutter-open::after { content: "▾"; color: var(--accent); font-size: 1.2em; }
+        .CodeMirror-foldgutter-folded::after { content: "▸"; color: var(--success); font-size: 1.2em; }
+
+        .panel-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        .panel-box.active { display: flex; }
+        
+        #save-status { font-size: 11px; color: var(--success); margin-left: 10px; opacity: 0; transition: opacity 0.3s; }
+        #sandbox-console { height: 150px; background: #000; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; overflow-y: auto; border-top: 2px solid #333; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <button class="menu-btn" onclick="openSidebar()">☰</button>
+        <div style="font-weight: bold;">DevOS <span id="save-status">Saved</span></div>
+    </div>
+    <div>
+        <button class="btn-outline" style="color: var(--accent); padding: 5px 10px;" onclick="exportForAI()">AI EXPORT</button>
+        <button class="btn-primary" style="padding: 5px 10px;" onclick="exportProject()">ZIP</button>
+    </div>
+</header>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchTab('editor')">1. Editor</div>
+    <div class="tab" onclick="switchTab('run')">2. Sandbox</div>
+    <div class="tab" onclick="switchTab('search')">3. Search</div>
+</div>
+
+<div class="workspace">
+    <div class="scrim" id="ui-scrim" onclick="closeSidebar()"></div>
+    <aside class="sidebar" id="ui-sidebar">
+        <div style="padding: 15px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border); position: relative;">
+            <span style="font-size: 12px; font-weight: bold; color: var(--accent);">📁 LOAD FILES</span>
+            <input type="file" multiple id="file-input" style="position:absolute; inset:0; opacity:0;" onchange="loadFiles(event)">
+        </div>
+        <div class="file-list" id="file-explorer"></div>
+        <button style="background: var(--danger); color: white; margin: 10px; padding: 8px;" onclick="clearWorkspace()">🗑️ WIPE</button>
+    </aside>
+
+    <main class="main-view">
+        <div id="view-editor" class="panel-box active">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <strong id="current-file-label" style="color:var(--accent); font-size: 12px;">Select File</strong>
+                <span id="error-summary" style="font-size: 11px; color: var(--danger);"></span>
+            </div>
+            <div class="editor-container">
+                <textarea id="main-editor"></textarea>
+            </div>
+        </div>
+
+        <div id="view-run" class="panel-box" style="padding: 0;">
+            <div style="padding: 8px; background: var(--panel); display: flex; justify-content: space-between;">
+                <button class="btn-danger" onclick="stopSandbox()">🛑 STOP</button>
+                <button class="btn-primary" onclick="launchSandbox()">▶ RUN</button>
+            </div>
+            <iframe id="sandbox-frame" style="flex:1; background:#fff; border:none;"></iframe>
+            <div id="sandbox-console">Console ready.</div>
+        </div>
+
+        <div id="view-search" class="panel-box">
+            <input type="text" id="search-query" placeholder="Find..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:5px;">
+            <input type="text" id="replace-query" placeholder="Replace..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:10px;">
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-outline" style="flex:1" onclick="performSearch()">FIND</button>
+                <button class="btn-warn" style="flex:1" onclick="performReplace()">REPLACE ALL</button>
+            </div>
+            <div id="search-results" style="margin-top:10px; font-size:12px;"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+    localforage.config({ name: 'DevOS' });
+    let vfs = {}; let currentFileName = null; let autoSaveTimeout = null;
+
+    let cm = CodeMirror.fromTextArea(document.getElementById("main-editor"), {
+        mode: "javascript", theme: "monokai", lineNumbers: true, foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"], lineWrapping: false
+    });
+
+    cm.on('change', () => { triggerAutoSave(); });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        vfs = await localforage.getItem('vfs_data') || {};
+        if (Object.keys(vfs).length > 0) { rebuildSidebar(); runGlobalInspector(); }
+    });
+
+    function triggerAutoSave() {
+        if(currentFileName) vfs[currentFileName] = cm.getValue();
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(async () => { 
+            await localforage.setItem('vfs_data', vfs); 
+            flashSaveStatus("Saved");
+            runGlobalInspector(); // Run inspector immediately on save
+        }, 800);
+    }
+
+    function runGlobalInspector() {
+        const explorer = document.getElementById('file-explorer');
+        const fileDivs = explorer.querySelectorAll('.file-item');
+        let errorCount = 0;
+
+        fileDivs.forEach(div => {
+            const filename = div.innerText;
+            const code = vfs[filename];
+            if (!filename.endsWith('.js')) return;
+
+            // Simple Syntax Check via JSHint
+            JSHINT(code, { esversion: 11, browser: true, module: true, undef: true });
+            
+            if (JSHINT.errors.length > 0) {
+                div.classList.add('error');
+                div.classList.remove('valid');
+                if(filename === currentFileName) {
+                    errorCount = JSHINT.errors.length;
+                    document.getElementById('error-summary').innerText = `⚠ ${errorCount} Syntax Issues`;
+                }
+            } else {
+                div.classList.remove('error');
+                div.classList.add('valid');
+                if(filename === currentFileName) document.getElementById('error-summary').innerText = '';
+            }
+        });
+    }
+
+    function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
+    function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
+    function flashSaveStatus(m) { const s = document.getElementById('save-status'); s.innerText = m; s.style.opacity = 1; setTimeout(() => s.style.opacity = 0, 2000); }
+
+    function loadFiles(e) {
+        const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name));
+        let loaded = 0;
+        files.forEach(f => {
+            const r = new FileReader();
+            r.onload = async (ev) => {
+                vfs[f.name] = ev.target.result || ''; loaded++;
+                if(loaded === files.length) { rebuildSidebar(); openFile(files[0].name); openSidebar(); await localforage.setItem('vfs_data', vfs); runGlobalInspector(); }
+            };
+            r.readAsText(f);
+        });
+    }
+
+    function rebuildSidebar() {
+        const exp = document.getElementById('file-explorer'); exp.innerHTML = '';
+        Object.keys(vfs).sort((a,b)=>a.localeCompare(b)).forEach(fn => {
+            const div = document.createElement('div'); div.className = 'file-item'; div.innerText = fn;
+            div.onclick = () => { openFile(fn, div); closeSidebar(); }; exp.appendChild(div);
+        });
+    }
+
+    function openFile(fn) {
+        if(currentFileName) vfs[currentFileName] = cm.getValue();
+        currentFileName = fn; 
+        let mode = fn.endsWith(".html") ? "htmlmixed" : (fn.endsWith(".css") ? "css" : "javascript");
+        cm.setOption("mode", mode);
+        cm.setValue(vfs[fn] || '');
+        document.getElementById('current-file-label').innerText = fn;
+        document.querySelectorAll('.file-item').forEach(e => e.innerText === fn ? e.classList.add('active') : e.classList.remove('active'));
+        runGlobalInspector();
+    }
+
+    function switchTab(t) {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel-box').forEach(x => x.classList.remove('active'));
+        event.target.classList.add('active'); document.getElementById('view-' + t).classList.add('active');
+        if(t === 'editor') setTimeout(() => cm.refresh(), 10);
+    }
+
+    // --- Sandbox Logic (Simplified) ---
+    function launchSandbox() {
+        const frame = document.getElementById('sandbox-frame');
+        const out = document.getElementById('sandbox-console');
+        out.innerHTML = 'Booting...';
+        let importMap = { imports: {} };
+        for (const [name, code] of Object.entries(vfs)) {
+            if(name === 'index.html') continue;
+            const blob = new Blob([code], { type: name.endsWith('.css') ? 'text/css' : 'application/javascript' });
+            importMap.imports[name] = URL.createObjectURL(blob);
+            importMap.imports['./' + name] = importMap.imports[name];
+        }
+        let html = vfs['index.html'] || '<html><body>No index.html found.</body></html>';
+        const headInj = `<script type="importmap">${JSON.stringify(importMap)}<\/script>`;
+        html = html.replace('<head>', '<head>' + headInj);
+        frame.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    }
+    function stopSandbox() { document.getElementById('sandbox-frame').src = 'about:blank'; }
+
+    async function exportProject() {
+        const zip = new JSZip(); for (const [fn, code] of Object.entries(vfs)) zip.file(fn, code);
+        const c = await zip.generateAsync({type: "blob"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(c); a.download = "DevOS_Project.zip"; a.click();
+    }
+
+    function exportForAI() {
+        let o = "=== PROJECT CONTEXT ===\n";
+        for (const [n, c] of Object.entries(vfs)) o += `\n--- ${n} ---\n${c}\n`;
+        const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([o], {type:"text/plain"})); a.download = "context.txt"; a.click();
+    }
+</script>
+</body>
+</html>
+>FIX</button></div>`);
+                }
+            });
+        }
+        out.innerHTML = errors.length ? errors.join('') : '<div style="color:var(--success)">Architecture Validated.</div>';
+    }
+
+    function fixLine(fn, line, type) {
+        let lines = vfs[fn].split('\n');
+        if (type === 'semicolon') lines[line-1] = lines[line-1].trimEnd() + ';';
+        vfs[fn] = lines.join('\n');
+        if (currentFile === fn) cm.setValue(vfs[fn]);
+        runFullDiagnostic();
+        autoSave();
+    }
+
+    function copyDiagLog() {
+        navigator.clipboard.writeText(document.getElementById('diag-out').innerText);
+        alert('Log Copied');
+    }
+
+    // --- Architect Tool ---
+    function explodeCode() {
+        const input = document.getElementById('architect-input').value;
+        const rx = /(?:export\s+)?(?:function|const|class)\s+([\w$]+)/g;
+        let m;
+        while ((m = rx.exec(input)) !== null) {
+            const name = m[1];
+            // Simple block matching - finding the next balanced closing brace
+            const startIdx = m.index;
+            let braceCount = 0; let endIdx = -1;
+            for (let i = startIdx; i < input.length; i++) {
+                if (input[i] === '{') braceCount++;
+                if (input[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0) { endIdx = i + 1; break; }
+                }
+            }
+            if (endIdx !== -1) {
+                const code = input.substring(startIdx, endIdx);
+                vfs[name + '.js'] = `export ${code.startsWith('export') ? code : code}`;
+            }
+        }
+        rebuildSidebar();
+        alert('Code exploded into modules in sidebar.');
+    }
+
+    // --- Sandbox / Export / Snap ---
+    function launchSandbox() {
+        const frame = document.getElementById('sandbox-frame');
+        const out = document.getElementById('sandbox-console');
+        out.innerHTML = 'Mounting VFS...';
+        let map = { imports: {} };
+        for (const [n, c] of Object.entries(vfs)) {
+            const blob = new Blob([c], { type: n.endsWith('.css') ? 'text/css' : 'application/javascript' });
+            map.imports[n] = URL.createObjectURL(blob);
+            map.imports['./'+n] = map.imports[n];
+        }
+        let html = vfs['index.html'] || '<html><body>index.html not found</body></html>';
+        html = html.replace('<head>', `<head><script type="importmap">${JSON.stringify(map)}<\/script>`);
+        frame.src = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+    }
+    function stopSandbox() { document.getElementById('sandbox-frame').src = 'about:blank'; }
+    async function createSnapshot() { snapshots.push({t: new Date().toLocaleString(), d: JSON.parse(JSON.stringify(vfs))}); await localforage.setItem('snapshots', snapshots); alert('Snapshot Saved'); }
+    async function exportProject() {
+        const zip = new JSZip(); Object.entries(vfs).forEach(([n,c])=>zip.file(n,c));
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download="Project.zip"; a.click();
+    }
+    function clearWorkspace() { if(confirm('Delete everything?')) { localforage.clear(); location.reload(); }}
+</script>
+</body>
+</html>
+('main-editor');
+        editor.setRangeText(snippets[idx].code, editor.selectionStart, editor.selectionEnd, 'end');
+        triggerAutoSave(); switchTab('editor');
+    }
+
+    async function createSnapshot() {
+        triggerAutoSave();
+        const label = new Date().toLocaleString();
+        snapshots.push({ label, data: JSON.parse(JSON.stringify(vfs)) });
+        if(snapshots.length > 5) snapshots.shift(); // Keep last 5
+        await localforage.setItem('vault_snapshots', snapshots);
+        renderVault(); alert("Project Snapshot saved!");
+    }
+
+    async function restoreSnapshot(idx) {
+        if(confirm(`Rollback entire project to: ${snapshots[idx].label}? You will lose current unsaved progress.`)) {
+            vfs = JSON.parse(JSON.stringify(snapshots[idx].data));
+            await localforage.setItem('vfs_data', vfs);
+            rebuildSidebar();
+            if(vfs[currentFileName]) document.getElementById('main-editor').value = vfs[currentFileName];
+            switchTab('editor'); alert("Rolled back successfully.");
+        }
+    }
+
+    function renderVault() {
+        const snipUI = document.getElementById('snippet-list');
+        snipUI.innerHTML = snippets.length ? snippets.map((s, i) => `<div class="vault-item" onclick="insertSnippet(${i})"><strong>${s.name}</strong><br><span style="font-size:10px; color:var(--muted);">${s.code.substring(0,30)}...</span></div>`).join('') : '<div style="color:var(--muted); font-size:11px;">No snippets saved.</div>';
+        const snapUI = document.getElementById('snapshot-list');
+        snapUI.innerHTML = snapshots.length ? snapshots.map((s, i) => `<div class="vault-item" onclick="restoreSnapshot(${i})" style="border-left:3px solid var(--success)">🕒 ${s.label}</div>`).join('') : '<div style="color:var(--muted); font-size:11px;">No snapshots available.</div>';
+    }
+
+    // --- Core UI & Files ---
+    function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
+    function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
+    function updateEditorSync() {
+        const lines = document.getElementById('main-editor').value.split('\n').length;
+        document.getElementById('line-numbers').innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+    }
+    function syncEditorScroll() { document.getElementById('line-numbers').scrollTop = document.getElementById('main-editor').scrollTop; }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel-box').forEach(p => p.classList.remove('active'));
+        event.target.classList.add('active'); document.getElementById('view-' + tabId).classList.add('active');
+        if(tabId === 'editor') updateEditorSync();
+    }
+
+    async function clearWorkspace() {
+        if(confirm("WIPE ENTIRE DATABASE?")) {
+            vfs = {}; currentFileName = null;
+            document.getElementById('main-editor').value = ''; document.getElementById('current-file-label').innerText = 'Select a file';
+            document.getElementById('file-explorer').innerHTML = 'No files';
+            await localforage.removeItem('vfs_data'); closeSidebar();
+        }
+    }
+
+    function loadFiles(e) {
+        const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name));
+        if(!files.length) return;
+        let loaded = 0;
+        files.forEach(f => {
+            const r = new FileReader();
+            r.onload = async (ev) => {
+                vfs[f.name] = ev.target.result || ''; loaded++;
+                if(loaded === files.length) { rebuildSidebar(); openFile(files[0].name); openSidebar(); await localforage.setItem('vfs_data', vfs); }
+            };
+            r.readAsText(f);
+        });
+    }
+
+    function rebuildSidebar() {
+        const exp = document.getElementById('file-explorer'); exp.innerHTML = '';
+        Object.keys(vfs).sort((a,b)=>a.localeCompare(b)).forEach(fn => {
+            const div = document.createElement('div'); div.className = 'file-item'; div.innerText = fn;
+            div.onclick = () => { openFile(fn, div); closeSidebar(); }; exp.appendChild(div);
+        });
+    }
+
+    function openFile(fn, el) {
+        if(currentFileName) triggerAutoSave();
+        currentFileName = fn; document.getElementById('main-editor').value = vfs[fn] || '';
+        document.getElementById('current-file-label').innerText = fn;
+        document.querySelectorAll('.file-item').forEach(e => e.innerText === fn ? e.classList.add('active') : e.classList.remove('active'));
+        updateEditorSync();
+    }
+
+    async function exportProject() {
+        triggerAutoSave(); const zip = new JSZip();
+        for (const [fn, code] of Object.entries(vfs)) zip.file(fn, code);
+        const c = await zip.generateAsync({type: "blob"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(c); a.download = "DevOS_Project.zip"; a.click();
+    }
+
+    // --- Search & Diagnostics (Minified Logic) ---
+    function runLinter() {
+        triggerAutoSave(); JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true, devel: true, undef: true });
+        let html = ''; if (JSHINT.errors.length > 0) { JSHINT.errors.forEach(e => { if (e) html += `<div class="error-item"><span class="error-line">Line ${e.line}:</span> ${e.reason}</div>`; }); document.getElementById('diagnostic-results').innerHTML = `<h4 style="color:var(--danger)">Syntax Errors in ${currentFileName}</h4>`+html; } else document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--success)">✔ 0 Syntax Errors in ${currentFileName}.</div>`;
+    }
+    function runDependencyCheck() {
+        let ex = {}; let errs = [];
+        for (const [fn, code] of Object.entries(vfs)) {
+            ex[fn] = []; let m; const rx = /export\s+(?:function|const|let|var|class)\s+([\w$]+)/g;
+            while ((m = rx.exec(code)) !== null) ex[fn].push(m[1]);
+        }
+        for (const [fn, code] of Object.entries(vfs)) {
+            let m; const rx = /import\s+{([^}]+)}\s+from\s+['"]\.?\/([^'"]+)['"]/g;
+            while ((m = rx.exec(code)) !== null) {
+                const vars = m[1].split(',').map(v=>v.trim()); let tgt = m[2]; if(!tgt.endsWith('.js')) tgt += '.js';
+                if (!ex[tgt]) errs.push(`<div class="error-item"><span style="color:var(--danger)">[Missing File]</span> <b>${fn}</b> imports from missing file <b>${tgt}</b>.</div>`);
+                else vars.forEach(v => { const vReal = v.split(' as ')[0].trim(); if(vReal && !ex[tgt].includes(vReal)) errs.push(`<div class="error-item"><span style="color:var(--warn)">[Broken Link]</span> <b>${fn}</b> imports <b>'${vReal}'</b> but <b>${tgt}</b> doesn't export it.</div>`); });
+            }
+        }
+        document.getElementById('diagnostic-results').innerHTML = errs.length ? `<h4 style="color:var(--danger)">Broken Links Found:</h4>` + errs.join('') : `<div style="color:var(--success)">✔ Architecture Clean. All imports matched.</div>`;
+    }
+    function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function performSearch() {
+        const q = document.getElementById('search-query').value; const rb = document.getElementById('search-results');
+        if(!q) return rb.innerHTML = '<span style="color:var(--danger)">Enter search term.</span>';
+        let html = ''; let c = 0; const rx = new RegExp(escapeRegExp(q), 'gi');
+        for (const [fn, content] of Object.entries(vfs)) {
+            const lines = content.split('\n'); let fh = '';
+            lines.forEach((l, i) => { if(l.toLowerCase().includes(q.toLowerCase())) { c++; fh += `<div class="search-result-item" onclick="openFile('${fn}'); switchTab('editor'); closeSidebar();"><span style="color:var(--warn); margin-right:5px;">L${i + 1}:</span><span style="color:var(--text)">${l.replace(rx, `<span class="search-match">$&</span>`).trim().substring(0, 100)}</span></div>`; } });
+            if (fh) html += `<div style="margin-bottom:10px; background:#1c2128; padding:8px; border-radius:4px;"><strong style="color:var(--success); display:block; margin-bottom:5px;">📁 ${fn}</strong>${fh}</div>`;
+        }
+        rb.innerHTML = c === 0 ? '<span style="color:var(--muted)">No matches found.</span>' : `<div>Found ${c} matches:</div>` + html;
+    }
+    function performReplace() {
+        const q = document.getElementById('search-query').value; const rep = document.getElementById('replace-query').value;
+        if(!q || !confirm(`Replace ALL instances of "${q}" with "${rep}"?`)) return;
+        let c = 0; let f = 0;
+        for (const fn of Object.keys(vfs)) { if(vfs[fn].includes(q)) { f++; const parts = vfs[fn].split(q); c += parts.length - 1; vfs[fn] = parts.join(rep); } }
+        if (currentFileName) { document.getElementById('main-editor').value = vfs[currentFileName]; updateEditorSync(); }
+        alert(`Replaced ${c} instances in ${f} files.`); performSearch(); triggerAutoSave();
+    }
+</script>
+</body>
+</html>
