@@ -2,339 +2,312 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DevOS Neural IDE | v11</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOS Workspace | Pro</title>
+    <link rel="manifest" href="./manifest.json">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
 
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .tabs { display: flex; gap: 5px; overflow-x: auto; padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; scrollbar-width: none; }
-        .tab { padding: 8px 15px; background: #000; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; }
-        .tab.active { background: var(--accent); color: #fff; }
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: var(--panel); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; z-index: 110; }
+        .tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding: 10px 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+        .tab { padding: 8px 12px; background: #000; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; color: var(--muted); }
+        .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-        .workspace { flex: 1; display: flex; position: relative; overflow: hidden; min-height: 0; }
-        
-        .sidebar { position: absolute; left: -260px; width: 240px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; display: flex; flex-direction: column; will-change: transform; }
-        .sidebar.open { transform: translateX(260px); }
-        .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: none; }
+        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .sidebar { position: absolute; z-index: 105; left: -260px; top: 0; width: 240px; height: 100%; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: left 0.3s ease; }
+        .sidebar.open { left: 0; }
+        .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 104; display: none; }
         .scrim.active { display: block; }
-        
-        .file-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 5px; }
-        .file-item { padding: 12px 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        .file-item.active { background: #1f6feb33; color: var(--accent); }
-        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; margin-left: 10px; }
-        .dot.error { background: var(--danger); }
-        .dot.valid { background: var(--success); }
 
-        .main-view { flex: 1; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; overflow: hidden; min-height: 0;}
-        .panel-box { display: none; flex-direction: column; flex: 1; background: var(--panel); border-radius: 8px; border: 1px solid var(--border); padding: 10px; min-height: 0; overflow: hidden; }
+        .file-list { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; font-family: 'Fira Code', monospace; }
+        .file-item { padding: 6px 4px; cursor: pointer; border-radius: 4px; border-bottom: 1px solid #1c2128; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-item.error { color: var(--danger) !important; font-weight: bold; }
+        .file-item.valid { color: var(--success) !important; }
+        .file-item.active { background: #1f6feb33; border-color: var(--accent); }
+
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 12px; width: 100%; overflow: hidden; box-sizing: border-box;}
+        .editor-container { flex: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #272822; }
+        .CodeMirror { height: 100%; font-size: 13px; }
+
+        .panel-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: none; flex-direction: column; height: 100%; overflow-y: auto; }
         .panel-box.active { display: flex; }
-
-        .editor-container { flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; border: 1px solid #000; border-radius: 4px; overflow: hidden; background: #272822; }
-        .CodeMirror { flex: 1; height: 100%; font-size: 14px; position: absolute; top:0; bottom:0; left:0; right:0;}
         
-        /* Media Previewer */
-        #media-preview { display: none; flex: 1; align-items: center; justify-content: center; padding: 20px; text-align: center; background: #1e1e1e; overflow: hidden; }
-        #media-preview img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        button { padding: 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .btn-primary { background: var(--success); color: white; }
+        .btn-action { background: var(--accent); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warn { background: var(--warn); color: #000; }
         
-        button { border: none; border-radius: 4px; padding: 10px; font-weight: bold; cursor: pointer; }
+        #sandbox-console { height: 140px; background: #000; color: #0f0; font-family: monospace; font-size: 11px; padding: 8px; overflow-y: auto; border-top: 2px solid #333; }
+        .diagnostic-card { background: #0d1117; border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 8px; position: relative; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <button onclick="toggleSidebar()" style="background:transparent; color:white; font-size:24px; padding: 0 10px;">☰</button>
-        <div style="font-weight: bold;">NeuralDev v11 <span style="font-size:10px; color:var(--muted)">Multimedia</span></div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <button onclick="openSidebar()" style="background:transparent; color:white; font-size:20px; border:1px solid #333;">☰</button>
+        <div style="font-weight: bold; font-size: 14px;">DevOS v9</div>
     </div>
-    <button class="btn-primary" style="background:var(--success); color:#fff; padding: 5px 15px;" onclick="exportProject()">ZIP & EXPORT</button>
+    <div style="display: flex; gap: 6px;">
+        <button class="btn-warn" onclick="createSnapshot()">📸 SNAP</button>
+        <button class="btn-primary" onclick="exportProject()">ZIP</button>
+    </div>
 </header>
 
 <div class="tabs">
-    <div class="tab active" onclick="switchTab('editor')">EDITOR & ASSETS</div>
+    <div class="tab active" onclick="switchTab('editor')">EDITOR</div>
     <div class="tab" onclick="switchTab('diag')">DIAGNOSTICS</div>
     <div class="tab" onclick="switchTab('run')">SANDBOX</div>
-    <div class="tab" onclick="switchTab('search')">GLOBAL SEARCH</div>
+    <div class="tab" onclick="switchTab('search')">GLOBAL</div>
+    <div class="tab" onclick="switchTab('architect')">ARCHITECT</div>
 </div>
 
 <div class="workspace">
-    <div class="scrim" id="ui-scrim" onclick="toggleSidebar()"></div>
-    <aside class="sidebar" id="sidebar">
-        <div style="padding: 15px; border-bottom: 1px solid var(--border);">
-            <input type="file" multiple onchange="loadFiles(event)" style="font-size: 10px; width: 100%;">
+    <div class="scrim" id="ui-scrim" onclick="closeSidebar()"></div>
+    <aside class="sidebar" id="ui-sidebar">
+        <div style="padding: 15px; background: #21262d; text-align: center; border-bottom: 1px solid var(--border);">
+            <span style="font-size: 11px; font-weight: bold; color: var(--accent);">LOAD FILES/FOLDERS</span>
+            <input type="file" multiple id="file-input" style="position:absolute; inset:0; opacity:0;" onchange="loadFiles(event)">
         </div>
-        <div id="file-explorer" class="file-list"></div>
-        <button style="background: var(--danger); color: white; margin: 10px; padding: 8px;" onclick="clearWorkspace()">🗑️ WIPE DB</button>
+        <div class="file-list" id="file-explorer"></div>
+        <button class="btn-danger" style="margin: 8px;" onclick="clearWorkspace()">WIPE STORAGE</button>
     </aside>
 
     <main class="main-view">
         <div id="view-editor" class="panel-box active">
-            <div id="editor-meta" style="font-size: 11px; color: var(--accent); margin-bottom: 5px; display: flex; justify-content: space-between; flex-shrink: 0;">
-                <span id="file-title">No file selected</span>
-                <span id="save-status" style="color:var(--success); opacity:0; transition: opacity 0.3s;">Saved</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span id="current-file-label" style="color:var(--accent); font-size: 11px; font-family: monospace;">No File</span>
+                <span id="save-indicator" style="font-size: 10px; color: var(--success); opacity: 0;">Saved</span>
             </div>
-            <div class="editor-container">
-                <textarea id="editor-raw"></textarea>
-                <div id="media-preview"></div>
-            </div>
+            <div class="editor-container"><textarea id="main-editor"></textarea></div>
         </div>
 
-        <div id="view-diag" class="panel-box" style="overflow-y: auto;">
-            <button onclick="runGlobalScan()" style="background:var(--accent); color:#fff; margin-bottom:10px; flex-shrink: 0;">RUN GLOBAL HEALTH CHECK</button>
-            <div id="diag-log" style="font-size:12px; font-family:monospace; color: var(--text);"></div>
+        <div id="view-diag" class="panel-box">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <button class="btn-action" onclick="runFullDiagnostic()">Deep Scan Project</button>
+                <button class="btn-warn" onclick="copyDiagLog()">Copy Log</button>
+            </div>
+            <div id="diag-out"></div>
         </div>
 
-        <div id="view-run" class="panel-box" style="padding:0;">
-            <div style="padding:10px; background:var(--panel); border-bottom:1px solid var(--border); display:flex; gap:10px; flex-shrink: 0;">
-                <button style="background:var(--success); color:#fff;" onclick="runApp()">RUN IN SANDBOX</button>
-                <button style="background:var(--danger); color:#fff;" onclick="stopApp()">STOP</button>
+        <div id="view-architect" class="panel-box">
+            <h3 style="margin:0; color:var(--accent);">Re-Architect</h3>
+            <p style="font-size: 11px; color:var(--muted);">Take a massive "everything" file and explode it into pieces based on logic blocks.</p>
+            <textarea id="architect-input" style="height: 150px; background:#000; color:#fff; font-family:monospace; margin-bottom:10px;" placeholder="Paste big code block here..."></textarea>
+            <button class="btn-primary" onclick="explodeCode()">Explode into Modules</button>
+        </div>
+
+        <div id="view-run" class="panel-box" style="padding: 0;">
+            <div style="padding: 8px; background: var(--panel); display: flex; justify-content: space-between;">
+                <button class="btn-danger" onclick="stopSandbox()">STOP</button>
+                <button class="btn-primary" onclick="launchSandbox()">RUN APP</button>
             </div>
-            <iframe id="sandbox-frame" style="flex:1; background:#fff; border:none; min-height: 0;"></iframe>
-            <div id="sandbox-console" style="height:120px; flex-shrink: 0; background:#000; color:#0f0; padding:8px; font-size:11px; overflow-y:auto;"></div>
+            <iframe id="sandbox-frame" style="flex:1; background:#fff; border:none;"></iframe>
+            <div id="sandbox-console">Console Ready.</div>
         </div>
 
         <div id="view-search" class="panel-box">
             <input type="text" id="sq" placeholder="Find..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:5px;">
             <input type="text" id="rq" placeholder="Replace..." style="padding:10px; background:#000; color:#fff; border:1px solid var(--border); margin-bottom:10px;">
-            <div style="display: flex; gap: 5px;"><button style="background:var(--accent); color:white; flex:1;" onclick="performSearch()">Find</button><button style="background:var(--warn); flex:1;" onclick="performReplace()">Replace All</button></div>
-            <div id="sr" style="margin-top:10px; font-size: 12px; overflow-y:auto; flex:1;"></div>
+            <div style="display: flex; gap: 5px;"><button class="btn-action" style="flex:1" onclick="performSearch()">Find</button><button class="btn-warn" style="flex:1" onclick="performReplace()">Replace All</button></div>
+            <div id="sr" style="margin-top:10px;"></div>
         </div>
     </main>
 </div>
 
 <script>
-    localforage.config({ name: 'DevOS_Neural' });
-    let vfs = {}; let currentFile = null;
-    
-    let cm = CodeMirror.fromTextArea(document.getElementById("editor-raw"), {
-        mode: "javascript", theme: "monokai", lineNumbers: true, 
-        inputStyle: "contenteditable", viewportMargin: 20
+    localforage.config({ name: 'DevOS_v9' });
+    let vfs = {}; let currentFile = null; let snapshots = [];
+    let cm = CodeMirror.fromTextArea(document.getElementById("main-editor"), {
+        mode: "javascript", theme: "monokai", lineNumbers: true, foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"], lineWrapping: false
     });
 
-    cm.on('change', () => { 
-        if(currentFile && !vfs[currentFile].startsWith('data:')) { 
-            vfs[currentFile] = cm.getValue(); 
-            debounceSave(); 
-        } 
-    });
+    cm.on('change', () => { if(currentFile) { vfs[currentFile] = cm.getValue(); autoSave(); } });
 
-    window.onload = async () => {
+    window.addEventListener('DOMContentLoaded', async () => {
         vfs = await localforage.getItem('vfs_data') || {};
-        if (Object.keys(vfs).length) rebuildSidebar();
-        setTimeout(() => cm.refresh(), 100);
-    };
+        snapshots = await localforage.getItem('snapshots') || [];
+        if (Object.keys(vfs).length > 0) rebuildSidebar();
+    });
 
-    function debounceSave() {
-        clearTimeout(window.saveT);
-        window.saveT = setTimeout(async () => {
+    function autoSave() {
+        clearTimeout(window.asT);
+        window.asT = setTimeout(async () => {
             await localforage.setItem('vfs_data', vfs);
-            const status = document.getElementById('save-status');
-            status.style.opacity = 1; setTimeout(() => status.style.opacity = 0, 1000);
-        }, 1000);
-    }
-
-    function toggleSidebar() { 
-        const sb = document.getElementById('sidebar');
-        sb.classList.toggle('open');
-        document.getElementById('ui-scrim').classList.toggle('active');
+            const si = document.getElementById('save-indicator');
+            si.style.opacity = 1; setTimeout(() => si.style.opacity = 0, 1000);
+            updateFileStatus();
+        }, 500);
     }
 
     function switchTab(t) {
         document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.panel-box').forEach(x => x.classList.remove('active'));
-        event.target.classList.add('active'); 
-        document.getElementById('view-' + t).classList.add('active');
-        if(t === 'editor') setTimeout(() => cm.refresh(), 50);
+        event.target.classList.add('active'); document.getElementById('view-' + t).classList.add('active');
+        if(t === 'editor') cm.refresh();
     }
 
-    // --- The Binary File Engine ---
+    function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
+    function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
+
     function loadFiles(e) {
         const files = Array.from(e.target.files);
         let loaded = 0;
-        
         files.forEach(f => {
-            const ext = f.name.split('.').pop().toLowerCase();
-            const isText = ['js', 'html', 'css', 'json', 'txt', 'md', 'xml'].includes(ext);
             const r = new FileReader();
-            
             r.onload = (ev) => {
-                vfs[f.name] = ev.target.result; // Text is raw string, Binary is Base64 String
+                // Support path preservation if browser provides f.webkitRelativePath
+                const path = f.webkitRelativePath || f.name;
+                vfs[path] = ev.target.result;
                 loaded++;
-                if(loaded === files.length) { 
-                    rebuildSidebar(); 
-                    toggleSidebar(); 
-                    debounceSave(); 
-                }
+                if(loaded === files.length) { rebuildSidebar(); updateFileStatus(); openSidebar(); }
             };
-            
-            if(isText) r.readAsText(f);
-            else r.readAsDataURL(f); // Crucial for images, audio, and WASM!
+            r.readAsText(f);
         });
     }
 
     function rebuildSidebar() {
-        const exp = document.getElementById('file-explorer');
-        const fragment = document.createDocumentFragment();
+        const exp = document.getElementById('file-explorer'); exp.innerHTML = '';
         Object.keys(vfs).sort().forEach(fn => {
-            const div = document.createElement('div');
-            div.className = 'file-item';
-            
-            // Add media icons
-            let icon = '📄';
-            if (fn.endsWith('.js')) icon = 'JS';
-            else if (fn.endsWith('.css') || fn.endsWith('.html')) icon = '🌐';
-            else if (fn.match(/\.(png|jpg|jpeg|gif|svg)$/i)) icon = '🖼️';
-            else if (fn.match(/\.(mp3|wav|ogg)$/i)) icon = '🎵';
-            else if (fn.endsWith('.wasm')) icon = '⚙️';
-            
-            div.innerHTML = `<span><span style="display:inline-block; width:20px;">${icon}</span> ${fn}</span><span class="dot" id="dot-${fn.replace(/[\.\/]/g,'_')}"></span>`;
-            div.onclick = () => { openFile(fn); toggleSidebar(); };
-            fragment.appendChild(div);
+            const div = document.createElement('div'); div.className = 'file-item'; div.innerText = fn;
+            div.onclick = () => { openFile(fn, div); closeSidebar(); }; exp.appendChild(div);
         });
-        exp.innerHTML = '';
-        exp.appendChild(fragment);
     }
 
-    // --- The Multimedia Viewer ---
     function openFile(fn) {
         currentFile = fn;
-        const code = vfs[fn] || '';
-        const isDataURL = code.startsWith('data:');
-        
-        document.getElementById('file-title').innerText = fn;
-        
-        // Handle UI Swapping
-        const cmWrapper = cm.getWrapperElement();
-        const mediaPreview = document.getElementById('media-preview');
+        const ext = fn.split('.').pop();
+        const modes = { 'js': 'javascript', 'html': 'htmlmixed', 'css': 'css', 'json': 'application/json' };
+        cm.setOption("mode", modes[ext] || 'javascript');
+        cm.setValue(vfs[fn] || '');
+        document.getElementById('current-file-label').innerText = fn;
+        document.querySelectorAll('.file-item').forEach(e => e.innerText === fn ? e.classList.add('active') : e.classList.remove('active'));
+    }
 
-        if (isDataURL) {
-            cmWrapper.style.display = 'none';
-            mediaPreview.style.display = 'flex';
-            
-            if (code.startsWith('data:image')) {
-                mediaPreview.innerHTML = `<img src="${code}" alt="${fn}">`;
-            } else if (code.startsWith('data:audio')) {
-                mediaPreview.innerHTML = `<div style="text-align:center"><div style="font-size:40px; margin-bottom:15px;">🎵</div><audio controls src="${code}" style="width:100%"></audio></div>`;
-            } else {
-                mediaPreview.innerHTML = `<div style="color:var(--warn)">[Binary File]<br><br>${fn} is safely stored in RAM and will be included perfectly in your ZIP export, but it cannot be rendered visually.</div>`;
+    function updateFileStatus() {
+        const items = document.querySelectorAll('.file-item');
+        items.forEach(div => {
+            const fn = div.innerText;
+            if (fn.endsWith('.js')) {
+                JSHINT(vfs[fn], { esversion: 11, browser: true, module: true });
+                div.classList.toggle('error', JSHINT.errors.length > 0);
+                div.classList.toggle('valid', JSHINT.errors.length === 0);
             }
-        } else {
-            mediaPreview.style.display = 'none';
-            cmWrapper.style.display = 'block';
-            
-            let mode = fn.endsWith(".html") ? "htmlmixed" : (fn.endsWith(".css") ? "css" : (fn.endsWith(".json") ? "application/json" : "javascript"));
-            cm.setOption("mode", mode);
-            cm.setValue(code);
-            setTimeout(() => cm.refresh(), 10);
-        }
-
-        document.querySelectorAll('.file-item').forEach(e => {
-            if (e.innerText.includes(fn)) e.classList.add('active');
-            else e.classList.remove('active');
         });
     }
 
-    // --- Safe Export & Scans ---
-    async function exportProject() {
-        const zip = new JSZip(); 
-        for (const [fn, code] of Object.entries(vfs)) {
-            if (code.startsWith('data:')) {
-                // Strip the base64 header so JSZip can compress it natively
-                const base64Data = code.split(',')[1];
-                zip.file(fn, base64Data, {base64: true});
-            } else {
-                zip.file(fn, code);
-            }
-        }
-        const b = await zip.generateAsync({type:"blob"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download="Project.zip"; a.click();
-    }
+    // --- Diagnostic Hub ---
+    function runFullDiagnostic() {
+        const out = document.getElementById('diag-out');
+        out.innerHTML = '';
+        let errors = [];
 
-    function runGlobalScan() {
-        const log = document.getElementById('diag-log');
-        log.innerHTML = 'Scanning architecture...<br><br>';
-        let issuesFound = 0;
-        
-        Object.keys(vfs).forEach(fn => {
-            const code = vfs[fn];
-            if(!fn.endsWith('.js') || code.startsWith('data:')) return;
-            
-            JSHINT(code, { esversion: 11, browser: true, module: true });
-            const dot = document.getElementById(`dot-${fn.replace(/[\.\/]/g,'_')}`);
-            if(dot) {
-                if (JSHINT.errors.length > 0) {
-                    dot.className = 'dot error';
-                    issuesFound++;
-                    log.innerHTML += `<span style="color:var(--danger)">[Error]</span> <b>${fn}</b> has ${JSHINT.errors.length} issues.<br>`;
-                } else {
-                    dot.className = 'dot valid';
+        // Check Imports / Paths
+        for (const [fn, code] of Object.entries(vfs)) {
+            if (!fn.endsWith('.js')) continue;
+            const rx = /from\s+['"]\.?\/([^'"]+)['"]/g;
+            let m;
+            while ((m = rx.exec(code)) !== null) {
+                let path = m[1]; if (!path.includes('.')) path += '.js';
+                // Check relative vs absolute VFS paths
+                if (!vfs[path] && !vfs['./'+path]) {
+                    errors.push(`<div class="diagnostic-card"><span style="color:var(--danger)">[Path Error]</span> ${fn} tries to import ${path} (File Missing).</div>`);
                 }
             }
-        });
-        
-        if (issuesFound === 0) log.innerHTML += '<span style="color:var(--success)">✔ Perfect. Zero syntax errors across all files.</span>';
-    }
-
-    async function clearWorkspace() {
-        if(confirm('DANGER: Delete entire local database?')) {
-            vfs = {}; await localforage.clear(); location.reload();
+            // Check Semicolons / Syntax
+            JSHINT(code, { esversion: 11, browser: true, module: true });
+            JSHINT.errors.forEach(err => {
+                if(err && err.code === 'W033') {
+                    errors.push(`<div class="diagnostic-card"><span style="color:var(--warn)">[Auto-Fixable]</span> ${fn} (Line ${err.line}): Missing Semicolon <button onclick="fixLine('${fn}', ${err.line}, 'semicolon')">FIX</button></div>`);
+                }
+            });
         }
+        out.innerHTML = errors.length ? errors.join('') : '<div style="color:var(--success)">Architecture Validated.</div>';
     }
 
-    // --- Standard Sandbox ---
-    function runApp() {
+    function fixLine(fn, line, type) {
+        let lines = vfs[fn].split('\n');
+        if (type === 'semicolon') lines[line-1] = lines[line-1].trimEnd() + ';';
+        vfs[fn] = lines.join('\n');
+        if (currentFile === fn) cm.setValue(vfs[fn]);
+        runFullDiagnostic();
+        autoSave();
+    }
+
+    function copyDiagLog() {
+        navigator.clipboard.writeText(document.getElementById('diag-out').innerText);
+        alert('Log Copied');
+    }
+
+    // --- Architect Tool ---
+    function explodeCode() {
+        const input = document.getElementById('architect-input').value;
+        const rx = /(?:export\s+)?(?:function|const|class)\s+([\w$]+)/g;
+        let m;
+        while ((m = rx.exec(input)) !== null) {
+            const name = m[1];
+            // Simple block matching - finding the next balanced closing brace
+            const startIdx = m.index;
+            let braceCount = 0; let endIdx = -1;
+            for (let i = startIdx; i < input.length; i++) {
+                if (input[i] === '{') braceCount++;
+                if (input[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0) { endIdx = i + 1; break; }
+                }
+            }
+            if (endIdx !== -1) {
+                const code = input.substring(startIdx, endIdx);
+                vfs[name + '.js'] = `export ${code.startsWith('export') ? code : code}`;
+            }
+        }
+        rebuildSidebar();
+        alert('Code exploded into modules in sidebar.');
+    }
+
+    // --- Sandbox / Export / Snap ---
+    function launchSandbox() {
         const frame = document.getElementById('sandbox-frame');
+        const out = document.getElementById('sandbox-console');
+        out.innerHTML = 'Mounting VFS...';
         let map = { imports: {} };
         for (const [n, c] of Object.entries(vfs)) {
-            // Treat assets properly in sandbox
-            if(c.startsWith('data:')) { map.imports[n] = c; map.imports['./'+n] = c; continue; }
-            const b = new Blob([c], { type: n.endsWith('.css') ? 'text/css' : 'application/javascript' });
-            map.imports[n] = URL.createObjectURL(b);
+            const blob = new Blob([c], { type: n.endsWith('.css') ? 'text/css' : 'application/javascript' });
+            map.imports[n] = URL.createObjectURL(blob);
             map.imports['./'+n] = map.imports[n];
         }
-        let html = vfs['index.html'] || '<html><body>No index.html</body></html>';
+        let html = vfs['index.html'] || '<html><body>index.html not found</body></html>';
         html = html.replace('<head>', `<head><script type="importmap">${JSON.stringify(map)}<\/script>`);
         frame.src = URL.createObjectURL(new Blob([html], {type:'text/html'}));
     }
-    function stopApp() { document.getElementById('sandbox-frame').src = 'about:blank'; }
-    
-    // --- Safe Search ---
-    function performSearch() {
-        const q = document.getElementById('sq').value; const rb = document.getElementById('sr');
-        if(!q) return rb.innerHTML = '<span style="color:var(--danger)">Enter search term.</span>';
-        let html = ''; let c = 0; const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        for (const [fn, content] of Object.entries(vfs)) {
-            if(content.startsWith('data:')) continue; // Don't search images!
-            const lines = content.split('\n'); let fh = '';
-            lines.forEach((l, i) => { if(l.toLowerCase().includes(q.toLowerCase())) { c++; fh += `<div style="padding:4px; border-bottom:1px solid #333; cursor:pointer;" onclick="openFile('${fn}'); switchTab('editor');"><span style="color:var(--warn);">L${i + 1}:</span> ${l.replace(rx, `<span style="background:var(--accent);color:#000;">$&</span>`).trim().substring(0, 80)}</div>`; } });
-            if (fh) html += `<div style="margin-bottom:10px; background:#1c2128; padding:8px; border-radius:4px;"><strong style="color:var(--success);">📁 ${fn}</strong>${fh}</div>`;
-        }
-        rb.innerHTML = c === 0 ? '<span style="color:var(--muted)">No matches found.</span>' : `<div>Found ${c} matches:</div>` + html;
+    function stopSandbox() { document.getElementById('sandbox-frame').src = 'about:blank'; }
+    async function createSnapshot() { snapshots.push({t: new Date().toLocaleString(), d: JSON.parse(JSON.stringify(vfs))}); await localforage.setItem('snapshots', snapshots); alert('Snapshot Saved'); }
+    async function exportProject() {
+        const zip = new JSZip(); Object.entries(vfs).forEach(([n,c])=>zip.file(n,c));
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download="Project.zip"; a.click();
     }
-    function performReplace() {
-        const q = document.getElementById('sq').value; const rep = document.getElementById('rq').value;
-        if(!q || !confirm(`Replace ALL instances of "${q}" with "${rep}"?`)) return;
-        let c = 0; let f = 0;
-        for (const fn of Object.keys(vfs)) { 
-            if(vfs[fn].startsWith('data:')) continue;
-            if(vfs[fn].includes(q)) { f++; const parts = vfs[fn].split(q); c += parts.length - 1; vfs[fn] = parts.join(rep); } 
-        }
-        if (currentFile && !vfs[currentFile].startsWith('data:')) cm.setValue(vfs[currentFile]);
-        alert(`Replaced ${c} instances in ${f} files.`); performSearch(); debounceSave();
-    }
+    function clearWorkspace() { if(confirm('Delete everything?')) { localforage.clear(); location.reload(); }}
 </script>
 </body>
 </html>
