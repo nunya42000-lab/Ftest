@@ -244,10 +244,21 @@
     </div>
                         </aside>
 
-        <main class="main-content">
-            <div id="view-editor" class="panel-box active">
-                <div id="editor-header" style="padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                    <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
+                    <div id="view-editor" class="panel-box active">
+                <div id="editor-header"> </div>
+
+                <div id="editor-search-bar" style="display:none; background: var(--surface-light); padding: 8px; border-bottom: 1px solid var(--border); align-items: center; gap: 8px;">
+                    <input type="text" id="file-search-input" placeholder="Search in file..." style="flex:1; margin-bottom:0; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px;">
+                    <button class="btn-outline" style="padding: 4px 8px;" onclick="findNext()">Next</button>
+                    <button class="btn-outline" style="padding: 4px 8px; color: var(--danger);" onclick="toggleFileSearch()">X</button>
+                </div>
+
+                <div id="mobile-toolbar"> </div>
+                <textarea id="code-editor"></textarea>
+                    </div>
+    
+            
+            <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
                     <div style="display: flex; gap: 6px;">
                         <button class="btn-outline" onclick="renameCurrentFile()">✏️</button>
                         <button class="btn-outline" style="color:var(--warn); border-color:var(--warn);" onclick="stripFileToSnippets()">✂️ Strip</button>
@@ -526,7 +537,54 @@ for (const fn of Object.keys(vfs)) {
     list.appendChild(el);
 }
         }
+    let lastSearchQuery = "";
+    let searchCursor = null;
 
+    function toggleFileSearch() {
+        const bar = document.getElementById('editor-search-bar');
+        const input = document.getElementById('file-search-input');
+        if (bar.style.display === 'none') {
+            bar.style.display = 'flex';
+            input.focus();
+        } else {
+            bar.style.display = 'none';
+            cmEditor.focus();
+        }
+    }
+
+    function findNext() {
+        const query = document.getElementById('file-search-input').value;
+        if (!query) return;
+
+        // Reset cursor if query changed
+        if (query !== lastSearchQuery) {
+            lastSearchQuery = query;
+            searchCursor = cmEditor.getSearchCursor(query);
+        }
+
+        if (searchCursor.findNext()) {
+            cmEditor.setSelection(searchCursor.from(), searchCursor.to());
+            cmEditor.scrollIntoView({from: searchCursor.from(), to: searchCursor.to()}, 200);
+        } else {
+            // Loop back to top
+            searchCursor = cmEditor.getSearchCursor(query);
+            if (searchCursor.findNext()) {
+                cmEditor.setSelection(searchCursor.from(), searchCursor.to());
+                cmEditor.scrollIntoView({from: searchCursor.from(), to: searchCursor.to()}, 200);
+            } else {
+                flashSaveStatus("No matches found");
+            }
+        }
+    }
+
+    // Trigger search on 'Enter' key inside search input
+    document.getElementById('file-search-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            findNext();
+        }
+    });
+        
         function openFile(fn) {
 if (currentFileName) vfs[currentFileName] = cmEditor.getValue();
 currentFileName = fn;
