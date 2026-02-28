@@ -5,9 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevOS Workspace</title>
     <link rel="manifest" href="./manifest.json">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+
     <style>
         :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -16,7 +22,8 @@
         .header-left { display: flex; align-items: center; gap: 10px; }
         .menu-btn { background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 18px; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
         
-        .tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding: 10px 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+        .tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding: 10px 15px; background: var(--panel); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+        .tabs::-webkit-scrollbar { display: none; }
         .tab { padding: 8px 12px; background: #000; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; color: var(--muted); }
         .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
@@ -31,7 +38,7 @@
         .file-item:hover { background: #1c2128; }
         .file-item.active { background: #1f6feb33; border-color: var(--accent); color: #58a6ff; }
 
-        .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; width: 100%; }
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; width: 100%; box-sizing: border-box; }
         .editor-container { display: flex; flex: 1; overflow: hidden; background: #000; border: 1px solid var(--border); border-radius: 6px; position: relative; }
         #line-numbers { padding: 12px 5px; background: #161b22; color: #8b949e; text-align: right; font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.5; overflow: hidden; user-select: none; border-right: 1px solid #30363d; min-width: 35px; }
         textarea#main-editor { flex: 1; background: transparent; color: #d1d5da; border: none; font-family: 'Fira Code', monospace; padding: 12px; font-size: 13px; line-height: 1.5; resize: none; outline: none; white-space: pre; overflow: auto; }
@@ -54,7 +61,7 @@
         #sandbox-frame { flex: 1; background: #fff; border: none; border-radius: 6px 6px 0 0; width: 100%; }
         #sandbox-console { height: 150px; background: #000; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; overflow-y: auto; border: 1px solid var(--border); border-radius: 0 0 6px 6px; border-top: 2px solid #333; }
         
-        .vault-item { background: #1c2128; border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; }
+        .vault-item { background: #1c2128; border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; word-break: break-all; }
         .vault-item:hover { border-color: var(--accent); }
     </style>
 </head>
@@ -66,15 +73,15 @@
         <div style="font-weight: bold; font-size: 16px;">DevOS <span id="save-status">Saved</span></div>
     </div>
     <div style="display: flex; gap: 8px;">
-        <button class="btn-outline" style="color: var(--accent);" onclick="exportForAI()">AI TXT EXPORT</button>
-        <button class="btn-primary" onclick="exportProject()">ZIP & EXPORT</button>
+        <button class="btn-outline" style="color: var(--accent);" onclick="exportForAI()">AI TXT</button>
+        <button class="btn-primary" onclick="exportProject()">ZIP</button>
     </div>
 </header>
 
 <div class="tabs">
     <div class="tab active" onclick="switchTab('editor', event)">1. Editor</div>
-    <div class="tab" onclick="switchTab('run', event)">2. Live Sandbox</div>
-    <div class="tab" onclick="switchTab('vault', event)">3. Vault & Time</div>
+    <div class="tab" onclick="switchTab('run', event)">2. Sandbox</div>
+    <div class="tab" onclick="switchTab('vault', event)">3. Vault</div>
     <div class="tab" onclick="switchTab('diagnostic', event)">4. Inspector</div>
     <div class="tab" onclick="switchTab('search', event)">5. Search</div>
 </div>
@@ -96,9 +103,12 @@
 
     <main class="main-view">
         <div id="view-editor" class="panel-box active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <strong id="current-file-label" style="color:var(--accent); font-size: 14px;">Select a file from sidebar</strong>
-                <button class="btn-warn" style="padding: 4px 8px;" onclick="saveSnippet()">+ Save to Vault</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap;">
+                <strong id="current-file-label" style="color:var(--accent); font-size: 14px; word-break: break-all;">Select a file from sidebar</strong>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-outline" style="padding: 4px 8px;" onclick="promptGoToLine()">Go To Line</button>
+                    <button class="btn-warn" style="padding: 4px 8px;" onclick="saveSnippet()">+ Vault</button>
+                </div>
             </div>
             <div class="editor-container">
                 <div id="line-numbers">1</div>
@@ -111,7 +121,7 @@
                 <strong style="color: var(--success)">Sandbox Environment</strong>
                 <button class="btn-primary" style="background: var(--success); color: #fff; padding: 4px 12px;" onclick="launchSandbox()">▶ REBUILD & RUN</button>
             </div>
-            <iframe id="sandbox-frame" sandbox="allow-scripts allow-same-origin allow-modals"></iframe>
+            <iframe id="sandbox-frame" sandbox="allow-scripts allow-modals"></iframe>
             <div id="sandbox-console">Console ready. Hit Rebuild & Run to launch.<br></div>
         </div>
 
@@ -133,9 +143,10 @@
 
         <div id="view-diagnostic" class="panel-box">
             <h3 style="margin-top:0; color:var(--danger)">Diagnostics Hub</h3>
-            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-                <button class="btn-danger" style="flex: 1;" onclick="runLinter()">1. LINT CURRENT FILE</button>
-                <button class="btn-warn" style="flex: 1;" onclick="runDependencyCheck()">2. SCAN IMPORTS</button>
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+                <button class="btn-danger" style="flex: 1; min-width: 30%;" onclick="runLinter()">1. LINT FILE</button>
+                <button class="btn-warn" style="flex: 1; min-width: 30%;" onclick="runDependencyCheck()">2. SCAN IMPORTS</button>
+                <button class="btn-primary" style="flex: 1; min-width: 30%;" onclick="formatCurrentFile()">3. FORMAT FILE</button>
             </div>
             <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px;"></div>
         </div>
@@ -251,8 +262,8 @@
             }
             console.log = (...args) => { sendLog('info', args); origLog(...args); };
             console.error = (...args) => { sendLog('error', args); origErr(...args); };
-            window.onerror = (m, u, l) => sendLog('error', ['Fatal: ' + m + ' (Line ' + l + ')']);
-            window.onunhandledrejection = (e) => sendLog('error', ['Unhandled Promise: ' + (e.reason || 'Unknown error')]);
+            window.onerror = function(m, u, l) { sendLog('error', ['Fatal: ' + m + ' (Line ' + l + ')']); };
+            window.onunhandledrejection = function(e) { sendLog('error', ['Unhandled Promise: ' + (e.reason || 'Unknown error')]); };
         <\/script>`;
 
         let html = vfs['index.html'];
@@ -350,6 +361,36 @@
     function syncEditorScroll() { 
         document.getElementById('line-numbers').scrollTop = document.getElementById('main-editor').scrollTop; 
     }
+    
+    // Editor Navigation
+    function promptGoToLine() {
+        const lineStr = prompt("Enter line number to jump to:");
+        if (!lineStr) return;
+        const lineNum = parseInt(lineStr, 10);
+        if (isNaN(lineNum) || lineNum < 1) return;
+
+        const editor = document.getElementById('main-editor');
+        const text = editor.value;
+        const lines = text.split('\n');
+        
+        if (lineNum > lines.length) {
+            alert("Line number exceeds file length.");
+            return;
+        }
+
+        let charIndex = 0;
+        for (let i = 0; i < lineNum - 1; i++) {
+            charIndex += lines[i].length + 1; // +1 for the newline character
+        }
+
+        editor.focus();
+        editor.setSelectionRange(charIndex, charIndex);
+
+        // Approximate scroll calculation based on line height (13px font-size * 1.5 line-height = 19.5px)
+        const lineHeight = 19.5;
+        editor.scrollTop = (lineNum - 1) * lineHeight - (editor.clientHeight / 2); // Centers the line vertically
+        syncEditorScroll();
+    }
 
     // Vault Functions
     async function saveSnippet() {
@@ -396,13 +437,15 @@
         snapUI.innerHTML = snapshots.length ? snapshots.map((s, i) => `<div class="vault-item" onclick="restoreSnapshot(${i})">🕒 ${s.label}</div>`).join('') : '<div style="color:var(--muted)">No snapshots.</div>';
     }
 
-    // Diagnostics & Export
+    // Diagnostics & Auto-Formatting
     function runLinter() {
         if(!currentFileName) return;
         JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true });
         let html = '';
         if (JSHINT.errors.length > 0) {
-            JSHINT.errors.forEach(e => { if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; });
+            JSHINT.errors.forEach(e => { 
+                if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; 
+            });
         } else html = '<div style="color:var(--success)">No lint errors found.</div>';
         document.getElementById('diagnostic-results').innerHTML = html;
     }
@@ -410,7 +453,38 @@
     function runDependencyCheck() {
         document.getElementById('diagnostic-results').innerHTML = "Scan complete. Logic maps verified.";
     }
+    
+    function formatCurrentFile() {
+        if (!currentFileName || !vfs[currentFileName]) return;
 
+        const code = vfs[currentFileName];
+        let formattedCode = code;
+        const ext = currentFileName.split('.').pop().toLowerCase();
+
+        try {
+            if (ext === 'js' || ext === 'json') {
+                formattedCode = js_beautify(code, { indent_size: 4, space_in_empty_paren: true });
+            } else if (ext === 'html') {
+                formattedCode = html_beautify(code, { indent_size: 4, wrap_line_length: 120 });
+            } else if (ext === 'css') {
+                formattedCode = css_beautify(code, { indent_size: 4 });
+            } else {
+                document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--warn)">Auto-format not supported for .${ext} files.</div>`;
+                return;
+            }
+
+            vfs[currentFileName] = formattedCode;
+            document.getElementById('main-editor').value = formattedCode;
+            triggerAutoSave();
+            updateEditorSync();
+            
+            document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--success)">Successfully formatted ${currentFileName}.</div>`;
+        } catch (err) {
+            document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--danger)">Format Error: ${err.message}</div>`;
+        }
+    }
+
+    // Search & Replace
     function performSearch() {
         const q = document.getElementById('search-query').value.toLowerCase();
         if(!q) return;
@@ -432,6 +506,7 @@
         triggerAutoSave();
     }
 
+    // Exports
     async function exportProject() {
         const zip = new JSZip();
         for (const [fn, code] of Object.entries(vfs)) zip.file(fn, code);
