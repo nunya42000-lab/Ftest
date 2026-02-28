@@ -14,6 +14,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/darcula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/xml-fold.min.js"></script>
+
     <style>
         :root { --bg: #0d1117; --panel: #161b22; --accent: #2f81f7; --success: #238636; --danger: #f85149; --warn: #d29922; --text: #c9d1d9; --border: #30363d; --muted: #8b949e; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -39,9 +52,11 @@
         .file-item.active { background: #1f6feb33; border-color: var(--accent); color: #58a6ff; }
 
         .main-view { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; width: 100%; box-sizing: border-box; }
-        .editor-container { display: flex; flex: 1; overflow: hidden; background: #000; border: 1px solid var(--border); border-radius: 6px; position: relative; }
-        #line-numbers { padding: 12px 5px; background: #161b22; color: #8b949e; text-align: right; font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.5; overflow: hidden; user-select: none; border-right: 1px solid #30363d; min-width: 35px; }
-        textarea#main-editor { flex: 1; background: transparent; color: #d1d5da; border: none; font-family: 'Fira Code', monospace; padding: 12px; font-size: 13px; line-height: 1.5; resize: none; outline: none; white-space: pre; overflow: auto; }
+        
+        /* CodeMirror Customization */
+        .editor-container { display: flex; flex: 1; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; position: relative; background: #2b2b2b; }
+        .CodeMirror { height: 100%; width: 100%; font-family: 'Fira Code', monospace; font-size: 13px; }
+        .CodeMirror-foldmarker { color: var(--accent); text-shadow: none; font-family: sans-serif; padding: 0 4px; }
         
         .panel-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: none; flex-direction: column; height: 100%; box-sizing: border-box; }
         .panel-box.active { display: flex; }
@@ -58,7 +73,7 @@
         .file-upload-wrapper input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
         #save-status { font-size: 11px; color: var(--success); margin-left: 10px; font-weight: normal; opacity: 0; transition: opacity 0.3s; }
         
-        #sandbox-frame { flex: 1; background: #fff; border: none; border-radius: 6px 6px 0 0; width: 100%; }
+        #sandbox-frame { flex: 1; background: #fff; border: none; border-radius: 0; width: 100%; }
         #sandbox-console { height: 150px; background: #000; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; overflow-y: auto; border: 1px solid var(--border); border-radius: 0 0 6px 6px; border-top: 2px solid #333; }
         
         .vault-item { background: #1c2128; border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; word-break: break-all; }
@@ -110,13 +125,10 @@
                     <button class="btn-warn" style="padding: 4px 8px;" onclick="saveSnippet()">+ Vault</button>
                 </div>
             </div>
-            <div class="editor-container">
-                <div id="line-numbers">1</div>
-                <textarea id="main-editor" wrap="off" oninput="updateEditorSync(); triggerAutoSave();" onscroll="syncEditorScroll()"></textarea>
-            </div>
+            <div class="editor-container" id="editor-wrapper"></div>
         </div>
 
-             <div id="view-run" class="panel-box" style="padding: 0; background: transparent; border: none;">
+        <div id="view-run" class="panel-box" style="padding: 0; background: transparent; border: none;">
             <div style="padding: 10px; background: var(--panel); border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <strong style="color: var(--success)">Sandbox Environment</strong>
                 <div style="display: flex; gap: 8px;">
@@ -126,15 +138,14 @@
             </div>
             <iframe id="sandbox-frame" sandbox="allow-scripts allow-modals"></iframe>
             <div id="sandbox-console">Console ready. Hit Rebuild & Run to launch.<br></div>
-             </div>
-        
+        </div>
 
         <div id="view-vault" class="panel-box">
             <h3 style="margin-top:0; color:var(--accent)">Vault & Time Machine</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex: 1; min-height: 0;">
                 <div style="border-right: 1px solid var(--border); padding-right: 15px; display: flex; flex-direction: column;">
                     <h4 style="color: var(--warn); margin-top: 0;">Snippets</h4>
-                    <p style="font-size: 11px; color: var(--muted);">Select text in editor to save.</p>
+                    <p style="font-size: 11px; color: var(--muted);">Highlight code in editor to save.</p>
                     <div id="snippet-list" style="overflow-y: auto; flex: 1;"></div>
                 </div>
                 <div style="display: flex; flex-direction: column;">
@@ -178,12 +189,27 @@
     let snippets = []; 
     let snapshots = [];
     let activeBlobUrls = [];
+    let cmEditor; // Global reference for CodeMirror
 
     // Initialize Workspace
     window.addEventListener('DOMContentLoaded', async () => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(() => {});
         }
+
+        // Initialize CodeMirror Editor with Folding & Gutters
+        cmEditor = CodeMirror(document.getElementById('editor-wrapper'), {
+            theme: 'darcula',
+            lineNumbers: true,
+            lineWrapping: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            mode: "htmlmixed",
+            extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }}
+        });
+
+        // Bind auto-save to CodeMirror's native change event
+        cmEditor.on('change', () => { triggerAutoSave(); });
 
         vfs = await localforage.getItem('vfs_data') || {};
         snippets = await localforage.getItem('vault_snippets') || [];
@@ -193,27 +219,26 @@
         renderVault();
     });
 
-    // WIPE FUNCTION: Clears everything to start over
-    async function clearWorkspace() {
+    function clearWorkspace() {
         if (confirm("Permanently wipe all files and data? This cannot be undone.")) {
-            await localforage.clear();
-            vfs = {};
-            currentFileName = null;
-            document.getElementById('main-editor').value = '';
-            document.getElementById('current-file-label').innerText = 'Select a file from sidebar';
-            rebuildSidebar();
-            renderVault();
-            flashSaveStatus("Workspace Wiped");
-            closeSidebar();
+            localforage.clear().then(() => {
+                vfs = {};
+                currentFileName = null;
+                cmEditor.setValue('');
+                document.getElementById('current-file-label').innerText = 'Select a file from sidebar';
+                rebuildSidebar();
+                renderVault();
+                flashSaveStatus("Workspace Wiped");
+                closeSidebar();
+            });
         }
     }
 
-    // Auto-Save with Race-Condition Prevention
     function triggerAutoSave() {
         const fileAtMomentOfTrigger = currentFileName; 
         if(!fileAtMomentOfTrigger) return;
         
-        const content = document.getElementById('main-editor').value;
+        const content = cmEditor.getValue();
         vfs[fileAtMomentOfTrigger] = content;
         
         clearTimeout(autoSaveTimeout);
@@ -229,25 +254,7 @@
         ind.style.opacity = 1; 
         setTimeout(() => ind.style.opacity = 0, 2000); 
     }
-    // Stop Sandbox Execution
-    function stopSandbox() {
-        const frame = document.getElementById('sandbox-frame');
-        const consoleOut = document.getElementById('sandbox-console');
-        
-        // Instantly halt execution by navigating the iframe away from the blob URL
-        frame.src = 'about:blank';
-        
-        // Clean up memory by revoking the current active blobs
-        if (activeBlobUrls.length > 0) {
-            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
-            activeBlobUrls = [];
-        }
-        
-        consoleOut.innerHTML += '<div style="color:var(--warn); margin-bottom:4px;">> Sandbox execution stopped manually.</div>';
-        consoleOut.scrollTop = consoleOut.scrollHeight;
-    }
-    
-    // Live Sandbox with Safe Revocation
+
     function launchSandbox() {
         const frame = document.getElementById('sandbox-frame');
         const consoleOut = document.getElementById('sandbox-console');
@@ -309,6 +316,18 @@
         frame.src = frameUrl;
     }
 
+    function stopSandbox() {
+        const frame = document.getElementById('sandbox-frame');
+        const consoleOut = document.getElementById('sandbox-console');
+        frame.src = 'about:blank';
+        if (activeBlobUrls.length > 0) {
+            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            activeBlobUrls = [];
+        }
+        consoleOut.innerHTML += '<div style="color:var(--warn); margin-bottom:4px;">> Sandbox execution stopped manually.</div>';
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
+
     window.addEventListener('message', (e) => {
         if (e.data && e.data.src === 'devos') {
             const out = document.getElementById('sandbox-console');
@@ -318,7 +337,6 @@
         }
     });
 
-    // Workspace UI Logic
     function openSidebar() { document.getElementById('ui-sidebar').classList.add('open'); document.getElementById('ui-scrim').classList.add('active'); }
     function closeSidebar() { document.getElementById('ui-sidebar').classList.remove('open'); document.getElementById('ui-scrim').classList.remove('active'); }
     
@@ -327,7 +345,7 @@
         document.querySelectorAll('.panel-box').forEach(p => p.classList.remove('active'));
         if(event) event.target.classList.add('active');
         document.getElementById('view-' + tabId).classList.add('active');
-        if(tabId === 'editor') updateEditorSync();
+        if(tabId === 'editor') cmEditor.refresh(); // Fixes rendering bugs when tab is hidden
     }
 
     function loadFiles(e) {
@@ -367,57 +385,37 @@
 
     function openFile(fn) {
         currentFileName = fn; 
-        document.getElementById('main-editor').value = vfs[fn] || '';
+        
+        // Dynamically set syntax highlighting mode based on extension
+        let ext = fn.split('.').pop().toLowerCase();
+        if (ext === 'js' || ext === 'json') cmEditor.setOption("mode", "javascript");
+        else if (ext === 'css') cmEditor.setOption("mode", "css");
+        else cmEditor.setOption("mode", "htmlmixed");
+
+        cmEditor.setValue(vfs[fn] || '');
         document.getElementById('current-file-label').innerText = fn;
         rebuildSidebar();
-        updateEditorSync();
-    }
-
-    function updateEditorSync() {
-        const content = document.getElementById('main-editor').value;
-        const lines = content.split('\n').length;
-        document.getElementById('line-numbers').innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
-    }
-
-    function syncEditorScroll() { 
-        document.getElementById('line-numbers').scrollTop = document.getElementById('main-editor').scrollTop; 
     }
     
-    // Editor Navigation
     function promptGoToLine() {
         const lineStr = prompt("Enter line number to jump to:");
         if (!lineStr) return;
         const lineNum = parseInt(lineStr, 10);
         if (isNaN(lineNum) || lineNum < 1) return;
-
-        const editor = document.getElementById('main-editor');
-        const text = editor.value;
-        const lines = text.split('\n');
         
-        if (lineNum > lines.length) {
-            alert("Line number exceeds file length.");
-            return;
-        }
-
-        let charIndex = 0;
-        for (let i = 0; i < lineNum - 1; i++) {
-            charIndex += lines[i].length + 1; // +1 for the newline character
-        }
-
-        editor.focus();
-        editor.setSelectionRange(charIndex, charIndex);
-
-        // Approximate scroll calculation based on line height (13px font-size * 1.5 line-height = 19.5px)
-        const lineHeight = 19.5;
-        editor.scrollTop = (lineNum - 1) * lineHeight - (editor.clientHeight / 2); // Centers the line vertically
-        syncEditorScroll();
+        cmEditor.focus();
+        cmEditor.setCursor({line: lineNum - 1, ch: 0});
+        
+        // Scroll line into center view
+        const t = cmEditor.charCoords({line: lineNum - 1, ch: 0}, "local").top; 
+        const halfHeight = cmEditor.getScrollerElement().offsetHeight / 2; 
+        cmEditor.scrollTo(null, t - halfHeight - 5);
     }
 
-    // Vault Functions
+    // Vault Functions Updated for CodeMirror
     async function saveSnippet() {
-        const editor = document.getElementById('main-editor');
-        const text = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
-        if(!text) return alert("Select text in the editor first.");
+        const text = cmEditor.getSelection().trim();
+        if(!text) return alert("Select code in the editor first.");
         const name = prompt("Snippet Name:");
         if(name) {
             snippets.push({ name, code: text });
@@ -427,8 +425,7 @@
     }
 
     function insertSnippet(idx) {
-        const editor = document.getElementById('main-editor');
-        editor.setRangeText(snippets[idx].code, editor.selectionStart, editor.selectionEnd, 'end');
+        cmEditor.replaceSelection(snippets[idx].code);
         triggerAutoSave(); 
         switchTab('editor');
     }
@@ -458,7 +455,6 @@
         snapUI.innerHTML = snapshots.length ? snapshots.map((s, i) => `<div class="vault-item" onclick="restoreSnapshot(${i})">🕒 ${s.label}</div>`).join('') : '<div style="color:var(--muted)">No snapshots.</div>';
     }
 
-    // Diagnostics & Auto-Formatting
     function runLinter() {
         if(!currentFileName) return;
         JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true });
@@ -478,34 +474,26 @@
     function formatCurrentFile() {
         if (!currentFileName || !vfs[currentFileName]) return;
 
-        const code = vfs[currentFileName];
+        const code = cmEditor.getValue();
         let formattedCode = code;
         const ext = currentFileName.split('.').pop().toLowerCase();
 
         try {
-            if (ext === 'js' || ext === 'json') {
-                formattedCode = js_beautify(code, { indent_size: 4, space_in_empty_paren: true });
-            } else if (ext === 'html') {
-                formattedCode = html_beautify(code, { indent_size: 4, wrap_line_length: 120 });
-            } else if (ext === 'css') {
-                formattedCode = css_beautify(code, { indent_size: 4 });
-            } else {
+            if (ext === 'js' || ext === 'json') formattedCode = js_beautify(code, { indent_size: 4, space_in_empty_paren: true });
+            else if (ext === 'html') formattedCode = html_beautify(code, { indent_size: 4, wrap_line_length: 120 });
+            else if (ext === 'css') formattedCode = css_beautify(code, { indent_size: 4 });
+            else {
                 document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--warn)">Auto-format not supported for .${ext} files.</div>`;
                 return;
             }
 
-            vfs[currentFileName] = formattedCode;
-            document.getElementById('main-editor').value = formattedCode;
-            triggerAutoSave();
-            updateEditorSync();
-            
+            cmEditor.setValue(formattedCode); // This auto-triggers the change event and saves
             document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--success)">Successfully formatted ${currentFileName}.</div>`;
         } catch (err) {
             document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--danger)">Format Error: ${err.message}</div>`;
         }
     }
 
-    // Search & Replace
     function performSearch() {
         const q = document.getElementById('search-query').value.toLowerCase();
         if(!q) return;
@@ -523,11 +511,10 @@
         const rep = document.getElementById('replace-query').value;
         if(!q || !confirm(`Replace all instances of "${q}" with "${rep}"?`)) return;
         for (const fn of Object.keys(vfs)) vfs[fn] = vfs[fn].split(q).join(rep);
-        if(currentFileName) document.getElementById('main-editor').value = vfs[currentFileName];
+        if(currentFileName) cmEditor.setValue(vfs[currentFileName]);
         triggerAutoSave();
     }
 
-    // Exports
     async function exportProject() {
         const zip = new JSZip();
         for (const [fn, code] of Object.entries(vfs)) zip.file(fn, code);
