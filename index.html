@@ -89,7 +89,6 @@
 </head>
 <body>
     <div id="status-msg" class="status-flash">Saved</div>
-
     <div class="tab-bar">
         <button class="btn-outline" style="margin: 5px; padding: 6px 12px;" onclick="toggleSidebar()">☰</button>
         <div class="tab active" onclick="switchTab('editor', event)">Editor</div>
@@ -97,9 +96,12 @@
         <div class="tab" onclick="switchTab('tools', event)">Inspector</div>
         <div class="tab" onclick="switchTab('vault', event)">Vault</div>
         <div class="tab" onclick="switchTab('help', event)">Help</div>
+        <div class="tab" onclick="switchTab('settings', event)">Settings</div>
         <div style="flex:1"></div>
+        <button class="btn-danger" style="margin: 5px;" onclick="stopPreview()">⏹</button>
         <button class="btn-primary" style="margin: 5px;" onclick="runPreview()">▶ RUN</button>
     </div>
+
 
     <div class="app-container">
         <aside class="sidebar" id="ui-sidebar">
@@ -111,11 +113,13 @@
                 </div>
             </div>
             <div id="file-list" style="flex:1; overflow-y: auto;"></div>
-            <div style="padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+                        <div style="padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
                 <button class="btn-outline" onclick="exportProject()">Export Zip</button>
                 <button class="btn-outline" onclick="exportForAI()">Export for AI Context</button>
+                <button class="btn-danger" style="margin-top: 10px;" onclick="clearAllFiles()">🗑️ Clear All Files</button>
             </div>
-        </aside>
+    </div>
+                        </aside>
 
         <main class="main-content">
             <div id="view-editor" class="panel-box active">
@@ -236,7 +240,19 @@
         </ul>
     </div>
 </div>
-
+            <div id="view-settings" class="panel-box">
+                <h2 style="color: var(--accent); margin-top: 0;">Settings</h2>
+                
+                <div class="help-card">
+                    <h3 style="color: var(--text);">Editor Preferences</h3>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; margin-top: 15px; color: var(--text); cursor: pointer;">
+                        <input type="checkbox" id="toggle-toolbar" onchange="toggleMobileToolbar()" style="width: 18px; height: 18px;">
+                        Show Mobile Symbol Toolbar
+                    </label>
+                    <p style="font-size: 11px; color: var(--muted); margin-top: 8px;">Displays the quick-access bracket and symbol bar above the keyboard.</p>
+                </div>
+            </div>
+            
         </main>
     </div>
 
@@ -288,7 +304,10 @@ window.addEventListener('message', (e) => {
         out.scrollTop = out.scrollHeight;
     }
 });
-
+const toolbarPref = localStorage.getItem('devos_show_toolbar');
+            const showToolbar = toolbarPref === null ? true : toolbarPref === 'true';
+            document.getElementById('toggle-toolbar').checked = showToolbar;
+            applyToolbarState(showToolbar);
 setInterval(takeSnapshot, 15 * 60 * 1000); // 15 Min Auto-Backup
         }
 
@@ -304,7 +323,40 @@ document.getElementById(`view-${tabId}`).classList.add('active');
 if(event) event.currentTarget.classList.add('active');
 if (tabId === 'editor') cmEditor.refresh();
         }
+        // --- Added Features Logic ---
 
+        function stopPreview() {
+            const frame = document.getElementById('preview-frame');
+            if (frame) frame.srcdoc = '';
+            const consoleOut = document.getElementById('console-output');
+            if (consoleOut) consoleOut.innerHTML = '<div class="log-msg" style="color:var(--warn)">⏹ Preview stopped and cleared.</div>';
+            switchTab('run');
+        }
+
+        function clearAllFiles() {
+            if(confirm("WARNING: This will instantly delete ALL files in your workspace. Are you sure?")) {
+                vfs = {};
+                currentFileName = null;
+                cmEditor.setValue('');
+                rebuildSidebar();
+                triggerAutoSave();
+                document.getElementById('current-file-label').innerText = "Workspace Empty";
+                toggleSidebar();
+                flashSaveStatus("Workspace Cleared");
+            }
+        }
+
+        function toggleMobileToolbar() {
+            const isChecked = document.getElementById('toggle-toolbar').checked;
+            localStorage.setItem('devos_show_toolbar', isChecked);
+            applyToolbarState(isChecked);
+        }
+
+        function applyToolbarState(show) {
+            const tb = document.getElementById('mobile-toolbar');
+            if (tb) tb.style.display = show ? 'flex' : 'none';
+        }
+        
         function flashSaveStatus(msg = "Saved") {
 const el = document.getElementById('status-msg');
 el.innerText = msg;
