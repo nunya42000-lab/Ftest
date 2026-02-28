@@ -116,14 +116,18 @@
             </div>
         </div>
 
-        <div id="view-run" class="panel-box" style="padding: 0; background: transparent; border: none;">
-            <div style="padding: 10px; background: var(--panel); border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between;">
+             <div id="view-run" class="panel-box" style="padding: 0; background: transparent; border: none;">
+            <div style="padding: 10px; background: var(--panel); border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <strong style="color: var(--success)">Sandbox Environment</strong>
-                <button class="btn-primary" style="background: var(--success); color: #fff; padding: 4px 12px;" onclick="launchSandbox()">▶ REBUILD & RUN</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-danger" style="padding: 4px 12px;" onclick="stopSandbox()">⏹ STOP</button>
+                    <button class="btn-primary" style="background: var(--success); color: #fff; padding: 4px 12px;" onclick="launchSandbox()">▶ REBUILD & RUN</button>
+                </div>
             </div>
             <iframe id="sandbox-frame" sandbox="allow-scripts allow-modals"></iframe>
             <div id="sandbox-console">Console ready. Hit Rebuild & Run to launch.<br></div>
-        </div>
+             </div>
+        
 
         <div id="view-vault" class="panel-box">
             <h3 style="margin-top:0; color:var(--accent)">Vault & Time Machine</h3>
@@ -225,7 +229,24 @@
         ind.style.opacity = 1; 
         setTimeout(() => ind.style.opacity = 0, 2000); 
     }
-
+    // Stop Sandbox Execution
+    function stopSandbox() {
+        const frame = document.getElementById('sandbox-frame');
+        const consoleOut = document.getElementById('sandbox-console');
+        
+        // Instantly halt execution by navigating the iframe away from the blob URL
+        frame.src = 'about:blank';
+        
+        // Clean up memory by revoking the current active blobs
+        if (activeBlobUrls.length > 0) {
+            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            activeBlobUrls = [];
+        }
+        
+        consoleOut.innerHTML += '<div style="color:var(--warn); margin-bottom:4px;">> Sandbox execution stopped manually.</div>';
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
+    
     // Live Sandbox with Safe Revocation
     function launchSandbox() {
         const frame = document.getElementById('sandbox-frame');
