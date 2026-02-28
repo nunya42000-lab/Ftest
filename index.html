@@ -88,6 +88,7 @@
         <div style="font-weight: bold; font-size: 16px;">DevOS <span id="save-status">Saved</span></div>
     </div>
     <div style="display: flex; gap: 8px;">
+        <button class="btn-warn" onclick="bundleProject()">📦 1-FILE BUNDLE</button>
         <button class="btn-outline" style="color: var(--accent);" onclick="exportForAI()">AI TXT</button>
         <button class="btn-primary" onclick="exportProject()">ZIP</button>
     </div>
@@ -118,13 +119,14 @@
 
     <main class="main-view">
         <div id="view-editor" class="panel-box active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap;">
                 <strong id="current-file-label" style="color:var(--accent); font-size: 14px; word-break: break-all;">Select a file from sidebar</strong>
                 <div style="display: flex; gap: 6px;">
                     <button class="btn-outline" style="padding: 4px 8px;" onclick="promptGoToLine()">Go To Line</button>
+                    <button class="btn-action" style="padding: 4px 8px;" onclick="extractCodeToFile()">✂️ Extract</button>
                     <button class="btn-warn" style="padding: 4px 8px;" onclick="saveSnippet()">+ Vault</button>
                 </div>
-            </div>
+                        </div>
             <div class="editor-container" id="editor-wrapper"></div>
         </div>
 
@@ -156,15 +158,22 @@
             </div>
         </div>
 
-        <div id="view-diagnostic" class="panel-box">
-            <h3 style="margin-top:0; color:var(--danger)">Diagnostics Hub</h3>
+                <div id="view-diagnostic" class="panel-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin:0; color:var(--danger)">Diagnostics Hub</h3>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-outline" style="padding: 4px 8px;" onclick="copyDiagnostics()">📋 Copy</button>
+                    <button class="btn-success" style="padding: 4px 8px; background: var(--success); color: white;" onclick="autoFixCurrentFile()">🔧 FIX</button>
+                </div>
+            </div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
                 <button class="btn-danger" style="flex: 1; min-width: 30%;" onclick="runLinter()">1. LINT FILE</button>
                 <button class="btn-warn" style="flex: 1; min-width: 30%;" onclick="runDependencyCheck()">2. SCAN IMPORTS</button>
                 <button class="btn-primary" style="flex: 1; min-width: 30%;" onclick="formatCurrentFile()">3. FORMAT FILE</button>
             </div>
-            <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px;"></div>
-        </div>
+            <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:'Fira Code', monospace; font-size:12px; white-space: pre-wrap;"></div>
+                </div>
+        
 
         <div id="view-search" class="panel-box">
             <h3 style="margin-top:0; color:var(--accent)">Find & Replace</h3>
@@ -454,21 +463,147 @@
         const snapUI = document.getElementById('snapshot-list');
         snapUI.innerHTML = snapshots.length ? snapshots.map((s, i) => `<div class="vault-item" onclick="restoreSnapshot(${i})">🕒 ${s.label}</div>`).join('') : '<div style="color:var(--muted)">No snapshots.</div>';
     }
-
-    function runLinter() {
+   function runLinter() {
         if(!currentFileName) return;
-        JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true });
+        const code = cmEditor.getValue();
+        const ext = currentFileName.split('.').pop().toLowerCase();
         let html = '';
-        if (JSHINT.errors.length > 0) {
-            JSHINT.errors.forEach(e => { 
-                if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; 
-            });
-        } else html = '<div style="color:var(--success)">No lint errors found.</div>';
-        document.getElementById('diagnostic-results').innerHTML = html;
+
+        if (ext === 'js') {
+            JSHINT(code, { esversion: 11, browser: true, module: true });
+            if (JSHINT.errors.length > 0) {
+                JSHINT.errors.forEach(e => { if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; });
+            }
+        } else if (ext === 'json') {
+            try { JSON.parse(code); } 
+            catch (e) { html += `<div style="color:var(--danger)">JSON Error: ${e.message}</div>`; }
+        } else if (ext === 'html') {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(code, "text/html");
+            const errors = doc.getElementsByTagName("parsererror");
+            if (errors.length > 0) html += `<div style="color:var(--danger)">HTML Error: ${errors[0].innerText}</div>`;
+        }
+
+        document.getElementById('diagnostic-results').innerHTML = html || '<div style="color:var(--success)">No syntax errors found.</div>';
+    }
+
+    function autoFixCurrentFile() {
+        if(!currentFileName) return;
+        const ext = currentFileName.split('.').pop().toLowerCase();
+        createSnapshot(); // Save history before destructive fix
+        
+        if (ext === 'json') {
+            try {
+                // Attempts to parse loose JS objects into strict JSON
+                const looseParse = new Function('return ' + cmEditor.getValue())();
+                cmEditor.setValue(JSON.stringify(looseParse, null, 4));
+                document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--success)">Strict JSON format applied.</div>`;
+            } catch (e) {
+                document.getElementById('diagnostic-results').innerHTML = `<div style="color:var(--danger)">Failed to auto-fix JSON: ${e.message}</div>`;
+            }
+        } else {
+            // For JS/HTML/CSS, aggressive formatting acts as a structural fix
+            formatCurrentFile();
+            document.getElementById('diagnostic-results').innerHTML += `<br><div style="color:var(--accent)">Auto-formatter applied. Check for missing structural closures.</div>`;
+        }
+    }
+
+    function copyDiagnostics() {
+        const text = document.getElementById('diagnostic-results').innerText;
+        navigator.clipboard.writeText(text).then(() => flashSaveStatus("Copied!"));
+    }
+
+    // --- DEPENDENCY & SUBFOLDER SCANNER ---
+    function resolvePath(baseFile, relativePath) {
+        if (!relativePath.startsWith('.')) return relativePath; // Absolute or root path
+        const baseParts = baseFile.split('/');
+        baseParts.pop(); // Remove filename
+        const relParts = relativePath.split('/');
+        
+        for (const part of relParts) {
+            if (part === '.') continue;
+            if (part === '..') baseParts.pop();
+            else baseParts.push(part);
+        }
+        return baseParts.join('/');
     }
 
     function runDependencyCheck() {
-        document.getElementById('diagnostic-results').innerHTML = "Scan complete. Logic maps verified.";
+        let html = '';
+        let missingCount = 0;
+        
+        // Regex to catch ES6 imports, standard script tags, and CSS links
+        const importRegex = /(?:import\s+.*?from\s+['"]([^'"]+)['"])|(?:<script\s+.*?src=['"]([^'"]+)['"])|(?:<link\s+.*?href=['"]([^'"]+)['"])/g;
+
+        for (const [fn, code] of Object.entries(vfs)) {
+            let match;
+            while ((match = importRegex.exec(code)) !== null) {
+                const importedPath = match[1] || match[2] || match[3];
+                // Ignore external URLs (http/https)
+                if (importedPath.startsWith('http') || importedPath.startsWith('//')) continue;
+                
+                const resolvedPath = resolvePath(fn, importedPath);
+                
+                if (!vfs[resolvedPath]) {
+                    html += `<div style="color:var(--danger)">[Missing File] ${fn} imports from missing file ${resolvedPath}.</div>`;
+                    missingCount++;
+                }
+            }
+        }
+        
+        document.getElementById('diagnostic-results').innerHTML = html || `<div style="color:var(--success)">Scan complete. All dependency paths resolved correctly.</div>`;
+    }
+
+    // --- RESTRUCTURING (EXTRACT & BUNDLE) ---
+    async function extractCodeToFile() {
+        const selectedCode = cmEditor.getSelection();
+        if(!selectedCode) return alert("Highlight a chunk of code to extract first.");
+        
+        const newFileName = prompt("Enter path/filename for the new module (e.g., components/ui.js):");
+        if(!newFileName) return;
+
+        // Save new file
+        vfs[newFileName] = selectedCode;
+        
+        // Replace in current file (guessing import style based on extension)
+        const ext = currentFileName.split('.').pop().toLowerCase();
+        let replacement = '';
+        if (ext === 'html') replacement = `<script src="${newFileName}"><\/script>`;
+        else if (ext === 'js') replacement = `import * as Module from './${newFileName}'; // Update import as needed`;
+        
+        cmEditor.replaceSelection(replacement);
+        triggerAutoSave();
+        rebuildSidebar();
+        flashSaveStatus("Code Extracted");
+    }
+
+    async function bundleProject() {
+        if (!vfs['index.html']) return alert("index.html required to act as the bundle root.");
+        
+        let bundleHTML = vfs['index.html'];
+        const scriptRegex = /<script\s+[^>]*src=['"]([^'"]+)['"][^>]*><\/script>/g;
+        const linkRegex = /<link\s+[^>]*href=['"]([^'"]+\.css)['"][^>]*>/g;
+
+        // Inline CSS
+        bundleHTML = bundleHTML.replace(linkRegex, (match, p1) => {
+            if (p1.startsWith('http')) return match;
+            const cssPath = resolvePath('index.html', p1);
+            return vfs[cssPath] ? `<style>\n/* Inlined ${cssPath} */\n${vfs[cssPath]}\n</style>` : match;
+        });
+
+        // Inline JS
+        bundleHTML = bundleHTML.replace(scriptRegex, (match, p1) => {
+            if (p1.startsWith('http')) return match;
+            const jsPath = resolvePath('index.html', p1);
+            return vfs[jsPath] ? `<script>\n/* Inlined ${jsPath} */\n${vfs[jsPath]}\n<\/script>` : match;
+        });
+
+        // Export the monolithic file
+        const blob = new Blob([bundleHTML], { type: "text/html" });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "devOS_bundled_app.html";
+        a.click();
     }
     
     function formatCurrentFile() {
