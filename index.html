@@ -251,7 +251,8 @@
             }
             console.log = (...args) => { sendLog('info', args); origLog(...args); };
             console.error = (...args) => { sendLog('error', args); origErr(...args); };
-            window.onerror = (m, u, l) => sendLog('error', [\`Fatal: \${m} (Line \${l})\`]);
+            window.onerror = (m, u, l) => sendLog('error', ['Fatal: ' + m + ' (Line ' + l + ')']);
+            window.onunhandledrejection = (e) => sendLog('error', ['Unhandled Promise: ' + (e.reason || 'Unknown error')]);
         <\/script>`;
 
         let html = vfs['index.html'];
@@ -397,20 +398,14 @@
 
     // Diagnostics & Export
     function runLinter() {
-    if(!currentFileName) return;
-    JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true });
-    let html = '';
-    if (JSHINT.errors.length > 0) {
-        JSHINT.errors.forEach(e => { 
-            // Removed the \ before ${e.line} and ${e.reason}
-            if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; 
-        });
-    } else {
-        html = '<div style="color:var(--success)">No lint errors found.</div>';
+        if(!currentFileName) return;
+        JSHINT(vfs[currentFileName], { esversion: 11, browser: true, module: true });
+        let html = '';
+        if (JSHINT.errors.length > 0) {
+            JSHINT.errors.forEach(e => { if (e) html += `<div style="color:var(--danger)">Line ${e.line}: ${e.reason}</div>`; });
+        } else html = '<div style="color:var(--success)">No lint errors found.</div>';
+        document.getElementById('diagnostic-results').innerHTML = html;
     }
-    document.getElementById('diagnostic-results').innerHTML = html;
-    }
-
 
     function runDependencyCheck() {
         document.getElementById('diagnostic-results').innerHTML = "Scan complete. Logic maps verified.";
@@ -422,7 +417,7 @@
         let html = '';
         for (const [fn, content] of Object.entries(vfs)) {
             if(content.toLowerCase().includes(q)) {
-               html += `<div onclick="openFile('${fn}'); switchTab('editor')" style="cursor:pointer; padding:8px; border-bottom:1px solid var(--border)">${fn}</div>`;
+                html += `<div onclick="openFile('${fn}'); switchTab('editor')" style="cursor:pointer; padding:8px; border-bottom:1px solid var(--border)">${fn}</div>`;
             }
         }
         document.getElementById('search-results').innerHTML = html || 'No matches found.';
