@@ -191,11 +191,41 @@
                 </div>
                 <div id="snippet-list" style="overflow-y: auto; height:calc(100% - 60px); margin-top:10px;"></div>
             </div>
+<div id="view-help" class="panel-box">
+    <h2 style="color: var(--accent); margin-top: 0;">DevOS User Guide</h2>
+    <p style="font-size: 13px; color: #888; margin-bottom: 20px;">A mobile-first workspace designed for modular development.</p>
 
-            <div id="preview-container">
-                <iframe id="preview-frame"></iframe>
-                <div id="console-output"></div>
-            </div>
+    <div style="margin-bottom: 20px;">
+        <h3 style="color: var(--success); border-bottom: 1px solid var(--border); padding-bottom: 5px;">📱 Touch & Navigation</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px;">
+            <li><strong>Gesture Swiping:</strong> Swipe left or right on the editor's header (where the filename is) to instantly cycle through your active files without opening the sidebar.</li>
+            <li><strong>Quick-Symbol Toolbar:</strong> Use the horizontal scrolling bar above the keyboard to instantly insert brackets, operators, and template literals without switching your mobile keyboard layout.</li>
+            <li><strong>Auto-Closing:</strong> HTML tags, quotes, and brackets automatically close as you type them.</li>
+        </ul>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <h3 style="color: var(--warn); border-bottom: 1px solid var(--border); padding-bottom: 5px;">✂️ Code Refactoring</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px;">
+            <li><strong>Smart Extraction:</strong> Highlight a block of code and press <strong>📦 Extract</strong>. It will create a new file, format it as an ES6 Module, and automatically inject the <code>import</code> statement into your current file.</li>
+            <li><strong>File Shredder:</strong> Press <strong>✂️ Strip File</strong> to scan a JavaScript file, rip out all top-level functions and constants, move them directly to your Snippet Vault, and leave only the execution skeleton behind.</li>
+            <li><strong>Auto-Update Imports:</strong> If you rename a file using the ✏️ Rename button, DevOS scans your entire workspace and updates all <code>import</code> statements referencing the old name.</li>
+        </ul>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <h3 style="color: #bf616a; border-bottom: 1px solid var(--border); padding-bottom: 5px;">🛠️ Advanced Tools</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px;">
+            <li><strong>Time Machine:</strong> DevOS automatically takes a snapshot of your entire file system every 15 minutes. Use the Tools tab to view history and restore previous states if you break your code.</li>
+            <li><strong>Console Interceptor:</strong> <code>console.log()</code> and runtime errors from your preview window are intercepted and printed in the black console box below the preview frame.</li>
+            <li><strong>PWA Controller:</strong> Force-clear Service Workers and Caches from the Tools tab if your app refuses to load the freshest code.</li>
+        </ul>
+    </div>
+</div>
+<div id="preview-container">
+    <iframe id="preview-frame"></iframe>
+    <div id="console-output"></div>
+</div>
         </main>
     </div>
     
