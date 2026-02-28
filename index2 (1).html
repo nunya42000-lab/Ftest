@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DevOS Workspace</title>
+    <link rel="manifest" href="./manifest.json">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.css"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
+
+    <style>
+        :root { 
+            --bg: #0d1117; 
+            --panel: #161b22; 
+            --surface-light: #21262d; 
+            --accent: #2f81f7; 
+            --success: #238636; 
+            --danger: #f85149; 
+            --warn: #d29922; 
+            --text: #c9d1d9; 
+            --border: #30363d; 
+            --muted: #8b949e; 
+        }
+        
+        body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; }
+
+        /* Sleek Underline Tabs */
+        .tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; align-items: center; }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab { padding: 12px 18px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; transition: 0.2s; }
+        .tab.active { border-bottom-color: var(--accent); color: var(--accent); background: rgba(47, 129, 247, 0.05); }
+
+        /* Buttons & Inputs */
+        button { cursor: pointer; border: none; border-radius: 6px; font-weight: 600; padding: 6px 12px; font-size: 12px; }
+        .btn-primary { background: var(--success); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        
+        /* Layout Containers */
+        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 1000; }
+        @media (max-width: 768px) { .sidebar { position: absolute; height: 100%; transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
+        
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-box { display: none; flex: 1; overflow-y: auto; padding: 15px; }
+        .panel-box.active { display: flex; flex-direction: column; }
+        
+        /* Editor Customization */
+        #view-editor { padding: 0; }
+        .CodeMirror { flex: 1; height: 100%; font-family: 'Fira Code', monospace; font-size: 14px; background: var(--bg) !important; }
+
+        /* Mobile Toolbar */
+        #mobile-toolbar { display: flex; overflow-x: auto; background: var(--panel); padding: 8px; gap: 8px; border-bottom: 1px solid var(--border); scrollbar-width: none; }
+        #mobile-toolbar::-webkit-scrollbar { display: none; }
+        .tool-btn { background: var(--surface-light); color: var(--accent); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; touch-action: manipulation; }
+        .tool-btn:active { background: var(--accent); color: #fff; }
+
+        /* Help Cards */
+        .help-card { background: var(--surface-light); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .help-card h3 { margin-top: 0; font-size: 14px; color: var(--accent); }
+        .help-card p { margin: 5px 0 0 0; font-size: 12px; color: var(--muted); }
+
+        /* Sandbox & Console */
+        #preview-container { flex: 1; border-top: 1px solid var(--border); display: flex; flex-direction: column; background: #fff; }
+        iframe { border: none; flex: 1; width: 100%; }
+        #console-output { background: #000; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; height: 160px; overflow-y: auto; border-top: 2px solid var(--border); }
+        .log-msg { border-bottom: 1px dashed #333; padding: 2px 0; }
+        .log-error { color: var(--danger); border-bottom: 1px dashed #333; padding: 2px 0; }
+
+        .status-flash { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 8px 16px; border-radius: 20px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 2000; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="status-msg" class="status-flash">Saved</div>
+
+    <div class="tab-bar">
+        <button class="btn-outline" style="margin: 5px; padding: 6px 12px;" onclick="toggleSidebar()">☰</button>
+        <div class="tab active" onclick="switchTab('editor', event)">Editor</div>
+        <div class="tab" onclick="switchTab('run', event)">Sandbox</div>
+        <div class="tab" onclick="switchTab('tools', event)">Inspector</div>
+        <div class="tab" onclick="switchTab('vault', event)">Vault</div>
+        <div class="tab" onclick="switchTab('help', event)">Help</div>
+        <div style="flex:1"></div>
+        <button class="btn-primary" style="margin: 5px;" onclick="runPreview()">▶ RUN</button>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar" id="ui-sidebar">
+            <div style="padding: 15px; border-bottom: 1px solid var(--border);">
+                <button class="btn-primary" style="width:100%;" onclick="createNewFile()">+ NEW FILE</button>
+                <div style="margin-top:10px; position:relative; overflow:hidden;">
+                    <button class="btn-outline" style="width:100%;">📂 LOAD FILES</button>
+                    <input type="file" multiple onchange="loadFiles(event)" style="position:absolute; top:0; left:0; opacity:0; width:100%; height:100%; cursor:pointer;">
+                </div>
+            </div>
+            <div id="file-list" style="flex:1; overflow-y: auto;"></div>
+            <div style="padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-outline" onclick="exportProject()">Export Zip</button>
+                <button class="btn-outline" onclick="exportForAI()">Export for AI Context</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="view-editor" class="panel-box active">
+                <div id="editor-header" style="padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                    <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-outline" onclick="renameCurrentFile()">✏️</button>
+                        <button class="btn-outline" style="color:var(--warn); border-color:var(--warn);" onclick="stripFileToSnippets()">✂️ Strip</button>
+                        <button class="btn-outline" onclick="extractCodeToFile()">📦 Extract</button>
+                    </div>
+                </div>
+
+                <div id="mobile-toolbar">
+                    <button class="tool-btn" onclick="insertSymbol('{')">{</button>
+                    <button class="tool-btn" onclick="insertSymbol('}')">}</button>
+                    <button class="tool-btn" onclick="insertSymbol('(')">(</button>
+                    <button class="tool-btn" onclick="insertSymbol(')')">)</button>
+                    <button class="tool-btn" onclick="insertSymbol(';')">;</button>
+                    <button class="tool-btn" onclick="insertSymbol('=')">=</button>
+                    <button class="tool-btn" onclick="insertSymbol('>')">&gt;</button>
+                    <button class="tool-btn" onclick="insertSymbol('<')">&lt;</button>
+                    <button class="tool-btn" onclick="insertSymbol('/')">/</button>
+                    <button class="tool-btn" onclick="insertSymbol('`')">`</button>
+                    <button class="tool-btn" onclick="insertSymbol('$', true)">${}</button>
+                </div>
+                
+                <textarea id="code-editor"></textarea>
+            </div>
+<div id="view-run" class="panel-box" style="padding: 0;">
+    <div id="preview-container">
+        <iframe id="preview-frame"></iframe>
+        <div id="console-output"></div>
+    </div>
+</div>
+
+<div id="view-tools" class="panel-box">
+    <h3 style="margin-top:0; color:var(--accent);">Diagnostics & Search</h3>
+    
+    <div style="margin-bottom: 20px;">
+        <button class="btn-outline" style="width: 100%; margin-bottom: 10px;" onclick="runLinter()">Run Strict Linter</button>
+        <div id="diagnostic-results" style="font-size: 12px; background: var(--surface-light); padding: 10px; border-radius: 6px; border: 1px solid var(--border);"></div>
+    </div>
+    
+    <div style="margin-bottom: 20px; border: 1px solid var(--border); padding: 15px; border-radius: 8px; background: var(--surface-light);">
+        <h4 style="margin-top:0; color:var(--text);">Find & Replace</h4>
+        <input type="text" id="search-query" placeholder="Search workspace..." style="width:100%; padding:8px; margin-bottom:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
+        <input type="text" id="replace-query" placeholder="Replace with..." style="width:100%; padding:8px; margin-bottom:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-outline" style="flex:1;" onclick="performSearch()">Search</button>
+            <button class="btn-danger" style="flex:1;" onclick="performReplace()">Replace All</button>
+        </div>
+        <div id="search-results" style="margin-top: 10px; font-size: 12px; max-height: 150px; overflow-y:auto;"></div>
+    </div>
+
+    <h3 style="color:var(--accent);">Advanced Dev Tools</h3>
+    
+    <div style="margin-bottom: 15px; border: 1px solid var(--border); padding: 15px; border-radius: 8px; background: var(--surface-light);">
+        <h4 style="margin-top:0; color:var(--success);">Time Machine Backups</h4>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-outline" style="flex:1;" onclick="takeSnapshot()">Take Snapshot</button>
+            <button class="btn-outline" style="flex:1;" onclick="renderSnapshots()">View History</button>
+        </div>
+        <div id="snapshot-list" style="margin-top: 10px; max-height: 150px; overflow-y: auto;"></div>
+    </div>
+
+    <div style="margin-bottom: 15px; border: 1px solid var(--border); padding: 15px; border-radius: 8px; background: var(--surface-light);">
+        <h4 style="margin-top:0; color:var(--warn);">Storage Explorer</h4>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-outline" style="flex:1;" onclick="exploreStorage()">View Storage</button>
+            <button class="btn-danger" style="flex:1;" onclick="clearLocalStorage()">Clear Local</button>
+        </div>
+        <div id="storage-list" style="margin-top: 10px; font-family: monospace; font-size: 11px; overflow-wrap: anywhere;"></div>
+    </div>
+
+    <div style="margin-bottom: 20px; border: 1px solid var(--border); padding: 15px; border-radius: 8px; background: var(--surface-light);">
+        <h4 style="margin-top:0; color:#bf616a;">PWA Controller</h4>
+        <button class="btn-danger" style="width: 100%;" onclick="clearPWACache()">Nuke SW & Caches</button>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 8px; margin-bottom:0;">Force-clears service workers and storage caches to ensure fresh reloads.</p>
+    </div>
+</div>
+
+<div id="view-vault" class="panel-box">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin: 0; color:var(--accent);">Snippet Vault</h3>
+        <button class="btn-primary" onclick="createManualSnippet()">+ NEW SNIPPET</button>
+    </div>
+    <div id="snippet-list" style="overflow-y: auto; flex: 1; margin-top:15px;"></div>
+</div>
+
+<div id="view-help" class="panel-box">
+    <h2 style="color: var(--accent); margin-top: 0;">DevOS User Guide</h2>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">A mobile-first workspace designed for modular development.</p>
+
+    <div class="help-card">
+        <h3 style="color: var(--success);">📱 Touch & Navigation</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px; color: var(--text); margin-bottom:0;">
+            <li><strong>Gesture Swiping:</strong> Swipe left or right on the editor's header to cycle files.</li>
+            <li><strong>Quick-Symbol Toolbar:</strong> Use the scrolling bar above the keyboard to insert brackets without switching layouts.</li>
+            <li><strong>Auto-Closing:</strong> HTML tags, quotes, and brackets automatically close as you type.</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h3 style="color: var(--warn);">✂️ Code Refactoring</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px; color: var(--text); margin-bottom:0;">
+            <li><strong>Smart Extraction:</strong> Highlight code and press <strong>📦 Extract</strong>. It will format it as a Module and inject the <code>import</code> statement.</li>
+            <li><strong>File Shredder:</strong> Press <strong>✂️ Strip</strong> to rip out all top-level functions and move them to your Vault.</li>
+            <li><strong>Auto-Update Imports:</strong> Renaming a file updates all <code>import</code> statements automatically.</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h3 style="color: #bf616a;">🛠️ Advanced Tools</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px; color: var(--text); margin-bottom:0;">
+            <li><strong>Time Machine:</strong> Snapshots are taken every 15 minutes. Check the Inspector tab to restore them.</li>
+            <li><strong>Console Interceptor:</strong> <code>console.log()</code> and errors are caught and printed in the Sandbox view.</li>
+            <li><strong>Export Context:</strong> Use <em>Export for AI Context</em> in the sidebar to dump your workspace into a single text file.</li>
+        </ul>
+    </div>
+</div>
+
+        </main>
+    </div>
+
+    <script>
+        let vfs = {};
+        let currentFileName = null;
+        let cmEditor = null;
+        let saveTimer = null;
+        let snippets = [];
+        let snapshots = [];
+
+        // --- Initialization ---
+        async function init() {
+cmEditor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+    mode: "javascript",
+    theme: "dracula",
+    lineNumbers: true,
+    autoCloseBrackets: true,
+    autoCloseTags: true,
+    viewportMargin: Infinity,
+    lineWrapping: true
+});
+
+cmEditor.on('change', triggerAutoSave);
+
+const savedVfs = await localforage.getItem('devos_vfs');
+if (savedVfs) vfs = savedVfs;
+
+const savedSnippets = await localforage.getItem('vault_snippets');
+if (savedSnippets) snippets = savedSnippets;
+
+await loadSnapshots();
+
+rebuildSidebar();
+renderVault();
+if (Object.keys(vfs).length > 0) openFile(Object.keys(vfs)[0]);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Registration failed', err));
+}
+
+// Console Interceptor Listener
+window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'devos-console') {
+        const out = document.getElementById('console-output');
+        const cssClass = e.data.level === 'error' ? 'log-error' : 'log-msg';
+        const prefix = e.data.level === 'error' ? '❌ ' : '▶ ';
+        out.innerHTML += `<div class="${cssClass}">${prefix}${e.data.msg}</div>`;
+        out.scrollTop = out.scrollHeight;
+    }
+});
+
+setInterval(takeSnapshot, 15 * 60 * 1000); // 15 Min Auto-Backup
+        }
+
+        // --- Core UI & File System ---
+        function toggleSidebar() {
+document.getElementById('ui-sidebar').classList.toggle('open');
+        }
+
+        function switchTab(tabId, event) {
+document.querySelectorAll('.panel-box').forEach(el => el.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+document.getElementById(`view-${tabId}`).classList.add('active');
+if(event) event.currentTarget.classList.add('active');
+if (tabId === 'editor') cmEditor.refresh();
+        }
+
+        function flashSaveStatus(msg = "Saved") {
+const el = document.getElementById('status-msg');
+el.innerText = msg;
+el.style.opacity = 1;
+setTimeout(() => el.style.opacity = 0, 1500);
+        }
+
+        function triggerAutoSave() {
+clearTimeout(saveTimer);
+saveTimer = setTimeout(async () => {
+    if (currentFileName) vfs[currentFileName] = cmEditor.getValue();
+    await localforage.setItem('devos_vfs', vfs);
+    flashSaveStatus();
+}, 1000);
+        }
+
+        function rebuildSidebar() {
+const list = document.getElementById('file-list');
+list.innerHTML = '';
+for (const fn of Object.keys(vfs)) {
+    const el = document.createElement('div');
+    el.style.cssText = `padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: ${fn === currentFileName ? 'rgba(47, 129, 247, 0.1)' : 'transparent'}`;
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.innerText = fn;
+    nameSpan.style.cssText = `color: ${fn === currentFileName ? 'var(--accent)' : 'var(--text)'}; font-size: 14px; cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;`;
+    nameSpan.onclick = () => { openFile(fn); toggleSidebar(); };
+    
+    const delBtn = document.createElement('button');
+    delBtn.innerText = '🗑️';
+    delBtn.style.cssText = "background:transparent; border:none; padding:4px; font-size:14px;";
+    delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if(confirm(`Delete ${fn}?`)) {
+            delete vfs[fn];
+            if(currentFileName === fn) { cmEditor.setValue(''); currentFileName = null; }
+            rebuildSidebar();
+            triggerAutoSave();
+        }
+    };
+    
+    el.appendChild(nameSpan);
+    el.appendChild(delBtn);
+    list.appendChild(el);
+}
+        }
+
+        function openFile(fn) {
+if (currentFileName) vfs[currentFileName] = cmEditor.getValue();
+currentFileName = fn;
+cmEditor.setValue(vfs[fn] || '');
+
+const ext = fn.split('.').pop().toLowerCase();
+let mode = "javascript";
+if (ext === "html") mode = "htmlmixed";
+else if (ext === "css") mode = "css";
+else if (ext === "json") mode = "application/json";
+
+cmEditor.setOption("mode", mode);
+document.getElementById('current-file-label').innerText = fn;
+rebuildSidebar();
+switchTab('editor');
+        }
+
+        async function loadFiles(e) {
+const files = e.target.files;
+for (let i = 0; i < files.length; i++) {
+    const text = await files[i].text();
+    vfs[files[i].name] = text;
+}
+rebuildSidebar();
+triggerAutoSave();
+toggleSidebar();
+        }
+
+        function createNewFile() {
+const fn = prompt("Enter new filename (e.g., module.js, styles.css):");
+if (!fn || vfs[fn]) return alert("Invalid or duplicate name.");
+
+let boilerplate = fn.endsWith('.html') ? '<!DOCTYPE html>\n<html lang="en">\n<head>\n\t<meta charset="UTF-8">\n\t<title>New Doc</title>\n</head>\n<body>\n\n</body>\n</html>' : '// New Module\n';
+vfs[fn] = boilerplate;
+rebuildSidebar();
+openFile(fn);
+triggerAutoSave();
+toggleSidebar();
+        }
+
+        function renameCurrentFile() {
+if (!currentFileName) return;
+const newName = prompt("Rename file to:", currentFileName);
+if (!newName || newName === currentFileName || vfs[newName]) return;
+
+const oldName = currentFileName;
+vfs[newName] = vfs[oldName];
+delete vfs[oldName];
+
+updateImportsAcrossWorkspace(oldName, newName);
+
+currentFileName = newName;
+rebuildSidebar();
+openFile(newName);
+triggerAutoSave();
+        }
+
+        function updateImportsAcrossWorkspace(oldName, newName) {
+let updatedCount = 0;
+const regexWithDotSlash = new RegExp(`(['"\`])\\.\\/${oldName}\\1`, 'g');
+const regexWithoutDotSlash = new RegExp(`(['"\`])${oldName}\\1`, 'g');
+
+for (const [filename, content] of Object.entries(vfs)) {
+    if (filename === newName) continue;
+    if (!filename.endsWith('.js') && !filename.endsWith('.html')) continue;
+
+    let newContent = content.replace(regexWithDotSlash, `$1./${newName}$1`).replace(regexWithoutDotSlash, `$1${newName}$1`);
+
+    if (newContent !== content) {
+        vfs[filename] = newContent;
+        updatedCount++;
+    }
+}
+if (updatedCount > 0) flashSaveStatus(`Imports updated in ${updatedCount} files`);
+        }
+
+        // --- Mobile Toolbar & Gestures ---
+        function insertSymbol(sym, isTemplate = false) {
+if(!cmEditor) return;
+const cursor = cmEditor.getCursor();
+if (isTemplate) {
+    cmEditor.replaceRange('${}', cursor);
+    cmEditor.setCursor({line: cursor.line, ch: cursor.ch + 2});
+} else {
+    cmEditor.replaceRange(sym, cursor);
+    cmEditor.setCursor({line: cursor.line, ch: cursor.ch + 1});
+}
+cmEditor.focus();
+        }
+
+        let touchStartX = 0;
+        const headerEl = document.getElementById('editor-header');
+        headerEl.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+        headerEl.addEventListener('touchend', e => {
+let diff = e.changedTouches[0].screenX - touchStartX;
+if (Math.abs(diff) > 60) {
+    const files = Object.keys(vfs);
+    if (files.length === 0) return;
+    let idx = files.indexOf(currentFileName);
+    if (diff < 0 && idx < files.length - 1) openFile(files[idx + 1]);
+    else if (diff > 0 && idx > 0) openFile(files[idx - 1]);
+}
+        }, {passive: true});
+
+        // --- Smart Code Extractors ---
+        async function extractCodeToFile() {
+const selectedCode = cmEditor.getSelection();
+if(!selectedCode) return alert("Highlight code to extract.");
+const newFileName = prompt("Enter new filename (e.g., ui.js):");
+if(!newFileName) return;
+
+const ext = currentFileName.split('.').pop().toLowerCase();
+let replacement = '', newContent = selectedCode;
+
+if (ext === 'js') {
+    const cleanName = newFileName.replace('.js', '').replace(/[^a-zA-Z0-9]/g, '');
+    const exportName = prompt("Enter export function name (leave blank for standard):", `init${cleanName}`);
+    if (exportName) {
+        newContent = `export function ${exportName}() {\n${selectedCode}\n}`;
+        replacement = `import { ${exportName} } from './${newFileName}';\n\n// TODO: Execute ${exportName}()`;
+    } else {
+        replacement = `import * as Module from './${newFileName}';`;
+    }
+} else if (ext === 'html') {
+    replacement = `<script src="${newFileName}"><\/script>`;
+}
+
+vfs[newFileName] = newContent;
+cmEditor.replaceSelection(replacement);
+triggerAutoSave();
+rebuildSidebar();
+flashSaveStatus("Extracted");
+        }
+
+        async function stripFileToSnippets() {
+if (!currentFileName || !currentFileName.endsWith('.js')) return alert("Only supports .js files.");
+const code = cmEditor.getValue();
+if (!confirm("Strip top-level functions and constants to Vault?")) return;
+
+let remainingCode = "", currentBlock = "", blockName = "";
+let braceDepth = 0, capturing = false, newSnippetsCount = 0;
+const lines = code.split('\n');
+
+for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!capturing && braceDepth === 0) {
+        const funcMatch = line.match(/^(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z0-9_]+)/);
+        const constMatch = line.match(/^(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=/);
+        if (funcMatch || constMatch) {
+            capturing = true; blockName = funcMatch ? funcMatch[1] : constMatch[1]; currentBlock = "";
+        }
+    }
+
+    if (capturing) {
+        currentBlock += line + '\n';
+        const cleanLine = line.replace(/(["'`]).*?\1/g, ''); 
+        braceDepth += ((cleanLine.match(/\{/g) || []).length - (cleanLine.match(/\}/g) || []).length);
+
+        if (braceDepth === 0) {
+            snippets.push({ name: `${currentFileName.replace('.js','')}: ${blockName}`, code: currentBlock.trim() });
+            newSnippetsCount++;
+            capturing = false; blockName = ""; currentBlock = "";
+        }
+    } else { remainingCode += line + '\n'; }
+}
+
+if (newSnippetsCount > 0) {
+    remainingCode = remainingCode.replace(/\n\s*\n/g, '\n\n').trim();
+    vfs[currentFileName] = remainingCode;
+    cmEditor.setValue(remainingCode);
+    triggerAutoSave();
+    await localforage.setItem('vault_snippets', snippets);
+    renderVault();
+    flashSaveStatus(`Stripped ${newSnippetsCount} items`);
+} else { alert("No target structures found."); }
+        }
+
+        // --- Snippet Vault ---
+        async function createManualSnippet() {
+const name = prompt("Enter snippet name:");
+if (!name) return;
+const code = prompt("Paste snippet code:");
+if (code !== null) {
+    snippets.push({ name, code });
+    await localforage.setItem('vault_snippets', snippets);
+    renderVault();
+}
+        }
+
+        function renderVault() {
+const list = document.getElementById('snippet-list');
+list.innerHTML = snippets.map((s, i) => `
+    <div style="background:var(--surface-light); padding:12px; margin-bottom:12px; border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+            <strong style="color:var(--accent); font-size:13px;">${s.name}</strong>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-outline" style="padding:4px 8px;" onclick="insertSnippet(${i})">Insert</button>
+                <button class="btn-danger" style="padding:4px 8px;" onclick="deleteSnippet(${i})">X</button>
+            </div>
+        </div>
+        <pre style="margin:0; font-size:11px; color:var(--muted); overflow:hidden; max-height:60px; font-family:monospace;">${s.code}</pre>
+    </div>
+`).join('') || '<div style="font-size:13px; color:var(--muted); text-align:center; padding: 20px;">Vault is empty.</div>';
+        }
+
+        function insertSnippet(idx) {
+if(!cmEditor) return;
+cmEditor.replaceRange(snippets[idx].code, cmEditor.getCursor());
+switchTab('editor');
+        }
+
+        async function deleteSnippet(idx) {
+if(confirm("Delete snippet?")) {
+    snippets.splice(idx, 1);
+    await localforage.setItem('vault_snippets', snippets);
+    renderVault();
+}
+        }
+
+        // --- Time Machine & Advanced Tools ---
+        async function loadSnapshots() {
+const stored = await localforage.getItem('devos_snapshots');
+if (stored) snapshots = stored;
+        }
+
+        async function takeSnapshot() {
+if (Object.keys(vfs).length === 0) return;
+const snap = { id: Date.now(), time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), data: JSON.parse(JSON.stringify(vfs)) };
+snapshots.unshift(snap);
+if (snapshots.length > 15) snapshots.pop();
+await localforage.setItem('devos_snapshots', snapshots);
+flashSaveStatus("Snapshot Saved");
+renderSnapshots();
+        }
+
+        function renderSnapshots() {
+const list = document.getElementById('snapshot-list');
+list.innerHTML = snapshots.map(s => `
+    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding: 8px 0; align-items:center;">
+        <span style="font-size:13px; color:var(--text);">🕒 ${s.time}</span>
+        <button class="btn-outline" style="padding: 4px 10px;" onclick="restoreSnapshot(${s.id})">Restore</button>
+    </div>
+`).join('') || "<div style='font-size:13px; color:var(--muted);'>No snapshots yet.</div>";
+        }
+
+        function restoreSnapshot(id) {
+if(!confirm("Warning: Overwrite workspace with snapshot?")) return;
+const snap = snapshots.find(s => s.id === id);
+if (snap) {
+    vfs = JSON.parse(JSON.stringify(snap.data));
+    rebuildSidebar();
+    if(currentFileName && vfs[currentFileName]) openFile(currentFileName);
+    else cmEditor.setValue("");
+    triggerAutoSave();
+    alert("Workspace restored!");
+}
+        }
+
+        async function clearPWACache() {
+try {
+    if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for(let r of regs) await r.unregister();
+    }
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        for(let k of keys) await caches.delete(k);
+    }
+    alert("Service Workers & Caches purged. Refresh IDE.");
+} catch (err) { alert("Error: " + err.message); }
+        }
+
+        function exploreStorage() {
+const list = document.getElementById('storage-list');
+let html = '<strong style="color:var(--text);">LocalStorage Keys:</strong><br>';
+for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    const val = localStorage.getItem(key);
+    const displayVal = val.length > 50 ? val.substring(0, 50) + '...' : val;
+    html += `<div style="margin-bottom: 8px; border-bottom:1px dashed var(--border); padding-bottom:6px;">
+        <span style="color:var(--accent)">${key}</span>: <span style="color:var(--muted);">${displayVal}</span>
+    </div>`;
+}
+if(localStorage.length === 0) html += "<i style='color:var(--muted);'>Empty</i>";
+list.innerHTML = html;
+        }
+
+        function clearLocalStorage() {
+if(confirm("Clear ALL standard LocalStorage? (Does not affect VFS)")) {
+    localStorage.clear();
+    exploreStorage();
+}
+        }
+
+        // --- Diagnostics & Search ---
+        function runLinter() {
+if(!currentFileName) return;
+const code = cmEditor.getValue();
+const ext = currentFileName.split('.').pop().toLowerCase();
+let html = '';
+
+if (ext === 'js') {
+    JSHINT(code, { esversion: 11, browser: true, module: true, undef: true, unused: true, latedef: "nofunc", shadow: false });
+    if (JSHINT.errors.length > 0) {
+        JSHINT.errors.forEach(e => { if (e) html += `<div style="color:var(--danger); margin-bottom: 6px;">Line ${e.line}: ${e.reason}</div>`; });
+    }
+} else if (ext === 'json') {
+    try { JSON.parse(code); } catch (e) { html += `<div style="color:var(--danger)">JSON Error: ${e.message}</div>`; }
+}
+document.getElementById('diagnostic-results').innerHTML = html || '<div style="color:var(--success)">Pass: No strict errors found.</div>';
+        }
+
+        function performSearch() {
+const q = document.getElementById('search-query').value;
+if(!q) return;
+let html = '';
+for (const [fn, code] of Object.entries(vfs)) {
+    if(code.includes(q)) html += `<div onclick="openFile('${fn}'); switchTab('editor')" style="cursor:pointer; padding:10px; border-bottom:1px solid var(--border); color:var(--accent); font-size:13px;">📄 ${fn}</div>`;
+}
+document.getElementById('search-results').innerHTML = html || '<div style="color:var(--muted); font-size:13px;">No matches found.</div>';
+        }
+
+        function performReplace() {
+const q = document.getElementById('search-query').value;
+const rep = document.getElementById('replace-query').value;
+if(!q || !confirm(`Replace all instances of "${q}" with "${rep}"?`)) return;
+for (const fn of Object.keys(vfs)) vfs[fn] = vfs[fn].split(q).join(rep);
+if(currentFileName) cmEditor.setValue(vfs[currentFileName]);
+triggerAutoSave();
+        }
+
+        // --- Live Preview Engine ---
+        const consoleInterceptorScript = `
+        <script>
+const _log = console.log;
+const _err = console.error;
+console.log = function(...args) {
+    _log(...args);
+    window.parent.postMessage({ type: 'devos-console', level: 'log', msg: args.join(' ') }, '*');
+};
+console.error = function(...args) {
+    _err(...args);
+    window.parent.postMessage({ type: 'devos-console', level: 'error', msg: args.join(' ') }, '*');
+};
+window.onerror = function(msg, url, line) {
+    window.parent.postMessage({ type: 'devos-console', level: 'error', msg: msg + ' (Line ' + line + ')' }, '*');
+};
+        <\/script>
+        `;
+
+        function runPreview() {
+if (currentFileName) vfs[currentFileName] = cmEditor.getValue();
+let html = vfs['index.html'] || '<h1>No index.html found</h1>';
+
+const scripts = Object.keys(vfs).filter(fn => fn.endsWith('.js') && fn !== 'sw.js');
+let scriptTags = scripts.map(fn => {
+    const blob = new Blob([vfs[fn]], {type: 'application/javascript'});
+    return `<script type="module" src="${URL.createObjectURL(blob)}"><\/script>`;
+}).join('\n');
+
+if(html.includes('<head>')) {
+    html = html.replace('<head>', '<head>\n' + consoleInterceptorScript);
+} else {
+    html = consoleInterceptorScript + html;
+}
+html = html.replace('</body>', scriptTags + '\n</body>');
+
+document.getElementById('console-output').innerHTML = ''; 
+document.getElementById('preview-frame').srcdoc = html;
+switchTab('run');
+        }
+
+        // --- Project Exports ---
+        async function exportProject() {
+const zip = new JSZip();
+for (const [fn, code] of Object.entries(vfs)) zip.file(fn, code);
+const c = await zip.generateAsync({type: "blob"});
+const a = document.createElement('a');
+a.href = URL.createObjectURL(c);
+a.download = "DevOS_Project.zip";
+a.click();
+        }
+
+        function exportForAI() {
+let output = "Project Context\\n\\n";
+for (const [name, code] of Object.entries(vfs)) {
+    output += `\\n--- File: ${name} ---\\n${code}\\n`;
+}
+const blob = new Blob([output], { type: "text/plain" });
+const a = document.createElement('a');
+a.href = URL.createObjectURL(blob);
+a.download = "DevOS_AI_Context.txt";
+a.click();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
