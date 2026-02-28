@@ -257,15 +257,19 @@
                 <textarea id="code-editor"></textarea>
                     </div>
     
+            <div style="padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+    <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
+    <div style="display: flex; gap: 6px;">
+        <button class="btn-outline" onclick="cmEditor.undo()">↶</button>
+        <button class="btn-outline" onclick="cmEditor.redo()">↷</button>
+        <button class="btn-outline" style="color:var(--success); border-color:var(--success);" onclick="cleanupCode()" title="Format Code">✨</button>
+        <button class="btn-outline" style="color:var(--warn); border-color:var(--warn);" onclick="stripFileToSnippets()">✂️</button>
+        <button class="btn-outline" onclick="extractCodeToFile()">📦</button>
+        <button class="btn-outline" onclick="renameCurrentFile()">✏️</button>
+    </div>
+            </div>
+    
             
-            <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="btn-outline" onclick="renameCurrentFile()">✏️</button>
-                        <button class="btn-outline" style="color:var(--warn); border-color:var(--warn);" onclick="stripFileToSnippets()">✂️ Strip</button>
-                        <button class="btn-outline" onclick="extractCodeToFile()">📦 Extract</button>
-                    </div>
-                </div>
-
                 <div id="mobile-toolbar">
                     <button class="tool-btn" onclick="insertSymbol('{')">{</button>
                     <button class="tool-btn" onclick="insertSymbol('}')">}</button>
@@ -479,7 +483,48 @@ if (tabId === 'editor') cmEditor.refresh();
                 flashSaveStatus("Workspace Cleared");
             }
         }
+// --- Code Cleanup (Beautifier) ---
+function cleanupCode() {
+    if (!currentFileName) return;
+    const code = cmEditor.getValue();
+    const ext = currentFileName.split('.').pop().toLowerCase();
+    let formatted = code;
 
+    const options = { indent_size: 2, space_in_empty_paren: true };
+
+    if (ext === 'html') formatted = html_beautify(code, options);
+    else if (ext === 'css') formatted = css_beautify(code, options);
+    else formatted = js_beautify(code, options);
+
+    cmEditor.setValue(formatted);
+    flashSaveStatus("Code Cleaned ✨");
+}
+
+// --- RegEx Tester ---
+function testRegex() {
+    const pattern = prompt("Enter Regex Pattern (no slashes):");
+    const flags = prompt("Flags (e.g., g, i):", "g");
+    const str = cmEditor.getValue();
+    try {
+        const re = new RegExp(pattern, flags);
+        const matches = str.match(re);
+        alert(matches ? `Found ${matches.length} matches:\n${matches.slice(0, 5).join(', ')}` : "No matches found.");
+    } catch (e) {
+        alert("Invalid Regex: " + e.message);
+    }
+}
+
+// --- Enhanced Toolbar Toggle Fix ---
+function applyToolbarState(show) {
+    // There were two elements with ID 'mobile-toolbar' in your HTML; ensure you only have ONE.
+    const tb = document.getElementById('mobile-toolbar');
+    if (tb) {
+        tb.style.display = show ? 'flex' : 'none';
+        // Force CodeMirror refresh to adjust for height change
+        if (cmEditor) setTimeout(() => cmEditor.refresh(), 50);
+    }
+}
+        
         function toggleMobileToolbar() {
             const isChecked = document.getElementById('toggle-toolbar').checked;
             localStorage.setItem('devos_show_toolbar', isChecked);
