@@ -150,7 +150,109 @@ function renderFileList() {
         list.appendChild(div);
     });
 }
+// Replace the existing renderVault in main.js
+function renderVault() {
+    const viewVault = document.getElementById('view-vault');
+    viewVault.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color:var(--accent);">Snippet Vault</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" onclick="createManualSnippet()">+ NEW</button>
+                <button class="btn-outline" style="color:var(--success); border-color:var(--success);" onclick="compileSelected()">📦 Compile Checked</button>
+            </div>
+        </div>
+        <div id="snippet-list" style="overflow-y: auto; flex: 1;"></div>
+    `;
 
+    const list = document.getElementById('snippet-list');
+    snippets.forEach((snip, index) => {
+        const div = document.createElement('div');
+        div.className = 'help-card';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.gap = '8px';
+        
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        
+        const leftHeader = document.createElement('div');
+        leftHeader.style.display = 'flex';
+        leftHeader.style.alignItems = 'center';
+        leftHeader.style.gap = '10px';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'vault-checkbox';
+        checkbox.value = index;
+        checkbox.style.width = '18px';
+        checkbox.style.height = '18px';
+
+        const title = document.createElement('strong');
+        title.innerText = snip.name;
+        title.style.color = 'var(--text)';
+        
+        leftHeader.appendChild(checkbox);
+        leftHeader.appendChild(title);
+
+        const delBtn = document.createElement('button');
+        delBtn.innerText = '🗑️';
+        delBtn.className = 'btn-danger';
+        delBtn.style.padding = '4px 8px';
+        delBtn.onclick = async () => {
+            if(confirm("Delete snippet?")) {
+                snippets.splice(index, 1);
+                await localforage.setItem('vault_snippets', snippets);
+                renderVault();
+            }
+        };
+        
+        header.appendChild(leftHeader);
+        header.appendChild(delBtn);
+        
+        const pre = document.createElement('pre');
+        pre.style.margin = '0';
+        pre.style.background = 'var(--bg)';
+        pre.style.padding = '8px';
+        pre.style.borderRadius = '4px';
+        pre.style.fontSize = '12px';
+        pre.style.maxHeight = '100px';
+        pre.style.overflow = 'hidden';
+        pre.innerText = snip.code;
+
+        div.appendChild(header);
+        div.appendChild(pre);
+        list.appendChild(div);
+    });
+}
+
+// Add this new function to handle the compilation
+async function compileSelected() {
+    const checkboxes = document.querySelectorAll('.vault-checkbox:checked');
+    if (checkboxes.length === 0) return alert("Please check at least one snippet to compile.");
+
+    const selectedSnippets = Array.from(checkboxes).map(cb => snippets[parseInt(cb.value)]);
+    
+    // Call the compiler engine
+    const result = compileSnippets(selectedSnippets);
+
+    if (!result.success) {
+        return alert(result.error);
+    }
+
+    // Save the compiled result as a new working file
+    const timestamp = new Date().toISOString().slice(11,19).replace(/:/g, '-');
+    const newFileName = `compiled_${timestamp}.js`;
+    
+    vfs[newFileName] = result.code;
+    await saveVFS();
+    renderFileList();
+    switchFile(newFileName);
+    switchTab('editor');
+    
+    alert(`Successfully compiled ${selectedSnippets.length} snippets in correct dependency order!`);
+                     }
 function switchFile(filename) {
     if (currentFile) vfs[currentFile] = cmEditor.getValue();
     currentFile = filename;
@@ -238,81 +340,8 @@ async function createManualSnippet() {
     }
 }
 
-function renderVault() {
-    const list = document.getElementById('snippet-list');
-    list.innerHTML = '';
-    snippets.forEach((snip, index) => {
-        const div = document.createElement('div');
-        div.className = 'help-card';
-        div.style.display = 'flex';
-        div.style.flexDirection = 'column';
-        div.style.gap = '8px';
-        
-        const header = document.createElement('div');
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        
-        const title = document.createElement('strong');
-        title.innerText = snip.name;
-        title.style.color = 'var(--text)';
-        
-        const delBtn = document.createElement('button');
-        delBtn.innerText = '🗑️';
-        delBtn.className = 'btn-danger';
-        delBtn.onclick = async () => {
-            if(confirm("Delete snippet?")) {
-                snippets.splice(index, 1);
-                await localforage.setItem('vault_snippets', snippets);
-                renderVault();
-            }
-        };
-        
-        header.appendChild(title);
-        header.appendChild(delBtn);
-        
-        const pre = document.createElement('pre');
-        pre.style.margin = '0';
-        pre.style.background = 'var(--bg)';
-        pre.style.padding = '8px';
-        pre.style.borderRadius = '4px';
-        pre.style.fontSize = '12px';
-        pre.style.maxHeight = '100px';
-        pre.style.overflow = 'hidden';
-        pre.innerText = snip.code;
 
-        // Foundation for the Vault Compiler
-        const actionRow = document.createElement('div');
-        actionRow.style.display = 'flex';
-        actionRow.style.gap = '8px';
 
-        const insertBtn = document.createElement('button');
-        insertBtn.innerText = 'Insert at Cursor';
-        insertBtn.className = 'btn-outline';
-        insertBtn.style.flex = '1';
-        insertBtn.onclick = () => {
-            if(cmEditor) {
-                cmEditor.replaceRange(snip.code, cmEditor.getCursor());
-                switchTab('editor');
-            }
-        };
-
-        const copyBtn = document.createElement('button');
-        copyBtn.innerText = 'Copy';
-        copyBtn.className = 'btn-outline';
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(snip.code);
-            flashSaveStatus("Copied!");
-        };
-
-        actionRow.appendChild(insertBtn);
-        actionRow.appendChild(copyBtn);
-
-        div.appendChild(header);
-        div.appendChild(pre);
-        div.appendChild(actionRow);
-        list.appendChild(div);
-    });
-}
 
 // --- Sandbox & Execution ---
 const consoleInterceptorScript = `
