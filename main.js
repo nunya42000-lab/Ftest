@@ -292,3 +292,112 @@ function exportForAI() {
     }
     navigator.clipboard.writeText(output).then(() => flashSaveStatus("Copied for AI!"));
 }
+/* --- RESTORED DIAGNOSTIC SUITE --- */
+
+function logDiag(msg, type = "info") {
+    const out = document.getElementById('diagnostic-results');
+    const color = type === "error" ? "var(--danger)" : (type === "success" ? "var(--success)" : "#0f0");
+    out.innerHTML = `<div style="color:${color}">${msg}</div>`;
+}
+
+// 1. Deep Linter (JS, JSON, HTML)
+function runLinter() {
+    if(!currentFile) return logDiag("No file selected.", "error");
+    const code = cmEditor.getValue();
+    const ext = currentFile.split('.').pop().toLowerCase();
+    let results = "";
+
+    if (ext === 'js') {
+        JSHINT(code, { esversion: 11, browser: true, module: true, undef: true, unused: true });
+        if (JSHINT.errors.length > 0) {
+            JSHINT.errors.forEach(e => { if (e) results += `Line ${e.line}: ${e.reason}\n`; });
+            logDiag(results, "error");
+        } else {
+            logDiag("Pass: JavaScript is structurally sound.", "success");
+        }
+    } else if (ext === 'json') {
+        try { JSON.parse(code); logDiag("Pass: Valid JSON.", "success"); } 
+        catch (e) { logDiag("JSON Error: " + e.message, "error"); }
+    } else if (ext === 'html') {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(code, "text/html");
+        const error = doc.querySelector("parsererror");
+        if (error) logDiag("HTML Syntax Error: " + error.innerText, "error");
+        else logDiag("Pass: HTML Document parsed correctly.", "success");
+    } else {
+        logDiag("Linter not supported for this file type.", "info");
+    }
+}
+
+// 2. Dependency Path Resolver
+function resolvePath(baseFile, relativePath) {
+    if (!relativePath.startsWith('.')) return relativePath;
+    const baseParts = baseFile.split('/');
+    baseParts.pop();
+    const relParts = relativePath.split('/');
+    for (const part of relParts) {
+        if (part === '.') continue;
+        if (part === '..') baseParts.pop();
+        else baseParts.push(part);
+    }
+    return baseParts.join('/');
+}
+
+// 3. Import Scanner (Checks if files exist)
+function runDependencyCheck() {
+    let results = "";
+    let missingCount = 0;
+    const importRegex = /(?:import\s+.*?from\s+['"]([^'"]+)['"])|(?:<script\s+.*?src=['"]([^'"]+)['"])|(?:<link\s+.*?href=['"]([^'"]+)['"])/g;
+
+    for (const [fn, code] of Object.entries(vfs)) {
+        let match;
+        while ((match = importRegex.exec(code)) !== null) {
+            const path = match[1] || match[2] || match[3];
+            if (path.startsWith('http') || path.startsWith('//')) continue;
+            const resolved = resolvePath(fn, path);
+            if (!vfs[resolved]) {
+                results += `[MISSING] ${fn} relies on ${resolved}\n`;
+                missingCount++;
+            }
+        }
+    }
+    if(missingCount > 0) logDiag(results, "error");
+    else logDiag("All workspace dependencies resolved.", "success");
+}
+
+// 4. Auto-Fix (Aggressive formatting)
+function autoFixCurrentFile() {
+    if(!currentFile) return;
+    const ext = currentFile.split('.').pop().toLowerCase();
+    
+    // Create Snapshot for safety
+    snapshots.push({ label: "Pre-Fix: " + currentFile, data: JSON.parse(JSON.stringify(vfs)) });
+    
+    if (ext === 'json') {
+        try {
+            const loose = new Function('return ' + cmEditor.getValue())();
+            cmEditor.setValue(JSON.stringify(loose, null, 4));
+            logDiag("JSON fixed and beautified.", "success");
+        } catch (e) { logDiag("Auto-fix failed: " + e.message, "error"); }
+    } else {
+        formatCurrentFile();
+        logDiag("Structural formatting applied.", "success");
+    }
+}
+
+function formatCurrentFile() {
+    const code = cmEditor.getValue();
+    const ext = currentFile.split('.').pop().toLowerCase();
+    let formatted = code;
+    try {
+        if (ext === 'js') formatted = js_beautify(code, { indent_size: 4 });
+        else if (ext === 'html') formatted = html_beautify(code, { indent_size: 4 });
+        else if (ext === 'css') formatted = css_beautify(code, { indent_size: 4 });
+        cmEditor.setValue(formatted);
+    } catch(e) { logDiag("Format error: " + e.message, "error"); }
+}
+
+function copyDiagnostics() {
+    const text = document.getElementById('diagnostic-results').innerText;
+    navigator.clipboard.writeText(text).then(() => flashSaveStatus("Copied Diagnostics"));
+}
