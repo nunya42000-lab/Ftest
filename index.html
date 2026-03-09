@@ -38,10 +38,12 @@
 
     <div class="app-container">
         <aside id="ui-sidebar" class="sidebar">
-            <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="margin:0; font-size:14px;">Explorer</h3>
-                    <button class="btn-primary" onclick="createNewFile()">+ NEW</button>
+              <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
+    <h3 style="margin:0; font-size:14px; flex:1;">Explorer</h3>
+    <button class="btn-primary" onclick="createNewFile()">+ NEW</button>
+    <button class="btn-outline" onclick="toggleSidebar()" style="padding: 4px 8px; font-size: 16px;">×</button>
+              </div>
+                    
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
                     <button class="btn-outline" style="font-size:10px;" onclick="closeAllFiles()">✖ CLOSE ALL</button>
