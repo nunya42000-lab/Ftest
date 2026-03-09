@@ -1,5 +1,3 @@
-/* --- IDE-Grade Visual Engine --- */
-
 :root { 
     --bg: #0d1117; 
     --panel: #161b22; 
@@ -27,65 +25,55 @@ body {
     overflow: hidden; 
 }
 
-/* Layout Containers */
-.app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
-.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* --- Layout Containers --- */
+.app-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
 
-/* Sidebar & Explorer */
-.sidebar { 
-    width: 260px; 
-    background: var(--panel); 
-    border-right: 1px solid var(--border); 
-    display: flex; 
-    flex-direction: column; 
-    /* Animate both transform (mobile) and width (desktop) */
-    transition: transform 0.3s ease, width 0.3s ease; 
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* --- Sidebar (Mobile Drawer Logic) --- */
+.sidebar {
+    width: 260px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
     z-index: 1000;
-    height: 100%;
-    overflow: hidden; /* Prevents header content from leaking during collapse */
 }
 
-/* Desktop Collapse State */
-.sidebar.collapsed { 
-    width: 0; 
-    border-right: none; 
+/* Desktop Collapse */
+.sidebar.collapsed {
+    width: 0;
+    border-right: none;
 }
 
-@media (max-width: 768px) {  
+/* Mobile Slide-out Drawer */
+@media (max-width: 768px) {
     .sidebar {
         position: absolute;
         left: 0;
         top: 0;
-        width: 280px; /* Slightly wider for better touch targets on mobile */
+        height: 100%;
         transform: translateX(-100%);
-        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
-    .sidebar.open { 
-        transform: translateX(0); 
-    } 
-    
-    /* Ensure it doesn't try to shrink width on mobile */
-    .sidebar.collapsed { 
-        width: 280px; 
-        transform: translateX(-100%); 
+    .sidebar.open {
+        transform: translateX(0);
     }
 }
 
-.file-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    cursor: pointer;
-    font-size: 13px;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.2s;
-}
-.file-item:hover { background: var(--surface-light); }
-.file-item.active { background: var(--surface-light); border-right: 4px solid var(--accent); }
-.file-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Tab Navigation */
+/* --- Tab System --- */
 .tab-bar { 
     display: flex; 
     background: var(--panel); 
@@ -93,7 +81,9 @@ body {
     overflow-x: auto; 
     scrollbar-width: none; 
     align-items: center;
+    padding: 0 10px;
 }
+
 .tab { 
     padding: 12px 16px; 
     cursor: pointer; 
@@ -104,22 +94,36 @@ body {
     transition: 0.2s;
     white-space: nowrap;
 }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* Panels */
-.panel-box { display: none; flex-direction: column; flex: 1; padding: 15px; overflow-y: auto; }
+.tab.active { 
+    color: var(--accent); 
+    border-bottom-color: var(--accent); 
+}
+
+/* --- Panel Management --- */
+.panel-box { 
+    display: none; 
+    flex-direction: column; 
+    flex: 1; 
+    padding: 15px; 
+    overflow-y: auto; 
+}
+
 .panel-box.active { display: flex; }
 
-/* Code Editor & Symbols */
+/* --- Editor & Mobile Toolbar --- */
 #view-editor { padding: 0; overflow: hidden; }
+
 #mobile-toolbar {
-    display: none; 
+    display: none; /* Controlled by JS */
     background: var(--surface-light);
     padding: 8px;
     gap: 6px;
     overflow-x: auto;
     border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
 }
+
 .tool-btn { 
     background: var(--panel); 
     color: var(--text); 
@@ -128,39 +132,35 @@ body {
     border-radius: 6px; 
     font-family: monospace; 
     font-weight: bold;
+    flex-shrink: 0;
 }
 
-/* Command Palette */
+.tool-btn:active { background: var(--accent); color: white; }
+
+/* --- Command Palette (The Floating Modal) --- */
 #command-palette {
-    box-shadow: 0 0 0 100vw rgba(0,0,0,0.7), 0 20px 50px rgba(0,0,0,0.5);
+    box-shadow: 0 0 0 100vw rgba(0,0,0,0.6), 0 20px 50px rgba(0,0,0,0.5);
     animation: slideDown 0.2s ease-out;
 }
+
 @keyframes slideDown {
     from { transform: translate(-50%, -30%); opacity: 0; }
     to { transform: translate(-50%, -20%); opacity: 1; }
 }
 
-/* Diagnostic & Output Terminals */
+/* --- Diagnostic Terminals --- */
 #diagnostic-results, #console-output {
     background: #000;
     border: 1px solid var(--border);
     border-radius: 6px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
     padding: 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
-.log-msg { color: #fff; margin-bottom: 4px; border-bottom: 1px solid #111; }
-.log-error { color: var(--danger); }
-.log-success { color: var(--success); }
 
-/* Generic Buttons */
-button { border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; }
-.btn-primary { background: var(--accent); color: white; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn-danger { background: var(--danger); color: white; }
-.btn-action { background: var(--success); color: white; }
-.btn-warn { background: var(--warn); color: white; }
-
-/* Help & Control Cards */
+/* --- Stats & Help Cards --- */
 .help-card {
     background: var(--surface-light);
     border: 1px solid var(--border);
@@ -169,6 +169,28 @@ button { border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointe
     margin-bottom: 12px;
 }
 
-/* CodeMirror Override */
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+}
+
+.file-item:hover { background: var(--surface-light); }
+.file-item.active { border-right: 4px solid var(--accent); background: var(--surface-light); }
+
+/* --- Buttons --- */
+button { border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+button:active { transform: scale(0.95); opacity: 0.8; }
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-action { background: var(--success); color: white; }
+.btn-warn { background: var(--warn); color: white; }
+
+/* --- CodeMirror Fixes --- */
 .CodeMirror { flex: 1; height: auto; font-size: 15px; }
-    
