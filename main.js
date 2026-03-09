@@ -156,7 +156,21 @@ function applyToolbarState(show) {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('ui-sidebar');
-    if (sidebar) sidebar.classList.toggle('collapsed');
+    
+    // On mobile, use the sliding 'open' class
+    if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('open');
+        sidebar.classList.remove('collapsed'); // Ensure it's not narrow
+    } else {
+        // On desktop, use the 'collapsed' class to shrink width
+        sidebar.classList.toggle('collapsed');
+        sidebar.classList.remove('open');
+    }
+    
+    // Refresh CodeMirror to fill new space after the 300ms CSS transition
+    if (cmEditor) {
+        setTimeout(() => cmEditor.refresh(), 310);
+    }
 }
 
 // --- Project Intelligence & Diagnostics ---
