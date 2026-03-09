@@ -3,7 +3,7 @@
     --panel: #161b22; 
     --surface-light: #21262d; 
     --accent: #2f81f7; 
-    --success: #238636; 
+    --success: #3fb950; 
     --danger: #f85149; 
     --warn: #d29922; 
     --text: #c9d1d9; 
@@ -11,171 +11,185 @@
     --muted: #8b949e; 
 }
 
+* { box-sizing: border-box; }
+
 body { 
     margin: 0; 
     padding: 0; 
     background: var(--bg); 
     color: var(--text); 
-    font-family: system-ui, -apple-system, sans-serif; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; 
     display: flex; 
     flex-direction: column; 
     height: 100vh; 
     overflow: hidden; 
 }
 
-* { box-sizing: border-box; }
+/* Layout Containers */
+.app-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
 
-/* Sleek Underline Tabs */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Sidebar Navigation */
+.sidebar {
+    width: 260px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, width 0.3s ease;
+    z-index: 100;
+}
+
+.sidebar.collapsed {
+    width: 0;
+    transform: translateX(-100%);
+}
+
+/* Tab System */
 .tab-bar { 
     display: flex; 
     background: var(--panel); 
     border-bottom: 1px solid var(--border); 
     overflow-x: auto; 
     scrollbar-width: none; 
-    align-items: center; 
-    flex-shrink: 0;
+    align-items: center;
+    padding: 0 10px;
 }
-.tab-bar::-webkit-scrollbar { display: none; }
+
 .tab { 
-    padding: 12px 18px; 
+    padding: 12px 16px; 
     cursor: pointer; 
-    border-bottom: 2px solid transparent; 
-    color: var(--muted); 
-    font-size: 14px; 
-    font-weight: 500; 
-    white-space: nowrap; 
-    transition: 0.2s; 
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: 0.2s;
+    white-space: nowrap;
 }
+
 .tab.active { 
-    border-bottom-color: var(--accent); 
     color: var(--accent); 
-    background: rgba(47, 129, 247, 0.05); 
+    border-bottom-color: var(--accent); 
 }
 
-/* Buttons & Inputs */
-button { cursor: pointer; border: none; border-radius: 6px; font-weight: 600; padding: 6px 12px; font-size: 12px; }
-.btn-primary { background: var(--success); color: white; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-
-/* Layout Containers */
-.app-container { 
-    display: flex; 
-    flex: 1; 
-    overflow: hidden; 
-    position: relative; 
-    height: 100%;
-}
-
-.sidebar { 
-    width: 260px; 
-    background: var(--panel); 
-    border-right: 1px solid var(--border); 
-    display: flex; 
-    flex-direction: column; 
-    transition: transform 0.3s ease; 
-    z-index: 1000;
-    height: 100%;
-}
-
-@media (max-width: 768px) {  
-    .sidebar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%);
-        height: 100%;
-        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-    }
-    .sidebar.open { transform: translateX(0); } 
-}
-
-.main-content { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden;
-    height: 100%;
-}
-
+/* Panel Management */
 .panel-box { 
     display: none; 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 15px; 
-    height: 100%;
-}
-.panel-box.active { display: flex; flex-direction: column; }
-
-/* Editor Customization */
-#view-editor { padding: 0; height: 100%; }
-.CodeMirror { flex: 1; height: 100%; font-family: 'Fira Code', monospace; font-size: 14px; background: var(--bg) !important; }
-
-/* Mobile Toolbar */
-#mobile-toolbar { 
-    display: flex; 
-    overflow-x: auto; 
-    background: var(--panel); 
-    padding: 8px; 
-    gap: 8px; 
-    border-bottom: 1px solid var(--border); 
-    scrollbar-width: none; 
-    flex-shrink: 0;
-}
-#mobile-toolbar::-webkit-scrollbar { display: none; }
-.tool-btn { 
-    background: var(--surface-light); 
-    color: var(--accent); 
-    border: 1px solid var(--border); 
-    padding: 10px 18px; 
-    border-radius: 8px; 
-    font-family: monospace; 
-    font-size: 18px; 
-    font-weight: bold; 
-    touch-action: manipulation; 
-}
-.tool-btn:active { background: var(--accent); color: #fff; }
-
-/* Help Cards */
-.help-card { background: var(--surface-light); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-.help-card h3 { margin-top: 0; font-size: 14px; color: var(--accent); }
-.help-card p { margin: 5px 0 0 0; font-size: 12px; color: var(--muted); }
-
-/* Sandbox & Console */
-#preview-container { 
-    flex: 1; 
-    display: flex; 
     flex-direction: column; 
-    background: #fff; 
-    height: 100%;
-}
-iframe { border: none; flex: 1; width: 100%; height: 100%; }
-#console-output { 
-    background: #000; 
-    color: #0f0; 
-    font-family: monospace; 
-    font-size: 12px; 
-    padding: 10px; 
-    height: 160px; 
+    flex: 1; 
+    padding: 15px; 
     overflow-y: auto; 
-    border-top: 2px solid var(--border); 
+}
+
+.panel-box.active { display: flex; }
+
+/* Editor & Mobile Toolbar */
+#view-editor { padding: 0; overflow: hidden; }
+
+#mobile-toolbar {
+    display: none; /* Controlled by JS setting */
+    background: var(--surface-light);
+    padding: 8px;
+    gap: 6px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+}
+
+.tool-btn { 
+    background: var(--panel); 
+    color: var(--text); 
+    border: 1px solid var(--border); 
+    padding: 8px 14px; 
+    border-radius: 6px; 
+    font-family: monospace; 
+    font-weight: bold;
     flex-shrink: 0;
 }
-.log-msg { border-bottom: 1px dashed #333; padding: 2px 0; }
-.log-error { color: var(--danger); border-bottom: 1px dashed #333; padding: 2px 0; }
 
-.status-flash { 
-    position: fixed; 
-    bottom: 80px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    background: var(--accent); 
-    color: white; 
-    padding: 8px 16px; 
-    border-radius: 20px; 
-    opacity: 0; 
-    transition: opacity 0.3s; 
-    pointer-events: none; 
-    z-index: 2000; 
-    font-size: 12px; 
+.tool-btn:active { background: var(--accent); color: white; }
+
+/* CodeMirror Adjustments */
+.CodeMirror { flex: 1; height: auto; font-size: 14px; }
+
+/* Global Search & Inputs */
+input[type="text"] {
+    outline: none;
+    transition: border-color 0.2s;
 }
+
+input[type="text"]:focus {
+    border-color: var(--accent) !important;
+}
+
+/* Buttons */
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+button:active { opacity: 0.7; }
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-warn { background: var(--warn); color: white; }
+.btn-action { background: var(--success); color: white; }
+
+/* Diagnostic Panel */
+#diagnostic-results {
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+}
+
+.help-card {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+}
+
+.file-item:hover { background: var(--surface-light); }
+.file-item.active { border-left: 3px solid var(--accent); background: var(--surface-light); }
+
+/* Preview & Console */
+#preview-container { flex: 1; display: flex; flex-direction: column; background: white; }
+iframe { flex: 1; border: none; }
+#console-output {
+    background: #000;
+    height: 180px;
+    overflow-y: auto;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.log-msg { color: #fff; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+.log-error { color: var(--danger); font-weight: bold; }
