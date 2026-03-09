@@ -171,23 +171,187 @@ function triggerReactiveLint() {
     }, 1500); 
 }
 
+/* --- Platinum Intelligence Suite --- */
+
 function runLinter() {
     if(!currentFile) return;
     const code = cmEditor.getValue();
     const ext = currentFile.split('.').pop().toLowerCase();
-    let results = "";
+    let results = [];
 
     if (ext === 'js') {
-        JSHINT(code, { esversion: 11, browser: true, module: true });
+        // Advanced JSHint configuration for logic errors
+        const options = { 
+            esversion: 11, browser: true, module: true, 
+            undef: true, unused: true, shadow: "warn", loopfunc: true 
+        };
+        JSHINT(code, options);
+        
+        // 1. Syntax & Scope Errors
         if (JSHINT.errors.length > 0) {
-            JSHINT.errors.forEach(e => { if (e) results += `✖ Line ${e.line}: ${e.reason}\n`; });
-            logDiag(results, "error");
-        } else { logDiag("✔ JS Syntax Clear.", "success"); }
-    } else if (ext === 'json') {
-        try { JSON.parse(code); logDiag("✔ JSON Valid.", "success"); } 
-        catch (e) { logDiag("✖ JSON Error: " + e.message, "error"); }
+            JSHINT.errors.forEach(e => { 
+                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
+            });
+        }
+
+        // 2. Custom Logic: Infinite Loop Guard
+        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
+            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
+        }
+
+        // 3. Custom Logic: Unreachable Code after Return
+        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
+            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
+        }
+
+        if (results.length > 0) {
+            logDiag(results.join('\n'), "error");
+        } else {
+            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
+        }
     }
 }
+
+function autoFixCurrentFile() {
+    if(!currentFile) return;
+    const code = cmEditor.getValue();
+    
+    // Create safety snapshot
+    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
+
+    // 1. Structural Fix (Beautify)
+    formatCurrentFile();
+    
+    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
+    let fixedCode = cmEditor.getValue()
+        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
+        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
+        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
+
+    cmEditor.setValue(fixedCode);
+    logDiag("✔ Logic scrubbed and formatting applied.", "success");
+}
+/* --- Platinum Intelligence Suite --- */
+
+function runLinter() {
+    if(!currentFile) return;
+    const code = cmEditor.getValue();
+    const ext = currentFile.split('.').pop().toLowerCase();
+    let results = [];
+
+    if (ext === 'js') {
+        // Advanced JSHint configuration for logic errors
+        const options = { 
+            esversion: 11, browser: true, module: true, 
+            undef: true, unused: true, shadow: "warn", loopfunc: true 
+        };
+        JSHINT(code, options);
+        
+        // 1. Syntax & Scope Errors
+        if (JSHINT.errors.length > 0) {
+            JSHINT.errors.forEach(e => { 
+                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
+            });
+        }
+
+        // 2. Custom Logic: Infinite Loop Guard
+        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
+            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
+        }
+
+        // 3. Custom Logic: Unreachable Code after Return
+        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
+            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
+        }
+
+        if (results.length > 0) {
+            logDiag(results.join('\n'), "error");
+        } else {
+            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
+        }
+    }
+}
+
+function autoFixCurrentFile() {
+    if(!currentFile) return;
+    const code = cmEditor.getValue();
+    
+    // Create safety snapshot
+    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
+
+    // 1. Structural Fix (Beautify)
+    formatCurrentFile();
+    
+    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
+    let fixedCode = cmEditor.getValue()
+        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
+        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
+        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
+
+    cmEditor.setValue(fixedCode);
+    logDiag("✔ Logic scrubbed and formatting applied.", "success");
+}
+/* --- Platinum Intelligence Suite --- */
+
+function runLinter() {
+    if(!currentFile) return;
+    const code = cmEditor.getValue();
+    const ext = currentFile.split('.').pop().toLowerCase();
+    let results = [];
+
+    if (ext === 'js') {
+        // Advanced JSHint configuration for logic errors
+        const options = { 
+            esversion: 11, browser: true, module: true, 
+            undef: true, unused: true, shadow: "warn", loopfunc: true 
+        };
+        JSHINT(code, options);
+        
+        // 1. Syntax & Scope Errors
+        if (JSHINT.errors.length > 0) {
+            JSHINT.errors.forEach(e => { 
+                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
+            });
+        }
+
+        // 2. Custom Logic: Infinite Loop Guard
+        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
+            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
+        }
+
+        // 3. Custom Logic: Unreachable Code after Return
+        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
+            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
+        }
+
+        if (results.length > 0) {
+            logDiag(results.join('\n'), "error");
+        } else {
+            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
+        }
+    }
+}
+
+function autoFixCurrentFile() {
+    if(!currentFile) return;
+    const code = cmEditor.getValue();
+    
+    // Create safety snapshot
+    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
+
+    // 1. Structural Fix (Beautify)
+    formatCurrentFile();
+    
+    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
+    let fixedCode = cmEditor.getValue()
+        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
+        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
+        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
+
+    cmEditor.setValue(fixedCode);
+    logDiag("✔ Logic scrubbed and formatting applied.", "success");
+}
+
 
 function runGlobalHealthCheck() {
     let summary = "Project Health Scan:\n\n";
@@ -476,42 +640,6 @@ function insertSnippet(id) {
     if (s) { cmEditor.replaceSelection(s.code); cmEditor.focus(); }
 }
 
-/**
- * Aggressive Auto-Fix: Repairs JSON structure and applies structural 
- * beautification across JS, HTML, and CSS.
- */
-function autoFixCurrentFile() {
-    if(!currentFile) return logDiag("No file selected for Auto-Fix.", "error");
-    const ext = currentFile.split('.').pop().toLowerCase();
-    const code = cmEditor.getValue();
-    
-    // Safety Snapshot: Save state to snapshots array before modification
-    if (typeof snapshots !== 'undefined') {
-        snapshots.push({ 
-            label: "Pre-Fix: " + currentFile + " (" + new Date().toLocaleTimeString() + ")", 
-            data: JSON.parse(JSON.stringify(vfs)) 
-        });
-    }
-    
-    if (ext === 'json') {
-        try {
-            // Fixes "loose" JSON (missing quotes, trailing commas) by evaluating as an object
-            const looseFix = new Function('return ' + code)();
-            cmEditor.setValue(JSON.stringify(looseFix, null, 4));
-            logDiag("JSON logic repaired and beautified.", "success");
-        } catch (e) { 
-            logDiag("JSON repair failed: " + e.message, "error"); 
-        }
-    } else {
-        // Fallback to standard beautification for other types
-        formatCurrentFile();
-        logDiag("Structural formatting applied to " + currentFile, "success");
-    }
-}
-/**
- * Definition Peek: Scans the entire VFS to find the origin of the 
- * highlighted variable, function, or class name.
- */
 function peekDefinition() {
     const word = cmEditor.getSelection().trim();
     if (!word) {
