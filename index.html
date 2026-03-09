@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DevOS Workspace</title>
     <link rel="manifest" href="./manifest.json">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
@@ -24,104 +23,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
 
-    <style>
-        :root { 
-            --bg: #0d1117; 
-            --panel: #161b22; 
-            --surface-light: #21262d; 
-            --accent: #2f81f7; 
-            --success: #238636; 
-            --danger: #f85149; 
-            --warn: #d29922; 
-            --text: #c9d1d9; 
-            --border: #30363d; 
-            --muted: #8b949e; 
-        }
-        
-        body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        * { box-sizing: border-box; }
-
-        .tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; align-items: center; flex-shrink: 0; }
-        .tab-bar::-webkit-scrollbar { display: none; }
-        .tab { padding: 12px 18px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; transition: 0.2s; }
-        .tab.active { border-bottom-color: var(--accent); color: var(--accent); background: rgba(47, 129, 247, 0.05); }
-
-        button { cursor: pointer; border: none; border-radius: 6px; font-weight: 600; padding: 6px 12px; font-size: 12px; }
-        .btn-primary { background: var(--success); color: white; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-        .btn-action { background: var(--accent); color: white; }
-        .btn-warn { background: var(--warn); color: #000; }
-
-        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; height: 100%; }
-        .sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 1000; height: 100%; }
-        
-        @media (max-width: 768px) {  
-            .sidebar { position: absolute; left: 0; top: 0; transform: translateX(-100%); height: 100%; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
-            .sidebar.open { transform: translateX(0); } 
-        }
-
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
-        .panel-box { display: none; flex: 1; overflow-y: auto; padding: 15px; height: 100%; }
-        .panel-box.active { display: flex; flex-direction: column; }
-
-        #view-editor { padding: 0; height: 100%; }
-        .CodeMirror { flex: 1; height: 100%; font-family: monospace; font-size: 14px; background: var(--bg) !important; }
-
-        #mobile-toolbar { display: flex; overflow-x: auto; background: var(--panel); padding: 8px; gap: 8px; border-bottom: 1px solid var(--border); scrollbar-width: none; flex-shrink: 0; }
-        .tool-btn { background: var(--surface-light); color: var(--accent); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; touch-action: manipulation; }
-
-        .help-card { background: var(--surface-light); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        #preview-container { flex: 1; display: flex; flex-direction: column; background: #fff; height: 100%; }
-        iframe { border: none; flex: 1; width: 100%; height: 100%; }
-        #console-output { background: #000; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; height: 160px; overflow-y: auto; border-top: 2px solid var(--border); flex-shrink: 0; }
-
-        .status-flash { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 8px 16px; border-radius: 20px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 2000; font-size: 12px; }
-    </style>
+    <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-    <div id="status-msg" class="status-flash">Saved</div>
-
-    <div class="tab-bar">
-        <button class="btn-outline" style="margin: 5px;" onclick="toggleSidebar()">☰</button>
+    <header class="tab-bar">
         <div class="tab active" onclick="switchTab('editor', event)">Editor</div>
-        <div class="tab" onclick="switchTab('run', event)">Sandbox</div>
+        <div class="tab" onclick="switchTab('run', event)">Run</div>
         <div class="tab" onclick="switchTab('tools', event)">Inspector</div>
         <div class="tab" onclick="switchTab('vault', event)">Vault</div>
-        <div class="tab" onclick="switchTab('help', event)">Help</div>
         <div class="tab" onclick="switchTab('settings', event)">Settings</div>
         <div style="flex:1"></div>
-        <button class="btn-primary" style="margin: 5px;" onclick="runPreview()">▶ RUN</button>
-    </div>
+        <button class="btn-outline" onclick="toggleSidebar()" style="margin-right:10px;">FILES</button>
+    </header>
 
     <div class="app-container">
-        <aside class="sidebar" id="ui-sidebar">
-            <div style="padding: 15px; border-bottom: 1px solid var(--border);">
-                <button class="btn-primary" style="width:100%;" onclick="createNewFile()">+ NEW FILE</button>
-                <div style="margin-top:10px; position:relative; overflow:hidden;">
-                    <button class="btn-outline" style="width:100%;">📂 LOAD FILES</button>
-                    <input type="file" multiple onchange="loadFiles(event)" style="position:absolute; top:0; left:0; opacity:0; width:100%; height:100%;">
-                </div>
+        <aside id="ui-sidebar" class="sidebar">
+            <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:14px;">Explorer</h3>
+                <button class="btn-primary" onclick="createNewFile()">+ NEW</button>
             </div>
-            <div id="file-list" style="flex:1; overflow-y: auto;"></div>
-            <div style="padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
-                <button class="btn-outline" onclick="exportProject()">Export Zip</button>
-                <button class="btn-outline" onclick="exportForAI()">AI Context</button>
-                <button class="btn-danger" style="margin-top: 10px;" onclick="clearAllFiles()">🗑️ WIPE ALL</button>
+            <div id="file-list" style="flex:1; overflow-y:auto;"></div>
+            <div style="padding:10px; border-top:1px solid var(--border);">
+                <input type="file" id="file-upload" multiple style="display:none" onchange="loadFiles(event)">
+                <button class="btn-outline" style="width:100%" onclick="document.getElementById('file-upload').click()">IMPORT FILES</button>
             </div>
         </aside>
 
         <main class="main-content">
             <div id="view-editor" class="panel-box active">
-                <div id="editor-header" style="padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                    <strong id="current-file-label" style="color:var(--accent); font-size: 13px;">Select a file</strong>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="btn-outline" onclick="renameCurrentFile()">✏️</button>
-                        <button class="btn-outline" style="color:var(--danger)" onclick="cmEditor.undo()">⤺ Undo</button>
-                        <button class="btn-outline" onclick="extractCodeToFile()">📦 Extract</button>
-                    </div>
-                </div>
-
                 <div id="mobile-toolbar">
                     <button class="tool-btn" onclick="insertSymbol('{')">{</button>
                     <button class="tool-btn" onclick="insertSymbol('}')">}</button>
@@ -130,67 +59,85 @@
                     <button class="tool-btn" onclick="insertSymbol(';')">;</button>
                     <button class="tool-btn" onclick="insertSymbol('=')">=</button>
                     <button class="tool-btn" onclick="insertSymbol('$', true)">${}</button>
+                    <button class="tool-btn" onclick="insertSymbol('`')">`</button>
+                    <button class="tool-btn" onclick="insertSymbol('[')">[</button>
+                    <button class="tool-btn" onclick="insertSymbol(']')">]</button>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--panel); padding:8px 15px; border-bottom:1px solid var(--border);">
+                    <span id="current-file-label" style="font-size:12px; font-family:monospace; color:var(--accent)">no file selected</span>
+                    <div id="status-msg" style="font-size:10px; color:var(--success); transition:0.3s; opacity:0;">Saved</div>
                 </div>
                 
                 <textarea id="code-editor"></textarea>
             </div>
 
-            <div id="view-run" class="panel-box" style="padding: 0;">
+            <div id="view-run" class="panel-box">
                 <div id="preview-container">
-                    <iframe id="preview-frame" sandbox="allow-scripts allow-modals"></iframe>
+                    <div style="background:var(--panel); padding:8px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between;">
+                        <span style="font-size:12px; font-weight:bold;">Live Preview</span>
+                        <button class="btn-primary" onclick="runPreview()">REFRESH</button>
+                    </div>
+                    <iframe id="preview-frame"></iframe>
                     <div id="console-output"></div>
                 </div>
             </div>
 
             <div id="view-tools" class="panel-box">
-                <h3>Inspector</h3>
-                <button class="btn-outline" style="width: 100%; margin-bottom: 15px;" onclick="compileSelected()">📦 Compile Checked Snippets</button>
-                <div id="search-container">
-                    <input type="text" id="search-query" placeholder="Global Search...">
-                    <button class="btn-action" onclick="performSearch()">Search</button>
-                </div>
-            </div>
-
-                        <div id="view-tools" class="panel-box">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin:0; color:var(--danger)">Diagnostics Hub</h3>
+                    <h3 style="margin:0; color:var(--accent)">System Inspector</h3>
                     <div style="display: flex; gap: 6px;">
-                        <button class="btn-outline" style="padding: 4px 8px;" onclick="copyDiagnostics()">📋 Copy</button>
-                        <button class="btn-primary" style="padding: 4px 8px; background: var(--success);" onclick="autoFixCurrentFile()">🔧 AUTO-FIX</button>
+                        <button class="btn-outline" onclick="copyDiagnostics()">📋 Copy</button>
+                        <button class="btn-primary" onclick="autoFixCurrentFile()">🔧 AUTO-FIX</button>
                     </div>
+                </div>
+
+                <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                    <input type="text" id="search-query" placeholder="Global Search (Ctrl+F)..." 
+                           style="flex:1; background:var(--surface-light); border:1px solid var(--border); color:white; padding:8px; border-radius:4px; font-size: 13px;">
+                    <button class="btn-action" onclick="performSearch()">Search</button>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
                     <button class="btn-danger" onclick="runLinter()">1. LINT FILE</button>
                     <button class="btn-warn" onclick="runDependencyCheck()">2. SCAN IMPORTS</button>
                     <button class="btn-primary" onclick="formatCurrentFile()">3. FORMAT</button>
-                    <button class="btn-outline" onclick="compileSelected()">4. COMPILE</button>
+                    <button class="btn-outline" onclick="visualizeDependencies()">4. DEP MAP</button>
                 </div>
 
                 <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:monospace; font-size:12px; white-space: pre-wrap; color: #0f0;">
-                    System Idle. Select a check above.
+                    System Idle.
                 </div>
             </div>
 
-            <div id="view-help" class="panel-box">
-                <h2>Guide</h2>
-                <div class="help-card">
-                    <h3>Gestures</h3>
-                    <p>Double-tap code to quickly save a snippet to the vault.</p>
+            <div id="view-vault" class="panel-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0;">Code Vault</h3>
+                    <button class="btn-outline" onclick="compileSelected()">COMPILE PROJECT</button>
                 </div>
+                <div id="vault-list"></div>
             </div>
 
             <div id="view-settings" class="panel-box">
-                <h3>Settings</h3>
-                <label style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" id="toggle-toolbar" onchange="toggleMobileToolbar()" checked>
-                    Show Mobile Toolbar
-                </label>
+                <h3>Workspace Settings</h3>
+                <div class="help-card">
+                    <label style="display:flex; align-items:center; gap:12px; cursor: pointer;">
+                        <input type="checkbox" id="toggle-toolbar" onchange="toggleMobileToolbar()" style="width:18px; height:18px;">
+                        <span style="font-size: 14px; font-weight: 500;">Show Mobile Symbol Toolbar</span>
+                    </label>
+                    <p style="margin-top:8px; color:var(--muted); font-size:11px;">Enable this to show the quick-entry bar for special characters while coding on mobile.</p>
+                </div>
+                
+                <div class="help-card">
+                    <h3>Gestures</h3>
+                    <p>Double-tap code in the editor to quickly save a snippet to your Vault.</p>
+                </div>
             </div>
         </main>
     </div>
 
+    <script src="./vault-compiler.js"></script>
     <script src="./main.js"></script>
 </body>
-                                                                      </html>
-                    
+    </html>
+    
