@@ -32,16 +32,44 @@ body {
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Sidebar & Explorer */
-.sidebar {
-    width: 260px;
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.3s ease, width 0.3s ease;
-    z-index: 100;
+.sidebar { 
+    width: 260px; 
+    background: var(--panel); 
+    border-right: 1px solid var(--border); 
+    display: flex; 
+    flex-direction: column; 
+    /* Animate both transform (mobile) and width (desktop) */
+    transition: transform 0.3s ease, width 0.3s ease; 
+    z-index: 1000;
+    height: 100%;
+    overflow: hidden; /* Prevents header content from leaking during collapse */
 }
-.sidebar.collapsed { width: 0; transform: translateX(-100%); }
+
+/* Desktop Collapse State */
+.sidebar.collapsed { 
+    width: 0; 
+    border-right: none; 
+}
+
+@media (max-width: 768px) {  
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 280px; /* Slightly wider for better touch targets on mobile */
+        transform: translateX(-100%);
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    }
+    .sidebar.open { 
+        transform: translateX(0); 
+    } 
+    
+    /* Ensure it doesn't try to shrink width on mobile */
+    .sidebar.collapsed { 
+        width: 280px; 
+        transform: translateX(-100%); 
+    }
+}
 
 .file-item {
     display: flex;
