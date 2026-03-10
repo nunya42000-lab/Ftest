@@ -1,4 +1,5 @@
 :root { 
+    /* Default Dracula Theme */
     --bg: #0d1117; 
     --panel: #161b22; 
     --surface-light: #21262d; 
@@ -9,6 +10,33 @@
     --text: #c9d1d9; 
     --border: #30363d; 
     --muted: #8b949e; 
+}
+
+/* --- New Themes --- */
+body.theme-monokai { 
+    --bg: #272822; 
+    --panel: #1e1f1c; 
+    --surface-light: #3e3d32; 
+    --accent: #a6e22e; 
+    --success: #a6e22e;
+    --danger: #f92672;
+    --warn: #fd971f;
+    --text: #f8f8f2; 
+    --border: #49483e; 
+    --muted: #75715e;
+}
+
+body.theme-light { 
+    --bg: #ffffff; 
+    --panel: #f3f4f6; 
+    --surface-light: #e5e7eb; 
+    --accent: #2563eb; 
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warn: #d97706;
+    --text: #1f2937; 
+    --border: #d1d5db; 
+    --muted: #6b7280; 
 }
 
 * { box-sizing: border-box; }
@@ -23,130 +51,87 @@ body {
     flex-direction: column; 
     height: 100vh; 
     overflow: hidden; 
+    transition: background 0.3s, color 0.3s;
 }
 
 /* --- Layout Containers --- */
-.app-container {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-}
-
-.main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-}
+.app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+.main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
 /* --- Sidebar (Mobile Drawer Logic) --- */
-.sidebar {
-    width: 260px;
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
-    z-index: 1000;
-}
-
-/* Desktop Collapse */
-.sidebar.collapsed {
-    width: 0;
-    border-right: none;
-}
-
-/* Mobile Slide-out Drawer */
+.sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 1000; }
 @media (max-width: 768px) {
-    .sidebar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        height: 100%;
-        transform: translateX(-100%);
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
+    .sidebar { position: absolute; height: 100%; transform: translateX(-100%); }
+    .sidebar.active { transform: translateX(0); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
 }
 
-/* --- Tab System --- */
-.tab-bar { 
-    display: flex; 
-    background: var(--panel); 
-    border-bottom: 1px solid var(--border); 
-    overflow-x: auto; 
-    scrollbar-width: none; 
+/* --- Drag & Drop Overlay (NEW) --- */
+#drop-overlay {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(47, 129, 247, 0.15);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    justify-content: center;
     align-items: center;
-    padding: 0 10px;
+    flex-direction: column;
+    border: 4px dashed var(--accent);
+    color: var(--accent);
 }
+#drop-overlay.dragover { display: flex; }
 
-.tab { 
-    padding: 12px 16px; 
-    cursor: pointer; 
-    font-size: 13px;
-    font-weight: 500;
+/* --- Navigation & Tabs --- */
+header.tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; padding: 0 10px; align-items: center; }
+.tab { padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: 0.2s; white-space: nowrap; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+/* --- Multi-Tab Editor Bar (NEW) --- */
+#file-tabs-container {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+}
+#file-tabs-container::-webkit-scrollbar { display: none; }
+.file-tab {
+    padding: 8px 15px;
+    font-size: 12px;
+    font-family: monospace;
+    border-right: 1px solid var(--border);
+    cursor: pointer;
     color: var(--muted);
-    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     transition: 0.2s;
-    white-space: nowrap;
+    background: var(--surface-light);
 }
+.file-tab:hover { background: var(--panel); }
+.file-tab.active { background: var(--bg); color: var(--accent); border-top: 2px solid var(--accent); }
+.file-tab .close-tab { color: var(--danger); opacity: 0.5; padding: 0 4px; border-radius: 4px; }
+.file-tab .close-tab:hover { opacity: 1; background: rgba(248, 81, 73, 0.2); }
 
-.tab.active { 
-    color: var(--accent); 
-    border-bottom-color: var(--accent); 
-}
-
-/* --- Panel Management --- */
-.panel-box { 
-    display: none; 
-    flex-direction: column; 
-    flex: 1; 
-    padding: 15px; 
-    overflow-y: auto; 
-}
-
+/* --- Editor & Panels --- */
+.panel-box { display: none; flex: 1; flex-direction: column; padding: 15px; overflow-y: auto; }
 .panel-box.active { display: flex; }
-
-/* --- Editor & Mobile Toolbar --- */
 #view-editor { padding: 0; overflow: hidden; }
 
-#mobile-toolbar {
-    display: none; /* Controlled by JS */
-    background: var(--surface-light);
-    padding: 8px;
-    gap: 6px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--border);
-    scrollbar-width: none;
-}
+/* CodeMirror Overrides */
+.CodeMirror { flex: 1; height: 100% !important; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 14px; background: var(--bg) !important; color: var(--text) !important; }
+.CodeMirror-gutters { border-right: 1px solid var(--border) !important; background: var(--panel) !important; }
 
-.tool-btn { 
-    background: var(--panel); 
-    color: var(--text); 
-    border: 1px solid var(--border); 
-    padding: 8px 14px; 
-    border-radius: 6px; 
-    font-family: monospace; 
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
+/* --- Toolbar --- */
+#mobile-toolbar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); padding: 5px; gap: 5px; overflow-x: auto; scrollbar-width: none; }
+#mobile-toolbar::-webkit-scrollbar { display: none; }
+.tool-btn { background: var(--surface-light); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; font-family: monospace; font-size: 14px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .tool-btn:active { background: var(--accent); color: white; }
 
-/* --- Command Palette (The Floating Modal) --- */
-#command-palette {
-    box-shadow: 0 0 0 100vw rgba(0,0,0,0.6), 0 20px 50px rgba(0,0,0,0.5);
-    animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-    from { transform: translate(-50%, -30%); opacity: 0; }
-    to { transform: translate(-50%, -20%); opacity: 1; }
-}
+/* --- Preview Frame --- */
+#preview-container { display: flex; flex-direction: column; flex: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+#preview-frame { flex: 2; border: none; background: #fff; width: 100%; }
 
 /* --- Diagnostic Terminals --- */
 #diagnostic-results, #console-output {
@@ -158,39 +143,30 @@ body {
     font-size: 12px;
     line-height: 1.5;
     box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    overflow-y: auto;
 }
+
+/* Interactive Console Input (NEW) */
+#console-input-wrapper { display: flex; border-top: 1px solid #333; background: #000; padding: 5px; }
+#console-input-wrapper span { color: var(--success); padding: 5px; font-family: monospace; font-weight: bold; }
+#interactive-console-input { flex: 1; background: transparent; border: none; color: #fff; font-family: monospace; outline: none; }
 
 /* --- Stats & Help Cards --- */
-.help-card {
-    background: var(--surface-light);
-    border: 1px solid var(--border);
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-}
-
-.file-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    cursor: pointer;
-    font-size: 13px;
-    border-bottom: 1px solid var(--border);
-}
-
+.help-card { background: var(--surface-light); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 12px; }
+.file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
 .file-item:hover { background: var(--surface-light); }
 .file-item.active { border-right: 4px solid var(--accent); background: var(--surface-light); }
 
 /* --- Buttons --- */
-button { border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
-button:active { transform: scale(0.95); opacity: 0.8; }
-
-.btn-primary { background: var(--accent); color: white; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn-danger { background: var(--danger); color: white; }
-.btn-action { background: var(--success); color: white; }
-.btn-warn { background: var(--warn); color: white; }
-
-/* --- CodeMirror Fixes --- */
-.CodeMirror { flex: 1; height: auto; font-size: 15px; }
+button { border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.2); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { filter: brightness(1.2); }
+.btn-warn { background: var(--warn); color: #000; }
+.btn-warn:hover { filter: brightness(1.2); }
+.btn-outline { background: transparent; border: 1px solid var(--muted); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action { background: var(--surface-light); color: var(--text); border: 1px solid var(--border); }
+.btn-action:hover { background: var(--panel); border-color: var(--text); }
+              
