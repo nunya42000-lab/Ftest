@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DevOS IDE Gold</title>
+    <link rel="manifest" href="./manifest.json">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.js"></script>
+
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="theme-dracula">
+
+    <div id="drop-overlay">
+        <h2 style="margin:0; font-size:24px;">Drop Files to Import</h2>
+        <p style="color:var(--text);">Files will be added directly to your VFS</p>
+    </div>
+
+    <header class="tab-bar">
+        <div class="tab active" onclick="switchTab('editor', event)">Editor</div>
+        <div class="tab" onclick="switchTab('run', event)">Run</div>
+        <div class="tab" onclick="switchTab('tools', event)">Intelligence</div>
+        <div class="tab" onclick="switchTab('vault', event)">Vault</div>
+        
+        <div class="tab" onclick="switchTab('compare', event)">Compare</div>
+        
+        <div class="tab" onclick="switchTab('settings', event)">Project Control</div>
+        <div style="flex:1"></div>
+        <button class="btn-outline landscape-only" onclick="toggleSidebar()" style="margin-right:10px;">FILES</button>
+    </header>
+
+    <div class="app-container">
+        <aside id="ui-sidebar" class="sidebar">
+            <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; font-size:14px;">Explorer</h3>
+                    <button class="btn-primary" onclick="createNewFile()">+ NEW</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                    <button class="btn-outline" style="font-size:10px;" onclick="closeAllFiles()">✖ CLOSE ALL</button>
+                    <button class="btn-action" style="font-size:10px;" onclick="exportProjectZip()">💾 ZIP EXPORT</button>
+                </div>
+            </div>
+            <div id="file-list" style="flex:1; overflow-y:auto;"></div>
+            <div style="padding:10px; border-top:1px solid var(--border);">
+                <input type="file" id="file-upload" multiple style="display:none" onchange="loadFiles(event)">
+                <button class="btn-outline" style="width:100%" onclick="document.getElementById('file-upload').click()">IMPORT FILES</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="view-editor" class="panel-box active">
+                <div id="file-tabs-container"></div>
+                
+                <div id="mobile-toolbar">
+                    <button class="tool-btn" onclick="insertSymbol('{')">{</button>
+                    <button class="tool-btn" onclick="insertSymbol('}')">}</button>
+                    <button class="tool-btn" onclick="insertSymbol('(')">(</button>
+                    <button class="tool-btn" onclick="insertSymbol(')')">)</button>
+                    <button class="tool-btn" onclick="insertSymbol(';')">;</button>
+                    <button class="tool-btn" onclick="insertSymbol('=')">=</button>
+                    <button class="tool-btn" onclick="insertSymbol('$', true)">${}</button>
+                    <button class="tool-btn" onclick="insertSymbol('`')">`</button>
+                    <button class="tool-btn" onclick="insertSymbol('[')">[</button>
+                    <button class="tool-btn" onclick="insertSymbol(']')">]</button>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--panel); padding:8px 15px; border-bottom:1px solid var(--border);">
+                    <span id="current-file-label" style="font-size:12px; font-family:monospace; color:var(--accent)">no file selected</span>
+                    <div id="status-msg" style="font-size:10px; color:var(--success); transition:0.3s; opacity:0;">Saved</div>
+                </div>
+                
+                <textarea id="code-editor"></textarea>
+            </div>
+
+            <div id="view-run" class="panel-box">
+                <div id="preview-container">
+                    <div style="background:var(--panel); padding:8px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between;">
+                        <span style="font-size:12px; font-weight:bold;">Live Preview</span>
+                        <button class="btn-primary" onclick="runPreview()">REFRESH</button>
+                    </div>
+                    <iframe id="preview-frame"></iframe>
+                    
+                    <div id="console-output" style="border-radius:0; border-bottom:none; flex:1;"></div>
+                    <div id="console-input-wrapper">
+                        <span>></span>
+                        <input type="text" id="interactive-console-input" placeholder="Enter JavaScript to execute in preview..." onkeydown="if(event.key === 'Enter') executeConsoleCommand(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-tools" class="panel-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin:0; color:var(--accent)">Project Intelligence</h3>
+                    <button class="btn-warn" onclick="runGlobalHealthCheck()">🩺 FULL SCAN</button>
+                </div>
+
+                <div id="project-stats-container"></div>
+
+                <div class="help-card" style="margin-bottom: 15px;">
+                    <h4 style="margin-top:0; color:var(--accent); font-size:13px;">Branching Global Search</h4>
+                    <input type="text" id="global-search-input" placeholder="Search across all files..." 
+                           style="width:100%; background:var(--bg); border:1px solid var(--border); color:white; padding:8px; border-radius:4px; margin-bottom: 10px;">
+                    <div id="search-results-tree" style="font-family: monospace; font-size: 13px; max-height: 250px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="dep-tracker-ui"></div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px;">
+                    <button class="btn-action" onclick="generateAutoImports()">📦 AUTO-IMPORT</button>
+                    <button class="btn-danger" onclick="checkGlobalDuplicates()">👯 DUPLICATES</button>
+                    <button class="btn-primary" onclick="globalSearchReplace()">🔍 REPLACE ALL</button>
+                    <button class="btn-outline" onclick="peekDefinition()">🔭 PEEK DEF</button>
+                    <button class="btn-primary" onclick="autoFixCurrentFile()">🔧 AUTO-FIX</button>
+                </div>
+
+                <div id="diagnostic-results">System Idle. Use Ctrl+K for commands.</div>
+            </div>
+
+            <div id="view-vault" class="panel-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0;">Code Vault</h3>
+                    <button class="btn-outline" onclick="compileSelected()">COMPILE PROJECT</button>
+                </div>
+                <div id="vault-list"></div>
+            </div>
+
+            <div id="view-compare" class="panel-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0; color:var(--accent)">Diff Viewer</h3>
+                    <button class="btn-primary" onclick="executeDiff()">COMPARE FILES</button>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:5px;">Original File (Left)</label>
+                        <select id="diff-file-a" style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:4px;"></select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:5px;">Modified File (Right)</label>
+                        <select id="diff-file-b" style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:4px;"></select>
+                    </div>
+                </div>
+
+                <div id="diff-container" style="flex:1; border:1px solid var(--border); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg);">
+                    <div style="padding:20px; text-align:center; color:var(--muted); margin:auto;">Select two files above and click Compare.</div>
+                </div>
+            </div>
+
+            <div id="view-settings" class="panel-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0; color:var(--accent)">Project Control</h3>
+                    <button class="btn-danger" style="font-size:10px" onclick="emptyTrash()">🗑️ EMPTY TRASH</button>
+                </div>
+
+                <div class="help-card">
+                    <h4 style="margin-top:0; color:var(--accent); font-size:13px;">Editor Theme</h4>
+                    <select id="theme-selector" onchange="changeTheme(this.value)" style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:4px;">
+                        <option value="dracula">🧛 Dracula (Dark)</option>
+                        <option value="monokai">🎨 Monokai (Dark)</option>
+                        <option value="light">☀️ Clean (Light)</option>
+                    </select>
+                </div>
+
+                <div class="help-card">
+                    <label style="display:flex; align-items:center; gap:12px; cursor: pointer;">
+                        <input type="checkbox" id="toggle-toolbar" onchange="toggleMobileToolbar()">
+                        <span style="font-size: 14px; font-weight: 500;">Show Mobile Toolbar</span>
+                    </label>
+                </div>
+
+                <div class="help-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; color:var(--accent); font-size:13px;">Time Machine (Local History)</h4>
+                        <button class="btn-outline" style="font-size:10px;" onclick="renderHistory()">REFRESH</button>
+                    </div>
+                    <p style="font-size:11px; color:var(--muted); margin:8px 0;">Restore previous versions of your files.</p>
+                    <div id="history-list" style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:4px; padding:5px; background:var(--bg);"></div>
+                </div>
+                
+                <div class="help-card">
+                    <h3 style="color:var(--success)">Live Guide & Shortcuts</h3>
+                    <ul style="margin:10px 0; padding-left:20px; font-size:13px; color:var(--text); line-height:1.6;">
+                        <li><strong>Ctrl + K</strong>: Open Command Palette</li>
+                        <li><strong>Double-Tap Code</strong>: Save selection to Vault</li>
+                        <li><strong>Ctrl + S</strong>: Force Save to VFS</li>
+                        <li><strong>Ctrl + E</strong>: Run Preview instantly</li>
+                    </ul>
+                </div>
+
+                <div id="trash-container">
+                    <h4 style="font-size:12px; color:var(--muted); text-transform:uppercase;">Recycle Bin</h4>
+                    <div id="trash-list" style="background:var(--bg); border:1px solid var(--border); border-radius:6px; min-height:50px; padding:10px; margin-top:5px;"></div>
+                </div>
+
+                <div class="help-card" style="border-color: var(--danger); background: rgba(248, 81, 73, 0.05); margin-top: 20px;">
+                    <h4 style="margin-top:0; color:var(--danger); font-size:13px;">☢️ Danger Zone</h4>
+                    <p style="font-size:11px; color:var(--text); margin:8px 0; line-height: 1.5;">
+                        Completely wipe all files, time machine history, tabs, trash, and vault snippets. <strong>This cannot be undone.</strong>
+                    </p>
+                    <button class="btn-danger" style="width:100%; font-size:12px; padding:10px; font-weight: bold;" onclick="factoryReset()">
+                        NUKE PROJECT (FACTORY RESET)
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="command-palette" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); width:90%; max-width:500px; background:var(--panel); border:2px solid var(--accent); border-radius:12px; z-index:2000; box-shadow:0 20px 50px rgba(0,0,0,0.5); padding:15px;">
+        <input type="text" id="cmd-input" placeholder="Type command (e.g., 'zip', 'lint', 'fix')..." 
+               style="width:100%; background:var(--bg); border:1px solid var(--border); color:white; padding:12px; border-radius:8px; outline:none; font-size:16px;">
+    </div>
+
+    <script src="./vault-compiler.js"></script>
+    <script src="./search.js"></script>
+    <script src="./intelligence.js"></script>
+    <script src="./history.js"></script>
+    <script src="./explorer.js"></script>
+    <script src="./diff.js"></script> <script src="./main.js"></script>
+</body>
+  </html>
+          
