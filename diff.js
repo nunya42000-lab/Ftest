@@ -1,4 +1,4 @@
-// diff.js - Side-by-Side File Comparison Engine
+// diff.js - Side-by-Side File Comparison Engine with Scrollable Editors
 
 let diffEditorInstance = null;
 
@@ -39,79 +39,40 @@ function populateDiffDropdowns() {
         }
     });
 
-    if (!optionsHTML) {
-        optionsHTML = `<option value="">No files available</option>`;
-    }
-
-    // Preserve selections if possible, otherwise apply new HTML
-    const prevA = selectA.value;
-    const prevB = selectB.value;
-    
     selectA.innerHTML = optionsHTML;
     selectB.innerHTML = optionsHTML;
-    
-    if (prevA && selectA.querySelector(`option[value="${prevA}"]`)) selectA.value = prevA;
-    if (prevB && selectB.querySelector(`option[value="${prevB}"]`)) selectB.value = prevB;
+
+    // Auto-select different files if available to make comparing faster
+    if (selectA.options.length > 0) selectA.selectedIndex = 0;
+    if (selectB.options.length > 1) selectB.selectedIndex = 1;
 }
 
 /**
- * Helper to fetch the actual string content based on the dropdown selection value
+ * Executes the comparison and loads it into the CodeMirror MergeView
  */
-function getDiffContent(valueString) {
-    if (!valueString) return '';
-    
-    const parts = valueString.split('|');
-    const type = parts[0];     // 'vfs' or 'hist'
-    const filename = parts[1];
-    
-    if (type === 'vfs') {
-        return typeof vfs[filename] === 'string' ? vfs[filename] : '';
-    } else if (type === 'hist') {
-        const timestamp = parseInt(parts[2]);
-        if (typeof fileHistory !== 'undefined' && fileHistory[filename]) {
-            const snap = fileHistory[filename].find(s => s.timestamp === timestamp);
-            return snap ? snap.code : '';
-        }
-    }
-    return '';
-}
-
-/**
- * Executes the diff and renders the CodeMirror MergeView
- */
-function executeDiff() {
-    if (typeof diff_match_patch === 'undefined') {
-        alert("The diff_match_patch library failed to load. Please check your internet connection.");
-        return;
-    }
-
+async function executeDiff() {
     const valA = document.getElementById('diff-file-a').value;
     const valB = document.getElementById('diff-file-b').value;
-    
-    if (!valA || !valB) {
-        alert("Please select two files to compare.");
-        return;
-    }
-
-    const contentA = getDiffContent(valA); // Original (Left)
-    const contentB = getDiffContent(valB); // Modified (Right)
-    
     const container = document.getElementById('diff-container');
-    container.innerHTML = ''; // Clear the previous viewer or placeholder text
     
-    // Determine the current theme so the diff viewer matches the IDE
-    const currentTheme = localStorage.getItem('settings_theme') || 'dracula';
-    const cmTheme = currentTheme === 'light' ? 'default' : currentTheme;
+    if (!valA || !valB || !container) return;
 
-    // Determine syntax highlighting mode naively based on file extension
-    const filename = valA.split('|')[1] || '';
-    const ext = filename.split('.').pop().toLowerCase();
+    const contentA = await getDiffContent(valA);
+    const contentB = await getDiffContent(valB);
+
+    // Clear previous diff viewer
+    container.innerHTML = '';
+
+    // Inherit the global theme
+    const themeName = localStorage.getItem('settings_theme') || 'dracula';
+    const cmTheme = themeName === 'light' ? 'default' : themeName;
+
+    // Determine language mode based on filename extensions
     let mode = 'javascript';
-    if (ext === 'html') mode = 'htmlmixed';
-    if (ext === 'css') mode = 'css';
-    if (ext === 'json') mode = 'application/json';
+    if (valA.includes('.html') || valB.includes('.html')) mode = 'htmlmixed';
+    if (valA.includes('.css') || valB.includes('.css')) mode = 'css';
 
-    // Initialize the CodeMirror Merge addon
+    // Initialize CodeMirror MergeView
     diffEditorInstance = CodeMirror.MergeView(container, {
         value: contentB,       // Modified version goes on the Right
         origLeft: null,        // We only need a 2-way diff, not 3-way
@@ -121,21 +82,75 @@ function executeDiff() {
         theme: cmTheme,
         highlightDifferences: true,
         connect: 'align',      // Draws visual connector lines between changed chunks
-        collapseIdentical: false, // Set to true if you want to hide unchanged code blocks
+        collapseIdentical: false, // Keep full files visible for scrolling
         revertButtons: false   // Disable inline reverting to keep it read-only
     });
 
-    // Make sure it stretches to fill the container properly
-    setTimeout(() => {
-        if (diffEditorInstance && diffEditorInstance.edit) {
-            diffEditorInstance.edit.refresh();
-            diffEditorInstance.right.orig.refresh();
+    // Apply specific scrollable editor sizing and sync logic
+    setupScrollableEditors();
+}
+
+/**
+ * Configures the independent scrolling mechanics and the sync toggle
+ */
+function setupScrollableEditors() {
+    if (!diffEditorInstance || !diffEditorInstance.edit || !diffEditorInstance.right) return;
+    
+    const editorA = diffEditorInstance.right.orig;
+    const editorB = diffEditorInstance.edit;
+    const syncScrollCheckbox = document.getElementById('sync-scroll-diff');
+    
+    // Explicitly allow both editors to scroll vertically
+    editorA.setSize("100%", "100%");
+    editorB.setSize("100%", "100%");
+
+    // Handle syncing Scroll from A to B
+    const handleScrollA = () => {
+        if (syncScrollCheckbox && syncScrollCheckbox.checked) {
+            const infoA = editorA.getScrollInfo();
+            editorB.scrollTo(infoA.left, infoA.top);
         }
+    };
+
+    // Handle syncing Scroll from B to A
+    const handleScrollB = () => {
+        if (syncScrollCheckbox && syncScrollCheckbox.checked) {
+            const infoB = editorB.getScrollInfo();
+            editorA.scrollTo(infoB.left, infoB.top);
+        }
+    };
+
+    editorA.on("scroll", handleScrollA);
+    editorB.on("scroll", handleScrollB);
+
+    // Refresh layout calculations
+    setTimeout(() => {
+        editorA.refresh();
+        editorB.refresh();
     }, 100);
 }
 
+/**
+ * Helper to fetch content from VFS or History based on the dropdown value string
+ */
+async function getDiffContent(valueStr) {
+    const parts = valueStr.split('|');
+    const type = parts[0];
+    const filename = parts[1];
+
+    if (type === 'vfs') {
+        return vfs[filename] || '';
+    } else if (type === 'hist') {
+        const timestamp = parseInt(parts[2]);
+        const history = fileHistory[filename] || [];
+        const snap = history.find(h => h.timestamp === timestamp);
+        return snap ? snap.code : '';
+    }
+    return '';
+}
+
 // Add a quick refresh hook so if you change themes, the diff viewer updates if it's open
-const originalChangeTheme = changeTheme;
+const originalChangeTheme = window.changeTheme;
 if (typeof originalChangeTheme === 'function') {
     window.changeTheme = function(themeName) {
         originalChangeTheme(themeName);
@@ -145,4 +160,4 @@ if (typeof originalChangeTheme === 'function') {
             if (diffEditorInstance.right && diffEditorInstance.right.orig) diffEditorInstance.right.orig.setOption('theme', cmTheme);
         }
     };
-}
+        }
