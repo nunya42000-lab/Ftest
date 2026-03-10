@@ -15,6 +15,7 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
@@ -25,7 +26,13 @@
 
     <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body class="theme-dracula">
+
+    <div id="drop-overlay">
+        <h2 style="margin:0; font-size:24px;">Drop Files to Import</h2>
+        <p style="color:var(--text);">Files will be added directly to your VFS</p>
+    </div>
+
     <header class="tab-bar">
         <div class="tab active" onclick="switchTab('editor', event)">Editor</div>
         <div class="tab" onclick="switchTab('run', event)">Run</div>
@@ -57,6 +64,8 @@
 
         <main class="main-content">
             <div id="view-editor" class="panel-box active">
+                <div id="file-tabs-container"></div>
+                
                 <div id="mobile-toolbar">
                     <button class="tool-btn" onclick="insertSymbol('{')">{</button>
                     <button class="tool-btn" onclick="insertSymbol('}')">}</button>
@@ -85,7 +94,12 @@
                         <button class="btn-primary" onclick="runPreview()">REFRESH</button>
                     </div>
                     <iframe id="preview-frame"></iframe>
-                    <div id="console-output"></div>
+                    
+                    <div id="console-output" style="border-radius:0; border-bottom:none; flex:1;"></div>
+                    <div id="console-input-wrapper">
+                        <span>></span>
+                        <input type="text" id="interactive-console-input" placeholder="Enter JavaScript to execute in preview..." onkeydown="if(event.key === 'Enter') executeConsoleCommand(this.value)">
+                    </div>
                 </div>
             </div>
 
@@ -114,9 +128,7 @@
                     <button class="btn-primary" onclick="autoFixCurrentFile()">🔧 AUTO-FIX</button>
                 </div>
 
-                <div id="diagnostic-results" style="flex: 1; background:#000; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:12px; font-family:monospace; font-size:12px; white-space: pre-wrap; color: #0f0;">
-                    System Idle. Use Ctrl+K for commands.
-                </div>
+                <div id="diagnostic-results">System Idle. Use Ctrl+K for commands.</div>
             </div>
 
             <div id="view-vault" class="panel-box">
@@ -134,10 +146,28 @@
                 </div>
 
                 <div class="help-card">
+                    <h4 style="margin-top:0; color:var(--accent); font-size:13px;">Editor Theme</h4>
+                    <select id="theme-selector" onchange="changeTheme(this.value)" style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:4px;">
+                        <option value="dracula">🧛 Dracula (Dark)</option>
+                        <option value="monokai">🎨 Monokai (Dark)</option>
+                        <option value="light">☀️ Clean (Light)</option>
+                    </select>
+                </div>
+
+                <div class="help-card">
                     <label style="display:flex; align-items:center; gap:12px; cursor: pointer;">
                         <input type="checkbox" id="toggle-toolbar" onchange="toggleMobileToolbar()">
                         <span style="font-size: 14px; font-weight: 500;">Show Mobile Toolbar</span>
                     </label>
+                </div>
+
+                <div class="help-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; color:var(--accent); font-size:13px;">Time Machine (Local History)</h4>
+                        <button class="btn-outline" style="font-size:10px;" onclick="renderHistory()">REFRESH</button>
+                    </div>
+                    <p style="font-size:11px; color:var(--muted); margin:8px 0;">Restore previous versions of your files.</p>
+                    <div id="history-list" style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:4px; padding:5px; background:var(--bg);"></div>
                 </div>
                 
                 <div class="help-card">
@@ -166,8 +196,8 @@
     <script src="./vault-compiler.js"></script>
     <script src="./search.js"></script>
     <script src="./intelligence.js"></script>
-    <script src="./explorer.js"></script>
+    <script src="./history.js"></script> <script src="./explorer.js"></script>
     <script src="./main.js"></script>
 </body>
-                                </html>
-                                
+                </html>
+                    
