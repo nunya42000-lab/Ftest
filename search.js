@@ -44,40 +44,42 @@ function executeGlobalSearch(query) {
             fileBranch.style.marginBottom = '12px';
             
             // File Node (Parent)
-            fileBranch.innerHTML = `<strong style="color:var(--accent); display:block; margin-bottom:4px;">📁 ${filename} <span style="color:var(--muted); font-size:11px; font-weight:normal;">(${matches.length} matches)</span></strong>`;
+            const fileHeader = document.createElement('div');
+            fileHeader.style.fontWeight = 'bold';
+            fileHeader.style.color = 'var(--accent)';
+            fileHeader.style.paddingBottom = '4px';
+            fileHeader.style.borderBottom = '1px solid var(--border)';
+            fileHeader.style.cursor = 'pointer';
+            fileHeader.innerHTML = `📄 ${filename} <span style="color:var(--muted); font-size:11px;">(${matches.length})</span>`;
             
-            // Match Nodes (Leaves)
+            // Allow clicking the header to just open the file
+            fileHeader.onclick = () => {
+                if (typeof openTab === 'function') openTab(filename);
+            };
+            fileBranch.appendChild(fileHeader);
+            
             const matchContainer = document.createElement('div');
-            matchContainer.style.marginLeft = '15px';
-            matchContainer.style.borderLeft = '2px solid var(--border)';
             matchContainer.style.paddingLeft = '10px';
-
+            matchContainer.style.marginTop = '4px';
+            matchContainer.style.borderLeft = '2px solid var(--border)';
+            
+            // Match Nodes (Children)
             matches.forEach(match => {
                 const matchDiv = document.createElement('div');
+                matchDiv.style.padding = '4px';
+                matchDiv.style.fontSize = '12px';
+                matchDiv.style.color = 'var(--text)';
                 matchDiv.style.cursor = 'pointer';
-                matchDiv.style.padding = '4px 0';
-                matchDiv.style.borderBottom = '1px dashed transparent';
+                matchDiv.style.whiteSpace = 'nowrap';
+                matchDiv.style.overflow = 'hidden';
+                matchDiv.style.textOverflow = 'ellipsis';
                 
-                // Highlight the matched query word for better UX
-                const regex = new RegExp(`(${escapeHTML(query)})`, 'gi');
-                const highlightedText = escapeHTML(match.text).replace(regex, '<span style="background:rgba(210, 153, 34, 0.3); color:var(--warn); border-radius:2px;">$1</span>');
+                matchDiv.innerHTML = `<span style="color:var(--warn); margin-right:6px;">Line ${match.lineNum}:</span> ${escapeHTML(match.text)}`;
                 
-                matchDiv.innerHTML = `<span style="color:var(--muted); font-size:11px; display:inline-block; width:45px;">Line ${match.lineNum}:</span> <span>${highlightedText}</span>`;
-                
-                // Hover effect
-                matchDiv.onmouseenter = () => matchDiv.style.borderBottom = '1px dashed var(--border)';
-                matchDiv.onmouseleave = () => matchDiv.style.borderBottom = '1px dashed transparent';
-                
-                // Clickable Action: Switch tab, open file, and jump to line
+                // Click a match to open file and jump to line
                 matchDiv.onclick = () => {
-                    if (typeof switchTab === 'function') {
-                        // Pass null for event since it's a programmatic switch
-                        switchTab('editor', null); 
-                    }
-                    
-                    if (typeof loadFile === 'function') {
-                        loadFile(filename);
-                    }
+                    // Open the file tab via multi-tab manager
+                    if (typeof openTab === 'function') openTab(filename);
                     
                     // Jump to line in CodeMirror
                     setTimeout(() => {
@@ -114,4 +116,4 @@ function escapeHTML(str) {
     return str.replace(/[&<>'"]/g, tag => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[tag] || tag));
-            }
+}
