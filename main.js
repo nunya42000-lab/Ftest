@@ -1,4 +1,4 @@
-/* DevOS IDE Engine - Full Gold Edition */
+/* DevOS IDE Engine - Core Initialization & Editor */
 
 localforage.config({ name: 'DevOS' });
 
@@ -9,6 +9,7 @@ let cmEditor = null;
 let snippets = [];
 let autoSaveTimer;
 let lintTimer;
+let snapshots = []; 
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -18,22 +19,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 2. Initialize CodeMirror
     const textArea = document.getElementById('code-editor');
-    cmEditor = CodeMirror.fromTextArea(textArea, {
-        lineNumbers: true,
-        theme: 'dracula',
-        mode: 'javascript',
-        autoCloseBrackets: true,
-        autoCloseTags: true,
-        lineWrapping: true,
-        indentUnit: 4,
-        foldGutter: true,
-        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
-    });
+    if (textArea) {
+        cmEditor = CodeMirror.fromTextArea(textArea, {
+            lineNumbers: true,
+            theme: 'dracula',
+            mode: 'javascript',
+            autoCloseBrackets: true,
+            autoCloseTags: true,
+            lineWrapping: true,
+            indentUnit: 4,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+        });
 
-    cmEditor.on('change', () => {
-        triggerAutoSave();
-        triggerReactiveLint();
-    });
+        cmEditor.on('change', () => {
+            triggerAutoSave();
+            triggerReactiveLint();
+        });
+
+        // Vault Gesture: Double-Tap selection to save to Vault
+        cmEditor.getWrapperElement().addEventListener('dblclick', async (e) => {
+            const selectedText = cmEditor.getSelection();
+            if (selectedText && selectedText.trim().length > 0) {
+                e.preventDefault(); 
+                const name = prompt("Snippet Name:", "New Snippet");
+                if (name) {
+                    snippets.push({ name, code: selectedText, id: Date.now() });
+                    await localforage.setItem('vault_snippets', snippets);
+                    renderVault();
+                    logDiag(`Saved "${name}" to Vault.`, "success");
+                }
+            }
+        });
+    }
 
     // 3. Global Shortcuts
     window.addEventListener('keydown', (e) => {
@@ -44,38 +62,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 4. Command Palette Listener
-    document.getElementById('cmd-input').addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') handleCommand(e.target.value.toLowerCase().trim());
-    });
+    const cmdInput = document.getElementById('cmd-input');
+    if (cmdInput) {
+        cmdInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') handleCommand(e.target.value.toLowerCase().trim());
+        });
+    }
 
-    // 5. Drag & Drop Support
-    document.body.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
-    document.body.addEventListener('drop', handleDrop);
-
-    // 6. Vault Gesture: Double-Tap selection to save to Vault
-    cmEditor.getWrapperElement().addEventListener('dblclick', async (e) => {
-        const selectedText = cmEditor.getSelection();
-        if (selectedText && selectedText.trim().length > 0) {
-            e.preventDefault(); 
-            const name = prompt("Snippet Name:", "New Snippet");
-            if (name) {
-                snippets.push({ name, code: selectedText, id: Date.now() });
-                await localforage.setItem('vault_snippets', snippets);
-                renderVault();
-                logDiag(`Saved "${name}" to Vault.`, "success");
-            }
-        }
-    });
-
-    // 7. Initial Render
+    // 5. Initial Render
     const savedToolbarState = localStorage.getItem('settings_show_toolbar') !== 'false';
-    document.getElementById('toggle-toolbar').checked = savedToolbarState;
+    const toggleCheckbox = document.getElementById('toggle-toolbar');
+    if (toggleCheckbox) toggleCheckbox.checked = savedToolbarState;
     applyToolbarState(savedToolbarState);
 
-    renderFileList();
-    renderVault();
-    renderTrash();
+    // Call external render functions from our newly split modules
+    if (typeof renderFileList === 'function') renderFileList();
+    if (typeof renderVault === 'function') renderVault();
+    if (typeof renderTrash === 'function') renderTrash();
+    if (typeof updateProjectStats === 'function') updateProjectStats();
 });
+
 
 // --- UI & Navigation ---
 
@@ -88,14 +94,19 @@ function switchTab(tabId, event) {
     if (tabId === 'editor') {
         const show = localStorage.getItem('settings_show_toolbar') !== 'false';
         applyToolbarState(show);
-        setTimeout(() => cmEditor.refresh(), 50);
+        setTimeout(() => cmEditor && cmEditor.refresh(), 50);
+    } else if (tabId === 'tools' && typeof updateProjectStats === 'function') {
+        updateProjectStats(); // Refresh smart intelligence graphs when opening the tab
     }
-    if (event) event.currentTarget.classList.add('active');
+    
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
 }
 
 function toggleCommandPalette() {
     const palette = document.getElementById('command-palette');
     const input = document.getElementById('cmd-input');
+    if (!palette || !input) return;
+    
     const isVisible = palette.style.display === 'block';
     palette.style.display = isVisible ? 'none' : 'block';
     if (!isVisible) { input.value = ""; input.focus(); }
@@ -108,11 +119,11 @@ function handleCommand(cmd) {
         return;
     }
     const actions = {
-        'export': exportProjectZip,
+        'export': () => typeof exportProjectZip === 'function' && exportProjectZip(),
         'lint': runLinter,
         'fix': autoFixCurrentFile,
         'format': formatCurrentFile,
-        'close all': closeAllFiles,
+        'close all': () => typeof closeAllFiles === 'function' && closeAllFiles(),
         'trash': () => switchTab('settings'),
         'scan': runGlobalHealthCheck,
         'imports': generateAutoImports
@@ -136,31 +147,8 @@ function applyToolbarState(show) {
     }
 }
 
-function toggleSidebar() {
-    document.getElementById('ui-sidebar').classList.toggle('collapsed');
-}
 
-// --- Project Intelligence ---
-
-function updateProjectStats() {
-    let totalLines = 0;
-    let fileCount = Object.keys(vfs).length;
-    Object.values(vfs).forEach(code => totalLines += code.split('\n').length);
-
-    const statsHTML = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-            <div class="help-card" style="text-align:center; padding:10px;">
-                <div style="font-size:20px; font-weight:bold; color:var(--accent)">${fileCount}</div>
-                <div style="font-size:10px; color:var(--muted)">FILES</div>
-            </div>
-            <div class="help-card" style="text-align:center; padding:10px;">
-                <div style="font-size:20px; font-weight:bold; color:var(--success)">${totalLines}</div>
-                <div style="font-size:10px; color:var(--muted)">LINES</div>
-            </div>
-        </div>`;
-    const container = document.getElementById('project-stats-container');
-    if (container) container.innerHTML = statsHTML;
-}
+// --- Editor Tools & Intelligence ---
 
 function triggerReactiveLint() {
     clearTimeout(lintTimer);
@@ -171,193 +159,53 @@ function triggerReactiveLint() {
     }, 1500); 
 }
 
-/* --- Platinum Intelligence Suite --- */
-
 function runLinter() {
-    if(!currentFile) return;
+    if(!currentFile || !cmEditor) return;
     const code = cmEditor.getValue();
     const ext = currentFile.split('.').pop().toLowerCase();
     let results = [];
 
-    if (ext === 'js') {
-        // Advanced JSHint configuration for logic errors
+    if (ext === 'js' && typeof JSHINT !== 'undefined') {
         const options = { 
             esversion: 11, browser: true, module: true, 
             undef: true, unused: true, shadow: "warn", loopfunc: true 
         };
         JSHINT(code, options);
         
-        // 1. Syntax & Scope Errors
         if (JSHINT.errors.length > 0) {
             JSHINT.errors.forEach(e => { 
                 if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
             });
         }
 
-        // 2. Custom Logic: Infinite Loop Guard
-        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
-            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
-        }
+        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) results.push("⚠️ LOGIC: Possible infinite loop detected.");
+        if (code.match(/return\s*;?\n\s*[^\s}]/g)) results.push("⚠️ SEMANTIC: Unreachable code detected.");
 
-        // 3. Custom Logic: Unreachable Code after Return
-        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
-            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
-        }
-
-        if (results.length > 0) {
-            logDiag(results.join('\n'), "error");
-        } else {
-            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
-        }
+        if (results.length > 0) logDiag(results.join('\n'), "error");
+        else logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
     }
 }
 
 function autoFixCurrentFile() {
-    if(!currentFile) return;
-    const code = cmEditor.getValue();
-    
-    // Create safety snapshot
+    if(!currentFile || !cmEditor) return;
     snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
 
-    // 1. Structural Fix (Beautify)
     formatCurrentFile();
     
-    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
     let fixedCode = cmEditor.getValue()
-        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
-        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
-        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
+        .replace(/console\.log\(.*\);?\n?/g, '') 
+        .replace(/\n\s*\n\s*\n/g, '\n\n')       
+        .replace(/debugger;?\n?/g, '');         
 
     cmEditor.setValue(fixedCode);
     logDiag("✔ Logic scrubbed and formatting applied.", "success");
 }
-/* --- Platinum Intelligence Suite --- */
-
-function runLinter() {
-    if(!currentFile) return;
-    const code = cmEditor.getValue();
-    const ext = currentFile.split('.').pop().toLowerCase();
-    let results = [];
-
-    if (ext === 'js') {
-        // Advanced JSHint configuration for logic errors
-        const options = { 
-            esversion: 11, browser: true, module: true, 
-            undef: true, unused: true, shadow: "warn", loopfunc: true 
-        };
-        JSHINT(code, options);
-        
-        // 1. Syntax & Scope Errors
-        if (JSHINT.errors.length > 0) {
-            JSHINT.errors.forEach(e => { 
-                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
-            });
-        }
-
-        // 2. Custom Logic: Infinite Loop Guard
-        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
-            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
-        }
-
-        // 3. Custom Logic: Unreachable Code after Return
-        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
-            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
-        }
-
-        if (results.length > 0) {
-            logDiag(results.join('\n'), "error");
-        } else {
-            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
-        }
-    }
-}
-
-function autoFixCurrentFile() {
-    if(!currentFile) return;
-    const code = cmEditor.getValue();
-    
-    // Create safety snapshot
-    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
-
-    // 1. Structural Fix (Beautify)
-    formatCurrentFile();
-    
-    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
-    let fixedCode = cmEditor.getValue()
-        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
-        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
-        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
-
-    cmEditor.setValue(fixedCode);
-    logDiag("✔ Logic scrubbed and formatting applied.", "success");
-}
-/* --- Platinum Intelligence Suite --- */
-
-function runLinter() {
-    if(!currentFile) return;
-    const code = cmEditor.getValue();
-    const ext = currentFile.split('.').pop().toLowerCase();
-    let results = [];
-
-    if (ext === 'js') {
-        // Advanced JSHint configuration for logic errors
-        const options = { 
-            esversion: 11, browser: true, module: true, 
-            undef: true, unused: true, shadow: "warn", loopfunc: true 
-        };
-        JSHINT(code, options);
-        
-        // 1. Syntax & Scope Errors
-        if (JSHINT.errors.length > 0) {
-            JSHINT.errors.forEach(e => { 
-                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
-            });
-        }
-
-        // 2. Custom Logic: Infinite Loop Guard
-        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) {
-            results.push("⚠️ LOGIC: Possible infinite loop detected (while true without break).");
-        }
-
-        // 3. Custom Logic: Unreachable Code after Return
-        if (code.match(/return\s*;?\n\s*[^\s}]/g)) {
-            results.push("⚠️ SEMANTIC: Unreachable code detected after return statement.");
-        }
-
-        if (results.length > 0) {
-            logDiag(results.join('\n'), "error");
-        } else {
-            logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
-        }
-    }
-}
-
-function autoFixCurrentFile() {
-    if(!currentFile) return;
-    const code = cmEditor.getValue();
-    
-    // Create safety snapshot
-    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
-
-    // 1. Structural Fix (Beautify)
-    formatCurrentFile();
-    
-    // 2. Logic Scrub (Clean up common mobile-coding artifacts)
-    let fixedCode = cmEditor.getValue()
-        .replace(/console\.log\(.*\);?\n?/g, '') // Option: Scrub logs for production
-        .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse triple line breaks
-        .replace(/debugger;?\n?/g, '');         // Remove debugger statements
-
-    cmEditor.setValue(fixedCode);
-    logDiag("✔ Logic scrubbed and formatting applied.", "success");
-}
-
 
 function runGlobalHealthCheck() {
     let summary = "Project Health Scan:\n\n";
     let issues = 0;
     Object.entries(vfs).forEach(([name, code]) => {
-        if (name.endsWith('.js')) {
+        if (name.endsWith('.js') && typeof JSHINT !== 'undefined') {
             JSHINT(code, { esversion: 11 });
             if (JSHINT.errors.length > 0) {
                 summary += `✖ ${name}: ${JSHINT.errors.length} errors\n`;
@@ -366,11 +214,10 @@ function runGlobalHealthCheck() {
         }
     });
     logDiag(issues > 0 ? summary : "✔ Project Health: Excellent.", issues > 0 ? "error" : "success");
-    renderFileList();
 }
 
 function generateAutoImports() {
-    if (!currentFile || !currentFile.endsWith('.js')) return;
+    if (!currentFile || !currentFile.endsWith('.js') || typeof analyzeSnippetDependencies !== 'function') return;
     const { requires } = analyzeSnippetDependencies(cmEditor.getValue());
     let newImports = "";
     requires.forEach(req => {
@@ -413,21 +260,28 @@ function globalSearchReplace() {
     const replaceText = prompt(`Replace "${findText}" with:`);
     if (replaceText === null) return;
     Object.keys(vfs).forEach(name => { vfs[name] = vfs[name].split(findText).join(replaceText); });
-    if (currentFile) cmEditor.setValue(vfs[currentFile]);
+    if (currentFile && cmEditor) cmEditor.setValue(vfs[currentFile]);
     saveVFS();
     logDiag("Refactor complete across VFS.", "success");
 }
 
-function performSearch() {
-    const query = document.getElementById('search-query').value.toLowerCase();
-    if (!query) return;
-    let results = `Matches for "${query}":\n\n`;
-    Object.entries(vfs).forEach(([name, code]) => {
-        code.split('\n').forEach((line, i) => {
-            if (line.toLowerCase().includes(query)) results += `[${name}] L${i+1}: ${line.trim()}\n`;
-        });
+function peekDefinition() {
+    if (!cmEditor) return;
+    const word = cmEditor.getSelection().trim();
+    if (!word) return logDiag("Highlight a variable or function name to peek its definition.", "info");
+
+    let definitionsFound = [];
+    const defRegex = new RegExp(`(?:function|const|let|var|class)\\s+${word}\\b`);
+
+    Object.entries(vfs).forEach(([filename, content]) => {
+        if (defRegex.test(content)) definitionsFound.push(filename);
     });
-    logDiag(results, "info");
+
+    if (definitionsFound.length > 0) {
+        logDiag(`"${word}" is defined in:\n• ${definitionsFound.join('\n• ')}`, "info");
+    } else {
+        logDiag(`Could not find a local definition for "${word}".`, "error");
+    }
 }
 
 function runTerminalCmd(input) {
@@ -437,10 +291,11 @@ function runTerminalCmd(input) {
     } catch (e) { logDiag(`Error: ${e.message}`, "error"); }
 }
 
+
 // --- Preview Engine ---
 
 function runPreview() {
-    if (currentFile) vfs[currentFile] = cmEditor.getValue();
+    if (currentFile && cmEditor) vfs[currentFile] = cmEditor.getValue();
     let html = vfs['index.html'] || '<h1>No index.html</h1>';
     const hook = `<script>
         const format = (arg) => (typeof arg === 'object') ? JSON.stringify(arg, null, 2) : String(arg);
@@ -459,12 +314,13 @@ function runPreview() {
     switchTab('run');
 }
 
-// --- VFS & File Management ---
+
+// --- Core VFS Saving ---
 
 async function saveVFS() {
-    if (currentFile) vfs[currentFile] = cmEditor.getValue();
+    if (currentFile && cmEditor) vfs[currentFile] = cmEditor.getValue();
     await localforage.setItem('devos_vfs', vfs);
-    updateProjectStats();
+    if (typeof updateProjectStats === 'function') updateProjectStats();
 }
 
 function triggerAutoSave() {
@@ -477,79 +333,8 @@ function flashSaveStatus() {
     if (msg) { msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000); }
 }
 
-function loadFiles(event) {
-    const files = event.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            vfs[file.name] = e.target.result;
-            await saveVFS();
-            renderFileList();
-            logDiag(`Imported: ${file.name}`, "success");
-        };
-        reader.readAsText(file);
-    });
-}
 
-function handleDrop(e) {
-    e.preventDefault(); e.stopPropagation();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) loadFiles({ target: { files } });
-}
-
-function renderFileList() {
-    const list = document.getElementById('file-list');
-    list.innerHTML = '';
-    Object.keys(vfs).sort().forEach(name => {
-        let health = "";
-        if (name.endsWith('.js')) {
-            JSHINT(vfs[name], { esversion: 11 });
-            health = JSHINT.errors.length > 0 ? "🔴 " : "🟢 ";
-        }
-        const div = document.createElement('div');
-        div.className = `file-item ${name === currentFile ? 'active' : ''}`;
-        div.innerHTML = `<span>${health}${name}</span><button onclick="deleteFile('${name}', event)">×</button>`;
-        div.onclick = () => loadFile(name);
-        list.appendChild(div);
-    });
-}
-
-function loadFile(name) {
-    if (currentFile) vfs[currentFile] = cmEditor.getValue();
-    currentFile = name;
-    const ext = name.split('.').pop();
-    const modes = { js: 'javascript', html: 'htmlmixed', css: 'css', json: 'application/json' };
-    cmEditor.setOption('mode', modes[ext] || 'text/plain');
-    cmEditor.setValue(vfs[name]);
-    document.getElementById('current-file-label').innerText = name;
-    renderFileList();
-}
-
-function closeAllFiles() {
-    if (confirm("Clear editor?")) {
-        currentFile = null;
-        cmEditor.setValue("// Select a file to begin.");
-        document.getElementById('current-file-label').innerText = "no file selected";
-        renderFileList();
-    }
-}
-
-// --- Trash & Soft Delete ---
-
-async function deleteFile(name, e) {
-    e.stopPropagation();
-    if (confirm(`Move ${name} to Trash?`)) {
-        const trash = (await localforage.getItem('devos_trash')) || {};
-        trash[name] = { code: vfs[name], deletedAt: Date.now() };
-        await localforage.setItem('devos_trash', trash);
-        delete vfs[name];
-        if (currentFile === name) closeAllFiles();
-        await saveVFS();
-        renderFileList();
-        renderTrash();
-    }
-}
+// --- Trash Utilities ---
 
 async function renderTrash() {
     const trash = (await localforage.getItem('devos_trash')) || {};
@@ -572,7 +357,7 @@ async function restoreFile(name) {
     delete trash[name];
     await localforage.setItem('devos_trash', trash);
     await saveVFS();
-    renderFileList();
+    if (typeof renderFileList === 'function') renderFileList();
     renderTrash();
 }
 
@@ -580,26 +365,19 @@ async function emptyTrash() {
     if (confirm("Clear trash?")) { await localforage.setItem('devos_trash', {}); renderTrash(); }
 }
 
-// --- Utilities ---
 
-async function exportProjectZip() {
-    const zip = new JSZip();
-    Object.entries(vfs).forEach(([n, c]) => zip.file(n, c));
-    const content = await zip.generateAsync({ type: "blob" });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(content);
-    link.download = `devos_project_${Date.now()}.zip`;
-    link.click();
-}
+// --- General Utilities & Vault ---
 
 function logDiag(msg, type) {
     const out = document.getElementById('diagnostic-results');
+    if (!out) return;
     const colors = { error: '#f85149', success: '#3fb950', warn: '#d29922', info: '#2f81f7' };
     out.style.color = colors[type] || '#fff';
     out.innerText = msg;
 }
 
 function formatCurrentFile() {
+    if (!cmEditor || !currentFile) return;
     const code = cmEditor.getValue();
     const ext = currentFile.split('.').pop().toLowerCase();
     let formatted = code;
@@ -612,15 +390,11 @@ function formatCurrentFile() {
 }
 
 function insertSymbol(sym, template = false) {
+    if (!cmEditor) return;
     const cursor = cmEditor.getCursor();
     if (template) { cmEditor.replaceRange("${}", cursor); cmEditor.setCursor(cursor.line, cursor.ch + 2); }
     else cmEditor.replaceRange(sym, cursor);
     cmEditor.focus();
-}
-
-function createNewFile() {
-    const name = prompt("Filename:");
-    if (name && !vfs[name]) { vfs[name] = ""; renderFileList(); loadFile(name); }
 }
 
 function renderVault() {
@@ -630,37 +404,14 @@ function renderVault() {
     snippets.forEach(s => {
         const div = document.createElement('div');
         div.className = 'help-card';
-        div.innerHTML = `<strong>${s.name}</strong><br><button class="btn-primary" style="font-size:10px;" onclick="insertSnippet(${s.id})">INSERT</button>`;
+        div.innerHTML = `<strong>${s.name}</strong><br><button class="btn-primary" style="margin-top:5px; font-size:10px;" onclick="insertSnippet(${s.id})">INSERT</button>`;
         list.appendChild(div);
     });
 }
 
 function insertSnippet(id) {
+    if (!cmEditor) return;
     const s = snippets.find(snip => snip.id === id);
     if (s) { cmEditor.replaceSelection(s.code); cmEditor.focus(); }
-}
-
-function peekDefinition() {
-    const word = cmEditor.getSelection().trim();
-    if (!word) {
-        return logDiag("Highlight a variable or function name to peek its definition.", "info");
-    }
-
-    let definitionsFound = [];
-    
-    // Regex to detect definitions: function Name, const Name, class Name, etc.
-    const defRegex = new RegExp(`(?:function|const|let|var|class)\\s+${word}\\b`);
-
-    Object.entries(vfs).forEach(([filename, content]) => {
-        if (defRegex.test(content)) {
-            definitionsFound.push(filename);
         }
-    });
-
-    if (definitionsFound.length > 0) {
-        const report = `"${word}" is defined in:\n• ${definitionsFound.join('\n• ')}`;
-        logDiag(report, "info");
-    } else {
-        logDiag(`Could not find a local definition for "${word}".`, "error");
-    }
-}
+        
