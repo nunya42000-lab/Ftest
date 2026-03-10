@@ -640,3 +640,59 @@ function toggleSidebar() {
     const sidebar = document.getElementById('ui-sidebar');
     if (sidebar) sidebar.classList.toggle('active');
 }
+// --- Vault UI Rendering ---
+function renderVault() {
+    const list = document.getElementById('vault-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    if (snippets.length === 0) {
+        list.innerHTML = '<div style="color:var(--muted); font-style:italic; font-size: 12px; padding: 5px;">Vault is empty. Cut/Copy snippets to add them.</div>';
+        return;
+    }
+function openSettings() {
+    switchTab('settings');
+    // Auto-close sidebar on mobile to reveal the settings view
+    if (window.innerWidth <= 768) toggleSidebar(); 
+        }
+    
+    snippets.forEach((s) => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.padding = '6px';
+        div.style.borderBottom = '1px solid var(--border)';
+        div.style.fontSize = '12px';
+        
+        div.innerHTML = `
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); cursor:pointer;" onclick="insertSnippet(${s.id})" title="Insert Snippet">
+                🧩 ${s.name}
+            </span>
+            <div>
+                <button class="btn-primary" style="padding:2px 6px; font-size:10px; margin-right:4px;" onclick="insertSnippet(${s.id})">ADD</button>
+                <button class="btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteSnippet(${s.id})">✖</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function insertSnippet(id) {
+    if (!cmEditor) return;
+    const s = snippets.find(snip => snip.id === id);
+    if (s) { 
+        cmEditor.replaceSelection(s.code); 
+        cmEditor.focus(); 
+        saveVFS();
+    }
+}
+
+async function deleteSnippet(id) {
+    if(confirm("Delete this snippet from the Vault?")) {
+        snippets = snippets.filter(snip => snip.id !== id);
+        await localforage.setItem('vault_snippets', snippets);
+        renderVault();
+    }
+}
