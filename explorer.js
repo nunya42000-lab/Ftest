@@ -1,4 +1,4 @@
-// explorer.js - File System and UI Sidebar Management
+// explorer.js - File System, UI Sidebar, and Drag & Drop
 
 /**
  * Renders the list of files in the sidebar
@@ -11,9 +11,11 @@ function renderFileList() {
     
     Object.keys(vfs).forEach(filename => {
         const div = document.createElement('div');
-        div.className = `file-item ${currentFile === filename ? 'active' : ''}`;
+        // If main.js has multi-tab activeFile logic, we use it, otherwise fallback to currentFile
+        const isActive = (typeof activeTab !== 'undefined' ? activeTab === filename : currentFile === filename);
         
-        // Include inline styles or classes for the delete button
+        div.className = `file-item ${isActive ? 'active' : ''}`;
+        
         div.innerHTML = `
             <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" onclick="loadFile('${filename}')">📄 ${filename}</span>
             <span style="color:var(--danger); font-size:12px; padding:4px 8px; border-radius:4px;" onclick="deleteFile('${filename}', event)">✖</span>
@@ -21,30 +23,31 @@ function renderFileList() {
         list.appendChild(div);
     });
 
-    // Update project stats if the intelligence module is loaded
     if (typeof updateProjectStats === 'function') {
         updateProjectStats(); 
     }
 }
 
 /**
- * Loads a file into the CodeMirror editor
+ * Loads a file into the Editor (Now routes through Multi-Tab system if available)
  */
 function loadFile(filename) {
     if (!vfs[filename]) return;
     
-    currentFile = filename;
-    document.getElementById('current-file-label').innerText = filename;
-    
-    if (cmEditor) {
-        cmEditor.setValue(vfs[filename]);
+    // NEW: If the multi-tab system is loaded in main.js, route through it
+    if (typeof openTab === 'function') {
+        openTab(filename);
+    } else {
+        // Fallback for standalone loading
+        currentFile = filename;
+        document.getElementById('current-file-label').innerText = filename;
+        if (cmEditor) cmEditor.setValue(vfs[filename]);
+        renderFileList();
     }
     
-    renderFileList();
-    
-    // Auto-close sidebar on mobile/portrait after selecting a file for better UX
+    // Auto-close sidebar on mobile/portrait after selecting a file
     const sidebar = document.getElementById('ui-sidebar');
-    if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
         toggleSidebar();
     }
 }
@@ -66,18 +69,19 @@ function createNewFile() {
  * Deletes a file from the Virtual File System
  */
 function deleteFile(filename, event) {
-    if (event) event.stopPropagation(); // Prevent triggering loadFile
+    if (event) event.stopPropagation();
     
     if (confirm(`Are you sure you want to delete ${filename}?`)) {
-        // Push to trash if the main.js logic supports it
         if (typeof pushToTrash === 'function') {
             pushToTrash(filename, vfs[filename]);
         }
         
         delete vfs[filename];
         
-        // Clear editor if the deleted file was currently open
-        if (currentFile === filename) {
+        // NEW: Handle tab closing if the multi-tab system is active
+        if (typeof closeTab === 'function') {
+            closeTab(filename, true);
+        } else if (currentFile === filename) {
             currentFile = null;
             document.getElementById('current-file-label').innerText = 'no file selected';
             if (cmEditor) cmEditor.setValue('');
@@ -89,28 +93,24 @@ function deleteFile(filename, event) {
 }
 
 /**
- * Clears the editor view
+ * Clears the editor view and closes all open tabs
  */
 function closeAllFiles() {
-    currentFile = null;
-    document.getElementById('current-file-label').innerText = 'no file selected';
-    if (cmEditor) cmEditor.setValue('');
+    if (typeof closeAllTabs === 'function') {
+        closeAllTabs();
+    } else {
+        currentFile = null;
+        document.getElementById('current-file-label').innerText = 'no file selected';
+        if (cmEditor) cmEditor.setValue('');
+    }
     renderFileList();
 }
 
-/**
- * Toggles the sidebar visibility (used heavily in portrait mode)
- */
 function toggleSidebar() {
     const sidebar = document.getElementById('ui-sidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('active');
-    }
+    if (sidebar) sidebar.classList.toggle('active');
 }
 
-/**
- * Exports the entire VFS as a ZIP file
- */
 async function exportProjectZip() {
     if (typeof JSZip === 'undefined') {
         alert("JSZip library is not loaded.");
@@ -131,12 +131,14 @@ async function exportProjectZip() {
     URL.revokeObjectURL(url);
 }
 
-/**
- * Imports files from the user's local device into the VFS
- */
+// --- Import Logic (Manual & Drag/Drop) ---
+
 function loadFiles(event) {
-    const files = event.target.files;
-    if (!files.length) return;
+    handleIncomingFiles(event.target.files);
+}
+
+function handleIncomingFiles(files) {
+    if (!files || !files.length) return;
 
     let filesRead = 0;
     for (let file of files) {
@@ -145,7 +147,6 @@ function loadFiles(event) {
             vfs[file.name] = e.target.result;
             filesRead++;
             
-            // Re-render and save once all files are loaded
             if (filesRead === files.length) {
                 renderFileList();
                 if (typeof saveVFS === 'function') saveVFS();
@@ -154,3 +155,46 @@ function loadFiles(event) {
         reader.readAsText(file);
     }
 }
+
+// --- NEW: Drag and Drop Global Listeners ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('drop-overlay');
+    if (!overlay) return;
+
+    // Show overlay when dragging files into the window
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+            overlay.classList.add('dragover');
+        }
+    });
+
+    // Hide overlay when dragging leaves the window
+    window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Ensure we only hide if we are leaving the actual window, not child elements
+        if (e.relatedTarget === null || e.relatedTarget.nodeName === "HTML") {
+            overlay.classList.remove('dragover');
+        }
+    });
+
+    // Handle the actual drop event
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        overlay.classList.remove('dragover');
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleIncomingFiles(e.dataTransfer.files);
+            
+            // Auto-switch to Explorer tab to show the new files if on mobile
+            const sidebar = document.getElementById('ui-sidebar');
+            if (window.innerWidth <= 768 && sidebar && !sidebar.classList.contains('active')) {
+                toggleSidebar();
+            }
+        }
+    });
+});
