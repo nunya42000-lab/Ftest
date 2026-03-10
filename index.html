@@ -284,6 +284,31 @@
     <script src="./help-section.js"></script>
 
     <script src="./main.js"></script>
+    <script>
+    // Essential UI Logic for Accordions
+    function toggleAccordion(el) {
+        const content = el.nextElementSibling;
+        const chevron = el.querySelector('.chevron');
+        
+        if (content) {
+            content.classList.toggle('open');
+            // Force a display toggle if CSS classes are stubborn on mobile
+            content.style.display = content.classList.contains('open') ? 'block' : 'none';
+        }
+        if (chevron) {
+            chevron.classList.toggle('open');
+            chevron.style.transform = chevron.classList.contains('open') ? 'rotate(90deg)' : 'rotate(0deg)';
+        }
+    }
+
+    // Auto-initialize PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration deferred.'));
+        });
+    }
+            </script>
+    
 </body>
 </html>
 
