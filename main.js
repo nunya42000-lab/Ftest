@@ -1,15 +1,18 @@
-/* DevOS IDE Engine - Core Initialization & Editor */
+/* DevOS IDE Engine - Upgraded Core */
 
 localforage.config({ name: 'DevOS' });
 
 // --- Global State ---
 let vfs = {}; 
-let currentFile = null;
-let cmEditor = null;
 let snippets = [];
 let autoSaveTimer;
 let lintTimer;
-let snapshots = []; 
+
+// NEW: Multi-Tab State
+let openTabs = [];
+let activeTab = null;
+
+let cmEditor = null;
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -17,12 +20,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     vfs = (await localforage.getItem('devos_vfs')) || { 'index.html': '<h1>Ready.</h1>' };
     snippets = (await localforage.getItem('vault_snippets')) || [];
     
+    // NEW: Load Tab State
+    openTabs = (await localforage.getItem('devos_tabs')) || [];
+    activeTab = await localforage.getItem('devos_active_tab');
+
+    // NEW: Initialize Theme
+    const savedTheme = localStorage.getItem('settings_theme') || 'dracula';
+    document.getElementById('theme-selector').value = savedTheme;
+    changeTheme(savedTheme);
+
     // 2. Initialize CodeMirror
     const textArea = document.getElementById('code-editor');
     if (textArea) {
         cmEditor = CodeMirror.fromTextArea(textArea, {
             lineNumbers: true,
-            theme: 'dracula',
+            theme: savedTheme === 'light' ? 'default' : savedTheme,
             mode: 'javascript',
             autoCloseBrackets: true,
             autoCloseTags: true,
@@ -37,7 +49,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             triggerReactiveLint();
         });
 
-        // Vault Gesture: Double-Tap selection to save to Vault
         cmEditor.getWrapperElement().addEventListener('dblclick', async (e) => {
             const selectedText = cmEditor.getSelection();
             if (selectedText && selectedText.trim().length > 0) {
@@ -75,15 +86,126 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (toggleCheckbox) toggleCheckbox.checked = savedToolbarState;
     applyToolbarState(savedToolbarState);
 
-    // Call external render functions from our newly split modules
+    // Restore last open tab if it exists
+    if (activeTab && vfs[activeTab]) {
+        openTab(activeTab);
+    } else if (openTabs.length > 0 && vfs[openTabs[0]]) {
+        openTab(openTabs[0]);
+    } else {
+        renderTabs();
+    }
+
     if (typeof renderFileList === 'function') renderFileList();
     if (typeof renderVault === 'function') renderVault();
     if (typeof renderTrash === 'function') renderTrash();
+    if (typeof renderHistory === 'function') renderHistory();
     if (typeof updateProjectStats === 'function') updateProjectStats();
 });
 
 
-// --- UI & Navigation ---
+// --- NEW: Multi-Tab System ---
+
+async function saveTabState() {
+    await localforage.setItem('devos_tabs', openTabs);
+    await localforage.setItem('devos_active_tab', activeTab);
+}
+
+function renderTabs() {
+    const container = document.getElementById('file-tabs-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    openTabs.forEach(file => {
+        const tab = document.createElement('div');
+        tab.className = `file-tab ${file === activeTab ? 'active' : ''}`;
+        
+        tab.innerHTML = `
+            <span onclick="openTab('${file}')">${file}</span>
+            <span class="close-tab" onclick="closeTab('${file}', event)">✖</span>
+        `;
+        container.appendChild(tab);
+    });
+    
+    document.getElementById('current-file-label').innerText = activeTab || 'no file selected';
+}
+
+function openTab(filename) {
+    if (!vfs[filename] && vfs[filename] !== "") return;
+    
+    if (!openTabs.includes(filename)) {
+        openTabs.push(filename);
+    }
+    
+    activeTab = filename;
+    
+    if (cmEditor) {
+        // Set mode based on file extension
+        const ext = filename.split('.').pop().toLowerCase();
+        let mode = 'javascript';
+        if (ext === 'html') mode = 'htmlmixed';
+        if (ext === 'css') mode = 'css';
+        if (ext === 'json') mode = 'application/json';
+        
+        cmEditor.setOption("mode", mode);
+        cmEditor.setValue(vfs[filename]);
+    }
+    
+    renderTabs();
+    saveTabState();
+    
+    if (typeof renderFileList === 'function') renderFileList();
+}
+
+function closeTab(filename, event) {
+    if (event && event.stopPropagation) event.stopPropagation();
+    
+    const index = openTabs.indexOf(filename);
+    if (index > -1) {
+        openTabs.splice(index, 1);
+        
+        if (activeTab === filename) {
+            if (openTabs.length > 0) {
+                openTab(openTabs[Math.max(0, index - 1)]);
+            } else {
+                activeTab = null;
+                if (cmEditor) cmEditor.setValue('');
+                renderTabs();
+                saveTabState();
+            }
+        } else {
+            renderTabs();
+            saveTabState();
+        }
+    }
+    if (typeof renderFileList === 'function') renderFileList();
+}
+
+function closeAllTabs() {
+    openTabs = [];
+    activeTab = null;
+    if (cmEditor) cmEditor.setValue('');
+    renderTabs();
+    saveTabState();
+    if (typeof renderFileList === 'function') renderFileList();
+}
+
+
+// --- NEW: Theme Management ---
+
+function changeTheme(themeName) {
+    document.body.className = `theme-${themeName}`;
+    localStorage.setItem('settings_theme', themeName);
+    
+    if (cmEditor) {
+        // Map light theme to CodeMirror's default light theme
+        const cmTheme = themeName === 'light' ? 'default' : themeName;
+        cmEditor.setOption("theme", cmTheme);
+    }
+}
+
+
+// --- Core UI & Navigation ---
 
 function switchTab(tabId, event) {
     document.querySelectorAll('.panel-box').forEach(p => p.classList.remove('active'));
@@ -96,7 +218,7 @@ function switchTab(tabId, event) {
         applyToolbarState(show);
         setTimeout(() => cmEditor && cmEditor.refresh(), 50);
     } else if (tabId === 'tools' && typeof updateProjectStats === 'function') {
-        updateProjectStats(); // Refresh smart intelligence graphs when opening the tab
+        updateProjectStats(); 
     }
     
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
@@ -123,7 +245,7 @@ function handleCommand(cmd) {
         'lint': runLinter,
         'fix': autoFixCurrentFile,
         'format': formatCurrentFile,
-        'close all': () => typeof closeAllFiles === 'function' && closeAllFiles(),
+        'close all': closeAllTabs,
         'trash': () => switchTab('settings'),
         'scan': runGlobalHealthCheck,
         'imports': generateAutoImports
@@ -153,16 +275,16 @@ function applyToolbarState(show) {
 function triggerReactiveLint() {
     clearTimeout(lintTimer);
     lintTimer = setTimeout(() => {
-        if (currentFile && (currentFile.endsWith('.js') || currentFile.endsWith('.json'))) {
+        if (activeTab && (activeTab.endsWith('.js') || activeTab.endsWith('.json'))) {
             runLinter();
         }
     }, 1500); 
 }
 
 function runLinter() {
-    if(!currentFile || !cmEditor) return;
+    if(!activeTab || !cmEditor) return;
     const code = cmEditor.getValue();
-    const ext = currentFile.split('.').pop().toLowerCase();
+    const ext = activeTab.split('.').pop().toLowerCase();
     let results = [];
 
     if (ext === 'js' && typeof JSHINT !== 'undefined') {
@@ -174,24 +296,17 @@ function runLinter() {
         
         if (JSHINT.errors.length > 0) {
             JSHINT.errors.forEach(e => { 
-                if (e) results.push(`✖ L${e.line}: ${e.reason} ${e.code ? `(${e.code})` : ''}`);
+                if (e) results.push(`✖ L${e.line}: ${e.reason}`);
             });
         }
-
-        if (code.match(/while\s*\(\s*true\s*\)(?![^]*break)/g)) results.push("⚠️ LOGIC: Possible infinite loop detected.");
-        if (code.match(/return\s*;?\n\s*[^\s}]/g)) results.push("⚠️ SEMANTIC: Unreachable code detected.");
-
         if (results.length > 0) logDiag(results.join('\n'), "error");
         else logDiag("✔ Platinum Check: Logic and Syntax look perfect.", "success");
     }
 }
 
 function autoFixCurrentFile() {
-    if(!currentFile || !cmEditor) return;
-    snapshots.push({ label: "Auto-Fix Backup", data: JSON.parse(JSON.stringify(vfs)) });
-
+    if(!activeTab || !cmEditor) return;
     formatCurrentFile();
-    
     let fixedCode = cmEditor.getValue()
         .replace(/console\.log\(.*\);?\n?/g, '') 
         .replace(/\n\s*\n\s*\n/g, '\n\n')       
@@ -217,12 +332,12 @@ function runGlobalHealthCheck() {
 }
 
 function generateAutoImports() {
-    if (!currentFile || !currentFile.endsWith('.js') || typeof analyzeSnippetDependencies !== 'function') return;
+    if (!activeTab || !activeTab.endsWith('.js') || typeof analyzeSnippetDependencies !== 'function') return;
     const { requires } = analyzeSnippetDependencies(cmEditor.getValue());
     let newImports = "";
     requires.forEach(req => {
         for (const [filename, code] of Object.entries(vfs)) {
-            if (filename === currentFile) continue;
+            if (filename === activeTab) continue;
             const { provides } = analyzeSnippetDependencies(code);
             if (provides.includes(req) && !cmEditor.getValue().includes(`from './${filename}'`)) {
                 newImports += `import { ${req} } from './${filename}';\n`;
@@ -259,8 +374,10 @@ function globalSearchReplace() {
     if (!findText) return;
     const replaceText = prompt(`Replace "${findText}" with:`);
     if (replaceText === null) return;
-    Object.keys(vfs).forEach(name => { vfs[name] = vfs[name].split(findText).join(replaceText); });
-    if (currentFile && cmEditor) cmEditor.setValue(vfs[currentFile]);
+    Object.keys(vfs).forEach(name => { 
+        if(typeof vfs[name] === 'string') vfs[name] = vfs[name].split(findText).join(replaceText); 
+    });
+    if (activeTab && cmEditor) cmEditor.setValue(vfs[activeTab]);
     saveVFS();
     logDiag("Refactor complete across VFS.", "success");
 }
@@ -274,7 +391,7 @@ function peekDefinition() {
     const defRegex = new RegExp(`(?:function|const|let|var|class)\\s+${word}\\b`);
 
     Object.entries(vfs).forEach(([filename, content]) => {
-        if (defRegex.test(content)) definitionsFound.push(filename);
+        if (typeof content === 'string' && defRegex.test(content)) definitionsFound.push(filename);
     });
 
     if (definitionsFound.length > 0) {
@@ -292,40 +409,89 @@ function runTerminalCmd(input) {
 }
 
 
-// --- Preview Engine ---
+// --- Upgraded Preview Engine & Console ---
 
 function runPreview() {
-    if (currentFile && cmEditor) vfs[currentFile] = cmEditor.getValue();
+    if (activeTab && cmEditor) vfs[activeTab] = cmEditor.getValue();
     let html = vfs['index.html'] || '<h1>No index.html</h1>';
+    
+    // NEW: Inject listener for interactive console commands
     const hook = `<script>
         const format = (arg) => (typeof arg === 'object') ? JSON.stringify(arg, null, 2) : String(arg);
         console.log = (...args) => {
             const d = window.parent.document.getElementById('console-output');
-            d.innerHTML += '<div class="log-msg">> ' + args.map(format).join(' ') + '</div>';
-            d.scrollTop = d.scrollHeight;
+            if(d) {
+                d.innerHTML += '<div style="color:var(--text); padding:2px 0;">> ' + args.map(format).join(' ') + '</div>';
+                d.scrollTop = d.scrollHeight;
+            }
         };
         window.onerror = (m, u, l) => {
             const d = window.parent.document.getElementById('console-output');
-            d.innerHTML += '<div class="log-error">✖ Line ' + l + ': ' + m + '</div>';
+            if(d) {
+                d.innerHTML += '<div style="color:var(--danger); padding:2px 0;">✖ Line ' + l + ': ' + m + '</div>';
+                d.scrollTop = d.scrollHeight;
+            }
         };
+        // Listen for console commands from parent
+        window.addEventListener('message', (event) => {
+            if(event.data && event.data.type === 'CONSOLE_EVAL') {
+                try {
+                    const result = eval(event.data.code);
+                    console.log(result);
+                } catch(err) {
+                    const d = window.parent.document.getElementById('console-output');
+                    if(d) {
+                        d.innerHTML += '<div style="color:var(--danger); padding:2px 0;">✖ Eval Error: ' + err.message + '</div>';
+                        d.scrollTop = d.scrollHeight;
+                    }
+                }
+            }
+        });
     <\/script>`;
+    
     document.getElementById('console-output').innerHTML = '';
     document.getElementById('preview-frame').srcdoc = html.replace('<head>', '<head>' + hook);
     switchTab('run');
+}
+
+// NEW: Execute code in the live preview context
+function executeConsoleCommand(code) {
+    if (!code.trim()) return;
+    const inputField = document.getElementById('interactive-console-input');
+    const iframe = document.getElementById('preview-frame');
+    
+    // Echo command to console ui
+    const out = document.getElementById('console-output');
+    if(out) {
+        out.innerHTML += `<div style="color:var(--muted); padding:2px 0;"><i>$ ${code}</i></div>`;
+    }
+    
+    // Send to iframe
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'CONSOLE_EVAL', code: code }, '*');
+    }
+    
+    inputField.value = ''; // clear input
 }
 
 
 // --- Core VFS Saving ---
 
 async function saveVFS() {
-    if (currentFile && cmEditor) vfs[currentFile] = cmEditor.getValue();
+    if (activeTab && cmEditor) {
+        // If content changed, take a snapshot for the Time Machine before saving
+        if (vfs[activeTab] !== cmEditor.getValue() && typeof takeSnapshot === 'function') {
+            await takeSnapshot(activeTab, vfs[activeTab]);
+        }
+        vfs[activeTab] = cmEditor.getValue();
+    }
     await localforage.setItem('devos_vfs', vfs);
     if (typeof updateProjectStats === 'function') updateProjectStats();
 }
 
 function triggerAutoSave() {
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(async () => { await saveVFS(); flashSaveStatus(); }, 1000);
+    autoSaveTimer = setTimeout(async () => { await saveVFS(); flashSaveStatus(); }, 1500);
 }
 
 function flashSaveStatus() {
@@ -353,7 +519,7 @@ async function renderTrash() {
 
 async function restoreFile(name) {
     const trash = (await localforage.getItem('devos_trash')) || {};
-    vfs[name] = trash[name].code;
+    vfs[name] = trash[name]; // Was trash[name].code previously, mapped direct
     delete trash[name];
     await localforage.setItem('devos_trash', trash);
     await saveVFS();
@@ -371,20 +537,20 @@ async function emptyTrash() {
 function logDiag(msg, type) {
     const out = document.getElementById('diagnostic-results');
     if (!out) return;
-    const colors = { error: '#f85149', success: '#3fb950', warn: '#d29922', info: '#2f81f7' };
+    const colors = { error: 'var(--danger)', success: 'var(--success)', warn: 'var(--warn)', info: 'var(--accent)' };
     out.style.color = colors[type] || '#fff';
     out.innerText = msg;
 }
 
 function formatCurrentFile() {
-    if (!cmEditor || !currentFile) return;
+    if (!cmEditor || !activeTab) return;
     const code = cmEditor.getValue();
-    const ext = currentFile.split('.').pop().toLowerCase();
+    const ext = activeTab.split('.').pop().toLowerCase();
     let formatted = code;
     try {
-        if (ext === 'js') formatted = js_beautify(code, { indent_size: 4 });
-        else if (ext === 'html') formatted = html_beautify(code, { indent_size: 4 });
-        else if (ext === 'css') formatted = css_beautify(code, { indent_size: 4 });
+        if (ext === 'js' && typeof js_beautify !== 'undefined') formatted = js_beautify(code, { indent_size: 4 });
+        else if (ext === 'html' && typeof html_beautify !== 'undefined') formatted = html_beautify(code, { indent_size: 4 });
+        else if (ext === 'css' && typeof css_beautify !== 'undefined') formatted = css_beautify(code, { indent_size: 4 });
         cmEditor.setValue(formatted);
     } catch(e) { logDiag("Format error: " + e.message, "error"); }
 }
@@ -393,10 +559,8 @@ function insertSymbol(sym, template = false) {
     if (!cmEditor) return;
     const cursor = cmEditor.getCursor();
     if (template) { cmEditor.replaceRange("${}", cursor); cmEditor.setCursor(cursor.line, cursor.ch + 2); }
-    else cmEditor.replaceRange(sym, cursor);
-    cmEditor.focus();
+    else { cmEditor.replaceRange(sym, cursor); cmEditor.focus(); }
 }
-
 function renderVault() {
     const list = document.getElementById('vault-list');
     if (!list) return;
@@ -413,5 +577,5 @@ function insertSnippet(id) {
     if (!cmEditor) return;
     const s = snippets.find(snip => snip.id === id);
     if (s) { cmEditor.replaceSelection(s.code); cmEditor.focus(); }
-        }
-        
+}
+
