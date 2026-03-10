@@ -33,7 +33,7 @@
         <div class="tab" onclick="switchTab('vault', event)">Vault</div>
         <div class="tab" onclick="switchTab('settings', event)">Project Control</div>
         <div style="flex:1"></div>
-        <button class="btn-outline" onclick="toggleSidebar()" style="margin-right:10px;">FILES</button>
+        <button class="btn-outline landscape-only" onclick="toggleSidebar()" style="margin-right:10px;">FILES</button>
     </header>
 
     <div class="app-container">
@@ -97,11 +97,14 @@
 
                 <div id="project-stats-container"></div>
 
-                <div style="display: flex; gap: 5px; margin-bottom: 15px;">
-                    <input type="text" id="search-query" placeholder="Global Search (Ctrl+F)..." 
-                           style="flex:1; background:var(--surface-light); border:1px solid var(--border); color:white; padding:8px; border-radius:4px;">
-                    <button class="btn-action" onclick="performSearch()">Search</button>
+                <div class="help-card" style="margin-bottom: 15px;">
+                    <h4 style="margin-top:0; color:var(--accent); font-size:13px;">Branching Global Search</h4>
+                    <input type="text" id="global-search-input" placeholder="Search across all files..." 
+                           style="width:100%; background:var(--bg); border:1px solid var(--border); color:white; padding:8px; border-radius:4px; margin-bottom: 10px;">
+                    <div id="search-results-tree" style="font-family: monospace; font-size: 13px; max-height: 250px; overflow-y: auto;"></div>
                 </div>
+
+                <div id="dep-tracker-ui"></div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px;">
                     <button class="btn-action" onclick="generateAutoImports()">📦 AUTO-IMPORT</button>
@@ -161,6 +164,10 @@
     </div>
 
     <script src="./vault-compiler.js"></script>
+    <script src="./search.js"></script>
+    <script src="./intelligence.js"></script>
+    <script src="./explorer.js"></script>
     <script src="./main.js"></script>
 </body>
-</html>
+                                </html>
+                                
