@@ -196,6 +196,10 @@ function openTab(filename) {
     renderTabs();
     saveTabState();
     if (typeof renderFileList === 'function') renderFileList();
+if (window.innerWidth <= 768 && document.getElementById('ui-sidebar').classList.contains('active')) {
+    toggleSidebar(); 
+}
+    
 }
 
 function closeTab(filename, event) {
@@ -682,4 +686,18 @@ function toggleSidebar() {
     const sidebar = document.getElementById('ui-sidebar');
     if (sidebar) sidebar.classList.toggle('active');
                                                 }
-  
+  function toggleCommandPalette() {
+    const pal = document.getElementById('command-palette');
+    if (pal.style.display === 'none' || pal.style.display === '') {
+        pal.style.display = 'block';
+        document.getElementById('cmd-input').focus();
+    } else {
+        pal.style.display = 'none';
+    }
+}
+
+// Allow closing the palette by tapping anywhere outside it or pressing Escape
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('command-palette').style.display = 'none';
+});
+    
