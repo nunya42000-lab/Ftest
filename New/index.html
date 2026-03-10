@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DevOS IDE Gold - Ultimate</title>
+    <link rel="manifest" href="./manifest.json">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/htmlhint/1.1.4/htmlhint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/csslint/1.0.5/csslint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/terser@5.19.2/dist/bundle.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/scroll/annotatescrollbar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/matchesonscrollbar.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.js"></script>
+
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="theme-dracula">
+    <div id="drop-overlay">Drop files or ZIPs here to upload</div>
+    
+    <div class="app-container">
+        <aside id="ui-sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h2>DevOS <span style="color:var(--warn)">Ultimate</span></h2>
+                <button onclick="toggleSidebar()" class="mobile-only btn-danger" style="padding: 2px 6px;">✖</button>
+            </div>
+            
+            <div class="sidebar-actions" style="padding: 10px; display: flex; gap: 5px; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="createNewFile()" title="Create a new file">+ New</button>
+                <button class="btn-primary" onclick="document.getElementById('file-upload').click()" title="Import Files">📁 Import</button>
+                <input type="file" id="file-upload" multiple accept=".js,.html,.css,.json,.txt,.zip,.md" style="display: none;" onchange="handleFileInput(event)">
+                <button class="btn-warn" onclick="switchTab('help')" title="Documentation & Help">❓ Help</button>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>📂 Explorer</span><span class="chevron">▶</span>
+                </div>
+                <div class="accordion-content open"><div id="file-list"></div></div>
+                
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>🌿 Branches</span><span class="chevron">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <button class="btn-primary" style="width:100%; margin-bottom:5px;" onclick="createNewBranch()">+ New Branch</button>
+                    <div id="branch-list" style="font-size: 12px; margin-top: 10px;"></div>
+                </div>
+
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>🔐 Vault</span><span class="chevron">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <button class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="compileSelected()">Compile Vault</button>
+                    <div id="vault-list"></div>
+                </div>
+                
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>🔍 Search</span><span class="chevron">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <input type="text" id="global-search-input" placeholder="Search codebase..." style="width:100%; padding:8px; margin-bottom:10px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+                    <div id="search-results-tree"></div>
+                </div>
+
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span>🆔 Declarations</span><span class="chevron">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <button class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="scanDeclarations()">Scan Project IDs</button>
+                    <div id="declarations-list" style="font-size: 12px;"></div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer" style="padding: 15px;">
+                <button class="btn-warn" style="width:100%; margin-bottom:5px;" onclick="openSettings()">⚙️ Settings & Shortcuts</button>
+            </div>
+        </aside>
+
+        <main class="workspace" style="display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative;">
+            <header class="topbar" style="display: flex; flex-direction: column; padding: 0; z-index: 10;">
+                
+                <div class="tabs-wrapper" style="display: flex; align-items: center; background: var(--panel); border-bottom: 1px solid var(--border); overflow: hidden;">
+                    <button onclick="toggleSidebar()" class="mobile-only btn-primary" style="margin: 5px;">☰</button>
+                    <div class="tabs-container" id="tabs-container" style="display: flex; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; padding: 5px; flex-grow: 1; white-space: nowrap; scroll-snap-type: x mandatory;"></div>
+                </div>
+                
+                <div class="toolbar-scroll-container" style="display: flex; overflow-x: auto; padding: 8px; gap: 8px; background: var(--bg); white-space: nowrap; align-items: center; -webkit-overflow-scrolling: touch;">
+                    <button class="btn-danger" onclick="toggleCommandPalette()" title="Command Palette">⌨️ CMD</button>
+                    <button class="btn-primary" onclick="toggleVoiceMacro()" id="voice-macro-btn" title="Voice Macro Trigger">🎙️ Voice</button>
+                    <button class="btn-primary" onclick="formatCode()" title="Auto-format code">✨ Format</button>
+                    <button class="btn-primary" onclick="cutSnippet()" title="Cut selected text as Snip">✂️ Cut</button>
+                    <button class="btn-primary" onclick="copySnippet()" title="Copy selected text as Snip">📋 Copy</button>
+                    <button class="btn-primary" onclick="switchTab('preview')" title="Live App Sandbox">📱 Preview</button>
+                    <button class="btn-primary" onclick="switchTab('diff')" title="Open Compare Mode">⚖️ Compare</button>
+                    <button class="btn-warn" onclick="switchTab('intelligence')" title="Smart Tools & Dependencies">🧠 Intel</button>
+                    <button class="btn-warn" onclick="switchTab('visual')" title="Visual Builders">🎨 Visual</button>
+                    <button class="btn-warn" onclick="switchTab('history')" title="Version History">🕒 Time</button>
+                </div>
+            </header>
+
+            <div class="editor-area" style="flex-grow: 1; position: relative; display: flex; flex-direction: column;">
+                
+                <div id="editor-view" class="view-panel active" style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div style="flex-grow: 1; position: relative;">
+                        <textarea id="code-editor"></textarea>
+                    </div>
+                    
+                    <div id="mobile-soft-keys" class="mobile-only" style="display: flex; overflow-x: auto; background: var(--panel); border-top: 1px solid var(--border); padding: 5px; gap: 5px; -webkit-overflow-scrolling: touch;">
+                        </div>
+
+                    <div id="lint-errors" class="lint-panel" style="background: var(--panel); border-top: 2px solid var(--danger); max-height: 200px; overflow-y: auto; display: none; padding: 10px; z-index: 100;"></div>
+                </div>
+
+                <div id="preview-view" class="view-panel" style="height: 100%; display: flex; flex-direction: column; background: #000; position: relative;">
+                    <div style="padding: 8px; background: var(--panel); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="refreshLivePreview()">🔄 Reload</button>
+                        <button class="btn-warn" onclick="toggleDeviceSensorSimulator()">🧭 Gyro Sim</button>
+                        <select id="device-ratio-toggle" class="select-box" onchange="resizePreview(this.value)">
+                            <option value="100%">Responsive (Fill)</option>
+                            <option value="375x812">iPhone 13 (Portrait)</option>
+                            <option value="812x375">iPhone 13 (Landscape)</option>
+                            <option value="768x1024">iPad (Portrait)</option>
+                        </select>
+                        <span id="fps-counter" style="color: var(--success); font-weight: bold; font-family: monospace; margin-left: auto;">60 FPS</span>
+                    </div>
+                    
+                    <div style="flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;">
+                        <iframe id="live-preview-frame" style="background: #fff; border: none; transition: width 0.3s, height 0.3s; width: 100%; height: 100%;"></iframe>
+                        
+                        <div id="ghost-console" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 30%; background: rgba(0,0,0,0.7); color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; overflow-y: auto; pointer-events: none; display: none; z-index: 50;"></div>
+                        
+                        <div id="sensor-sim-overlay" style="position: absolute; top: 10px; right: 10px; background: var(--panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border); display: none; z-index: 60; flex-direction: column; gap: 5px;">
+                            <label style="font-size: 10px; color: var(--text);">Alpha (Z)<input type="range" id="sim-alpha" min="0" max="360" value="0"></label>
+                            <label style="font-size: 10px; color: var(--text);">Beta (X)<input type="range" id="sim-beta" min="-180" max="180" value="0"></label>
+                            <label style="font-size: 10px; color: var(--text);">Gamma (Y)<input type="range" id="sim-gamma" min="-90" max="90" value="0"></label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="diff-view" class="view-panel" style="height: 100%; display: flex; flex-direction: column;">
+                    <div style="padding: 10px; background: var(--surface-light); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <select id="diff-file-a" class="select-box" style="flex-grow: 1;"></select>
+                        <span style="font-weight: bold; color: var(--warn);">VS</span>
+                        <select id="diff-file-b" class="select-box" style="flex-grow: 1;"></select>
+                        <button class="btn-primary" onclick="executeDiff()">Compare</button>
+                        <label style="color: var(--text); font-size: 13px; margin-left: auto; cursor: pointer;">
+                            <input type="checkbox" id="sync-scroll-diff" checked> Sync Scrolling
+                        </label>
+                    </div>
+                    <div id="diff-container" style="flex-grow: 1; overflow: auto; background: var(--bg);"></div>
+                </div>
+
+                <div id="intelligence-view" class="view-panel" style="padding: 20px; overflow-y: auto; height: 100%;">
+                    <h2>🧠 Project Intelligence & Data</h2>
+                    <div id="project-stats-container"></div>
+                    
+                    <div style="margin-top: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <h3 style="margin: 0;">Storage Inspector (IndexedDB / LocalStorage)</h3>
+                        <p style="font-size: 12px; color: var(--muted);">Manage the save data for your live app.</p>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn-primary" onclick="refreshStorageInspector()">Refresh Data</button>
+                            <button class="btn-warn" onclick="openDataSeeder()">Data Seeder</button>
+                            <button class="btn-danger" onclick="clearLiveStorage()">Wipe App Data</button>
+                        </div>
+                        <div id="storage-inspector-ui" style="margin-top: 15px; background: var(--panel); padding: 10px; border-radius: 6px;"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <h3 style="margin: 0;">Dependency Tracker</h3>
+                        <button class="btn-primary" onclick="generateDependencyTree()">Refresh Tree</button>
+                    </div>
+                    <div id="dep-tracker-ui" class="collapsible-tree" style="margin-top: 15px;"></div>
+                </div>
+
+                <div id="visual-view" class="view-panel" style="padding: 20px; overflow-y: auto; height: 100%;">
+                    <h2>🎨 Visual Builders</h2>
+                    
+                    <div class="tool-card">
+                        <h3>State Machine Builder</h3>
+                        <p>Visually connect application states to generate bug-free switch logic.</p>
+                        <button class="btn-primary" onclick="openStateMachineBuilder()">Open Builder</button>
+                    </div>
+
+                    <div class="tool-card" style="margin-top: 15px;">
+                        <h3>Audio Synthesizer</h3>
+                        <p>Generate raw JS math for beeps and chimes without importing MP3s.</p>
+                        <button class="btn-primary" onclick="openAudioSynth()">Open Synth</button>
+                    </div>
+
+                    <div class="tool-card" style="margin-top: 15px;">
+                        <h3>CSS Sprite Slicer</h3>
+                        <p>Import a master image to auto-generate mapping classes.</p>
+                        <button class="btn-primary" onclick="openSpriteSlicer()">Open Slicer</button>
+                    </div>
+                </div>
+
+                <div id="history-view" class="view-panel" style="padding: 20px; overflow-y: auto; height: 100%;">
+                    <h2>🕒 Time Machine</h2>
+                    <div id="history-list"></div>
+                </div>
+
+                <div id="settings-view" class="view-panel" style="padding: 20px; overflow-y: auto; height: 100%;">
+                    <h2>⚙️ Settings & Core Commands</h2>
+                    
+                    <div style="margin-bottom: 20px; background: var(--panel); padding: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0;">Haptics & UX</h3>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text);">
+                            <input type="checkbox" id="haptic-toggle" checked onchange="toggleHaptics(this.checked)"> Enable Touch Vibrations
+                        </label>
+                    </div>
+
+                    <div style="margin-bottom: 20px; background: var(--panel); padding: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0;">Production Build</h3>
+                        <p style="font-size: 12px; color: var(--muted);">Minifies your JS/CSS and bundles everything into a single, deployable index.html file.</p>
+                        <button class="btn-primary" style="width: 100%;" onclick="buildForProduction()">🚀 Bundle & Minify to ZIP</button>
+                    </div>
+
+                    <div style="margin-top: 40px; padding: 15px; border: 1px solid var(--danger); border-radius: 8px; background: rgba(248, 81, 73, 0.1);">
+                        <h4 style="color: var(--danger); margin-top: 0;">☢️ Danger Zone</h4>
+                        <button class="btn-danger" style="width: 100%; font-size: 14px; padding: 10px; font-weight: bold;" onclick="factoryReset()">NUKE PROJECT (FACTORY RESET)</button>
+                    </div>
+                </div>
+
+                <div id="help-view" class="view-panel" style="padding: 20px; overflow-y: auto; height: 100%;">
+                    <h2>📖 DevOS Ultimate Documentation</h2>
+                    <div id="help-markdown-container" style="line-height: 1.6; color: var(--text);">
+                        </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    <div id="command-palette" style="display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--panel); border: 2px solid var(--accent); border-radius: 12px; z-index: 2000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); padding: 15px; flex-direction: column;">
+        <input type="text" id="cmd-input" placeholder="Type a command (e.g., format, new, nuke)..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 8px; outline: none; font-size: 16px; margin-bottom: 10px;">
+        <div id="cmd-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;"></div>
+    </div>
+
+    <script src="./vault-compiler.js"></script>
+    <script src="./intelligence.js"></script>
+    <script src="./history.js"></script>
+    <script src="./diff.js"></script>
+    <script src="./search.js"></script>
+    <script src="./explorer.js"></script>
+    
+    <script src="./mobile-ux.js"></script>
+    <script src="./preview-env.js"></script>
+    <script src="./data-tools.js"></script>
+    <script src="./visual-tools.js"></script>
+    <script src="./git-lite.js"></script>
+    <script src="./build-tools.js"></script>
+    <script src="./help-section.js"></script>
+
+    <script src="./main.js"></script>
+</body>
+</html>
+
+    
