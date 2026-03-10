@@ -40,7 +40,7 @@ async function takeSnapshot(filename, code) {
 }
 
 /**
- * Renders the Time Machine UI in the Settings tab
+ * Renders the Time Machine UI in the Time tab
  */
 function renderHistory() {
     const container = document.getElementById('history-list');
@@ -48,65 +48,52 @@ function renderHistory() {
 
     container.innerHTML = '';
 
-    // Determine which file is currently open
-    const currentFileName = typeof activeTab !== 'undefined' ? activeTab : (typeof currentFile !== 'undefined' ? currentFile : null);
+    // Determine which file is currently active using the multi-tab state
+    const currentFileName = typeof activeTab !== 'undefined' ? activeTab : null;
 
     if (!currentFileName || !fileHistory[currentFileName] || fileHistory[currentFileName].length === 0) {
-        container.innerHTML = `<div style="color:var(--muted); font-size:11px; text-align:center; padding: 10px;">No history available for the active file.</div>`;
+        container.innerHTML = `<div style="color:var(--muted); font-style:italic; padding: 10px;">No history available for the currently active tab.</div>`;
         return;
     }
 
-    // Header indicating which file we are looking at
-    container.innerHTML = `<div style="font-size:12px; font-weight:bold; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid var(--border); color:var(--accent);">Active File: ${currentFileName}</div>`;
-
-    // Render from newest to oldest
+    // Reverse to show newest snapshots first
     const snapshots = [...fileHistory[currentFileName]].reverse();
 
-    snapshots.forEach((snap) => {
+    snapshots.forEach(snap => {
         const date = new Date(snap.timestamp);
-        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const dateStr = date.toLocaleDateString();
-
+        
         const div = document.createElement('div');
-        div.style = "display:flex; justify-content:space-between; align-items:center; padding:8px 6px; border-bottom:1px solid var(--border);";
+        div.style.padding = "10px";
+        div.style.marginBottom = "8px";
+        div.style.background = "var(--surface-light)";
+        div.style.border = "1px solid var(--border)";
+        div.style.borderRadius = "6px";
+        div.style.display = "flex";
+        div.style.justifyContent = "space-between";
+        div.style.alignItems = "center";
         
         div.innerHTML = `
-            <div style="font-size:11px; color:var(--text);">
-                <div style="font-weight:bold;">${timeStr}</div>
-                <div style="color:var(--muted); font-size:10px;">${dateStr}</div>
-            </div>
             <div>
-                <button class="btn-outline" style="padding:4px 8px; font-size:10px; margin-right:4px;" onclick="viewSnapshot('${currentFileName}', ${snap.timestamp})">PEEK</button>
-                <button class="btn-warn" style="padding:4px 8px; font-size:10px;" onclick="restoreSnapshot('${currentFileName}', ${snap.timestamp})">RESTORE</button>
+                <div style="font-weight:bold; color:var(--text); font-size:13px;">${date.toLocaleDateString()}</div>
+                <div style="color:var(--muted); font-size:11px;">${date.toLocaleTimeString()}</div>
             </div>
+            <button class="btn-warn" style="padding:4px 8px;" onclick="restoreSnapshot('${currentFileName}', ${snap.timestamp})">Restore</button>
         `;
         container.appendChild(div);
     });
 }
 
 /**
- * Peeks at a snapshot by logging it to the Intelligence diagnostic view
- */
-function viewSnapshot(filename, timestamp) {
-    const snap = fileHistory[filename].find(s => s.timestamp === timestamp);
-    if (snap && typeof logDiag === 'function') {
-        const timeStr = new Date(timestamp).toLocaleTimeString();
-        logDiag(`--- PEEK: ${filename} @ ${timeStr} ---\n\n${snap.code}`, "info");
-        switchTab('tools'); // Jump to the Intelligence tab so you can read it
-    }
-}
-
-/**
- * Restores a specific snapshot to the VFS and the editor
+ * Reverts the VFS code to a specific snapshot
  */
 async function restoreSnapshot(filename, timestamp) {
     const snap = fileHistory[filename].find(s => s.timestamp === timestamp);
     if (!snap) return;
 
-    if (confirm(`Restore ${filename} to the version from ${new Date(timestamp).toLocaleTimeString()}? \n\nCurrent unsaved changes will be lost.`)) {
+    if (confirm(`Revert ${filename} to ${new Date(timestamp).toLocaleTimeString()}?\n\nCurrent unsaved changes will be lost.`)) {
         
         // Take a safety snapshot of the CURRENT state before overwriting
-        const currentFileName = typeof activeTab !== 'undefined' ? activeTab : (typeof currentFile !== 'undefined' ? currentFile : null);
+        const currentFileName = typeof activeTab !== 'undefined' ? activeTab : null;
         if (currentFileName === filename && typeof cmEditor !== 'undefined') {
            await takeSnapshot(filename, cmEditor.getValue());
         }
@@ -123,21 +110,14 @@ async function restoreSnapshot(filename, timestamp) {
         if (typeof saveVFS === 'function') await saveVFS();
         if (typeof renderFileList === 'function') renderFileList();
         
-        if (typeof logDiag === 'function') {
-            logDiag(`Successfully restored ${filename} to ${new Date(timestamp).toLocaleTimeString()}`, "success");
-        }
-        
         // Jump back to the editor to see the changes
-        if (typeof switchTab === 'function') {
-            switchTab('editor');
-        }
+        if (typeof switchTab === 'function') switchTab('editor');
     }
 }
 
-// Clever listener to automatically refresh the Time Machine UI whenever you click a file tab or sidebar item
+// Automatically refresh the Time Machine UI whenever you click a file tab or sidebar item
 document.addEventListener('click', (e) => {
     if (e.target.closest('.file-tab') || e.target.closest('.file-item')) {
         setTimeout(renderHistory, 100);
     }
 });
-      
