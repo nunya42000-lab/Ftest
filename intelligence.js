@@ -5,7 +5,8 @@
  */
 function generateDependencyTree() {
     const files = Object.keys(vfs).filter(f => f.endsWith('.js'));
-    const dependencyMap = {};
+    window.dependencyMap = {}; // Attached to window so other modules can read it
+    
 
     // Ensure the vault-compiler's analysis function is available
     if (typeof analyzeSnippetDependencies !== 'function') {
