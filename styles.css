@@ -216,3 +216,23 @@ button:active { transform: scale(0.96); }
         font-size: 14px;
     }
 }
+.editor-area {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden; /* Forces internal panels to scroll */
+}
+
+#dep-tracker-ui {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+#dep-tracker-ui::-webkit-scrollbar {
+    width: 6px;
+}
+
+#dep-tracker-ui::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+        }
