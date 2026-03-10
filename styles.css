@@ -202,6 +202,23 @@ button:active { transform: scale(0.96); }
         max-width: 320px;
         box-shadow: 4px 0 15px rgba(0,0,0,0.5);
     }
+        .view-panel {
+        padding: 10px !important; 
+    }
+    
+    #dep-tracker-ui {
+        max-height: 80vh; 
+        padding-right: 0px;
+    }
+
+    #dep-tracker-ui div {
+        word-wrap: break-word; /* Prevents long variable names from stretching the screen horizontally */
+    }
+
+    .collapsible-tree ul {
+        padding-left: 15px !important; /* Reduces indentation on mobile */
+}
+        
     .sidebar.active { transform: translateX(0); }
     .workspace { width: 100%; }
     .mobile-only { display: inline-block; }
