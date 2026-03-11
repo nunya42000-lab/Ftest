@@ -1,163 +1,124 @@
-// vault-compiler.js - Optimized Dependency Engine
+/**
+ * vault-compiler.js - Snippet Management & Dependency Analysis
+ * Handles the logic for the Vault and scans code for provide/require patterns.
+ */
 
 /**
- * Scans JavaScript code to identify provided definitions and required dependencies.
- * This is the core engine used by both the Compiler and intelligence.js.
+ * 1. Vault UI Renderer
+ * Renders the snippets saved in localforage into the sidebar.
  */
-function analyzeSnippetDependencies(code) {
-    const provides = new Set();
-    const requires = new Set();
+function renderVault() {
+    const list = document.getElementById('vault-list');
+    if (!list) return;
     
-    if (typeof code !== 'string') return { provides, requires };
-
-    // 1. Identify "Provides" (Definitions)
-    const fnMatches = code.matchAll(/function\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g);
-    for (const match of fnMatches) provides.add(match[1]);
-
-    const varMatches = code.matchAll(/(?:const|let|var)\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\s*(?:=|;)/g);
-    for (const match of varMatches) provides.add(match[1]);
-
-    const classMatches = code.matchAll(/class\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\s*(?:extends|{)/g);
-    for (const match of classMatches) provides.add(match[1]);
-
-    // 2. Identify "Requires" (Usage)
-    const wordMatches = code.matchAll(/\b([a-zA-Z_$][0-9a-zA-Z_$]*)\b/g);
+    list.innerHTML = '';
     
-    // Comprehensive ignore list to prevent false positives on native JS features
-    const ignoreList = new Set([
-        'const','let','var','function','class','if','else','for','while','return',
-        'true','false','null','undefined','new','this','console','window','document',
-        'await','async','Math','Object','Array','String','Number','Promise','setTimeout',
-        'setInterval','addEventListener','fetch','JSON','localStorage','sessionStorage',
-        'switch','case','break','continue','default','try','catch','finally','throw',
-        'typeof','instanceof','yield','export','import','from','get','set'
-    ]);
-
-    for (const match of wordMatches) {
-        const word = match[1];
-        if (!provides.has(word) && !ignoreList.has(word) && isNaN(word)) {
-            requires.add(word);
-        }
-    }
-
-    return { provides, requires };
-}
-
-/**
- * Builds a topological sort of the snippets based on their dependencies.
- * Detects circular dependencies to prevent infinite loops.
- */
-async function compileProject(snippetsToCompile) {
-    if (!snippetsToCompile || snippetsToCompile.length === 0) {
-        return { success: false, error: 'No snippets selected for compilation.' };
-    }
-
-    // 1. Analyze all snippets
-    const nodes = snippetsToCompile.map(s => {
-        const { provides, requires } = analyzeSnippetDependencies(s.code);
-        return {
-            name: s.name,
-            code: s.code,
-            provides: Array.from(provides),
-            requires: Array.from(requires)
-        };
-    });
-
-    // 2. Build Dependency Graph
-    const edges = new Map();
-    nodes.forEach(n => edges.set(n.name, []));
-
-    nodes.forEach(nodeA => {
-        nodes.forEach(nodeB => {
-            if (nodeA.name !== nodeB.name) {
-                // If Node A requires something Node B provides, Node A depends on Node B
-                const dependsOnB = nodeA.requires.some(req => nodeB.provides.includes(req));
-                if (dependsOnB) {
-                    edges.get(nodeA.name).push(nodeB.name);
-                }
-            }
-        });
-    });
-
-    // 3. Topological Sort (Depth-First Search)
-    const visited = new Set();
-    const tempMark = new Set();
-    const sorted = [];
-    let hasCycle = false;
-    let cyclePath = '';
-
-    function visit(nodeName) {
-        if (tempMark.has(nodeName)) {
-            hasCycle = true;
-            cyclePath = Array.from(tempMark).join(' -> ') + ' -> ' + nodeName;
-            return; 
-        }
-        if (!visited.has(nodeName)) {
-            tempMark.add(nodeName);
-            for (const dep of edges.get(nodeName)) {
-                visit(dep);
-                if (hasCycle) return;
-            }
-            tempMark.delete(nodeName);
-            visited.add(nodeName);
-            sorted.push(nodeName);
-        }
-    }
-
-    for (const node of nodes) {
-        if (!visited.has(node.name)) {
-            visit(node.name);
-        }
-        if (hasCycle) break;
-    }
-
-    if (hasCycle) {
-        return { 
-            success: false, 
-            error: `Circular dependency detected near: ${cyclePath}. Check if your snippets are calling each other recursively.` 
-        };
-    }
-
-    // 4. Assemble Final Source
-    const orderedSnippets = sorted.map(name => nodes.find(n => n.name === name));
-    
-    let finalCode = `/* =========================================\n`;
-    finalCode += `   DevOS Vault Build: ${new Date().toLocaleString()}\n`;
-    finalCode += `   Build Order: ${sorted.join(' -> ')}\n`;
-    finalCode += `========================================= */\n\n`;
-    
-    finalCode += orderedSnippets.map(n => `// --- Snippet: ${n.name} ---\n${n.code}`).join('\n\n');
-
-    return { success: true, code: finalCode, order: sorted };
-}
-
-/**
- * Main Bridge for the UI Compiler Button
- */
-async function compileSelected() {
-    // Attempt to grab snippets from the global state managed in main.js
     if (typeof snippets === 'undefined' || snippets.length === 0) {
-        alert("Your Vault is empty. Cut or Copy snippets into the Vault first.");
+        list.innerHTML = '<div style="color:var(--muted); font-style:italic; font-size: 12px; padding: 10px;">Vault is empty. Cut or Copy code to add snippets.</div>';
         return;
     }
 
-    const result = await compileProject(snippets);
+    snippets.forEach((s) => {
+        const div = document.createElement('div');
+        div.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            background: var(--panel);
+        `;
+        
+        div.innerHTML = `
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); cursor:pointer;" onclick="insertSnippet(${s.id})" title="Tap to insert">
+                🧩 ${s.name}
+            </span>
+            <div style="display:flex; gap:5px;">
+                <button class="btn-primary" style="padding:4px 8px; font-size:10px;" onclick="insertSnippet(${s.id})">ADD</button>
+                <button class="btn-danger" style="padding:4px 8px; font-size:10px;" onclick="deleteSnippet(${s.id})">✖</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function insertSnippet(id) {
+    if (!cmEditor) return;
+    const s = snippets.find(snip => snip.id === id);
+    if (s) { 
+        cmEditor.replaceSelection(s.code); 
+        cmEditor.focus(); 
+        if (typeof triggerHaptic === 'function') triggerHaptic('medium');
+        if (typeof saveVFS === 'function') saveVFS();
+    }
+}
+
+async function deleteSnippet(id) {
+    if(confirm("Delete this snippet permanently?")) {
+        snippets = snippets.filter(snip => snip.id !== id);
+        await localforage.setItem('vault_snippets', snippets);
+        renderVault();
+        if (typeof triggerHaptic === 'function') triggerHaptic('error');
+    }
+}
+
+/**
+ * 2. Dependency Analyzer (The "Brain")
+ * Scans a string of code to find function definitions and variable requirements.
+ */
+function analyzeSnippetDependencies(code) {
+    const analysis = {
+        provides: new Set(),
+        requires: new Set()
+    };
+
+    if (typeof code !== 'string') return analysis;
+
+    // Regex for: function name(), const name =, let name =, var name =
+    const provideRegex = /(?:function\s+|const\s+|let\s+|var\s+)([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
     
-    if (result.success) {
-        vfs['compiled_vault.js'] = result.code;
-        
-        if (typeof saveVFS === 'function') await saveVFS();
-        if (typeof renderFileList === 'function') renderFileList();
-        
-        // Open the newly compiled file
-        if (typeof openTab === 'function') {
-            openTab('compiled_vault.js');
-        } else if (typeof loadFile === 'function') {
-            loadFile('compiled_vault.js');
+    // Regex for: name(), new name(), name.property
+    // This is a simplified "requirement" scanner
+    const requireRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
+
+    let match;
+    while ((match = provideRegex.exec(code)) !== null) {
+        analysis.provides.add(match[1]);
+    }
+
+    while ((match = requireRegex.exec(code)) !== null) {
+        const found = match[1];
+        // Only require it if we didn't just define it in the same file
+        if (!analysis.provides.has(found)) {
+            analysis.requires.add(found);
         }
-        
-        alert(`Build Success!\nExecution Order:\n${result.order.join(' -> ')}`);
-    } else {
-        alert(`Build Failed:\n${result.error}`);
+    }
+
+    return analysis;
+}
+
+/**
+ * 3. Vault Compiler
+ * Combines all snippets into a single "Master Module" file.
+ */
+function compileSelected() {
+    if (snippets.length === 0) {
+        alert("Vault is empty. Nothing to compile.");
+        return;
+    }
+
+    let bundle = "/**\n * Compiled Vault Module\n * Generated by DevOS Ultimate\n */\n\n";
+    snippets.forEach(s => {
+        bundle += `// --- Snippet: ${s.name} ---\n${s.code}\n\n`;
+    });
+
+    if (typeof vfs !== 'undefined') {
+        vfs['vault_bundle.js'] = bundle;
+        saveVFS();
+        renderFileList();
+        openTab('vault_bundle.js');
+        if (typeof triggerHaptic === 'function') triggerHaptic('success');
+        alert("Vault compiled into vault_bundle.js");
     }
 }
