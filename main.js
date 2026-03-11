@@ -1,20 +1,13 @@
 /* DevOS IDE Engine - ULTIMATE Core */
 // EMERGENCY BOOT DIAGNOSTIC
-(function checkModules() {
-    const modules = [
-        { name: 'Explorer', status: typeof renderFileList },
-        { name: 'MobileUX', status: typeof initMobileUX },
-        { name: 'Preview', status: typeof refreshLivePreview },
-        { name: 'GitLite', status: typeof renderBranchList },
-        { name: 'Help', status: typeof renderHelpSystem }
+(function', status: typeof renderHelpSystem }
     ];
     
     const failed = modules.filter(m => m.status === 'undefined');
     if (failed.length > 0) {
-        console.error("BOOT FAILURE: Missing Modules", failed);
-        alert("⚠️ Module Load Error: " + failed.map(m => m.name).join(', ') + " is missing or contains a syntax error.");
+        console.error("BOOT FAILURE: Missing Modules", failed)
     } else {
-        console.log("✅ All modules accounted for.");
+        console.log("✅ Aunted for.");
     }
 })();
 
