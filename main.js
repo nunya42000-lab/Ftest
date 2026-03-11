@@ -22,8 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Verify Module Loading
     const requiredModules = [
         { name: 'Explorer', func: typeof renderFileList },
-        { name: 'Mobile UX', func: typeof initMobileUX },
-        { name: 'Vault', func: typeof renderVault },
+        { name: 'Mobile-UX', func: typeof initMobileUX },
+        { name: 'Vault-compiler', func: typeof renderVault },
         { name: 'Git-Lite', func: typeof renderBranchList },
         { name: 'Intelligence', func: typeof generateDependencyTree }
     ];
