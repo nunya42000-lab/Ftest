@@ -308,20 +308,6 @@
         });
     }
             </script>
-    <script>
-    function toggleAccordion(el) {
-        const content = el.nextElementSibling;
-        const chevron = el.querySelector('.chevron');
-        if (content) {
-            content.classList.toggle('open');
-            content.style.display = content.classList.contains('open') ? 'block' : 'none';
-        }
-        if (chevron) {
-            chevron.classList.toggle('open');
-            chevron.style.transform = chevron.classList.contains('open') ? 'rotate(90deg)' : 'rotate(0deg)';
-        }
-    }
-    </script>
     
 </body>
 </html>
