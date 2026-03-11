@@ -285,3 +285,7 @@ async function factoryReset() {
     }
           }
           
+function ensurePWAFiles() {
+    if (!vfs['index.html']) vfs['index.html'] = '<html><body><h1>New Project</h1></body></html>';
+    if (!vfs['styles.css']) vfs['styles.css'] = '/* Styles */';
+}
