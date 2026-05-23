@@ -2,190 +2,290 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Asset Compiler (Base64)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus Universal Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            background-color: #030712; 
-            color: #f3f4f6; 
-            font-family: ui-sans-serif, system-ui, sans-serif;
-        }
+        body { background-color: #030712; color: #f3f4f6; overscroll-behavior: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
+<body class="flex flex-col h-screen font-sans">
 
-    <div class="max-w-3xl w-full bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+    <!-- Header -->
+    <header class="p-4 md:p-6 border-b border-gray-800 bg-gray-900/50 flex-shrink-0">
+        <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-500">
+            UNIVERSAL CONVERTER MATRIX
+        </h1>
+        <p class="text-xs text-gray-500 font-mono mt-1">OMNI-FORMAT PROCESSING UTILITY</p>
+    </header>
+
+    <div class="flex flex-col lg:flex-row flex-1 min-h-0">
         
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-800 bg-gray-900/50">
-            <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500 mb-1">
-                STANDALONE BASE64 COMPILER
-            </h1>
-            <p class="text-xs text-gray-400 font-mono">CONVERT LOCAL ASSETS (.TASK, .WASM, .JS) INTO PORTABLE MEMORY STRINGS</p>
-        </div>
-
-        <div class="p-6 space-y-6 flex-grow flex flex-col">
+        <!-- Sidebar / Navigation -->
+        <aside class="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-gray-800 bg-gray-950 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto no-scrollbar p-2 lg:p-4 gap-2 flex-shrink-0">
+            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mb-2">Strings & Data</div>
+            <button class="nav-btn active flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold bg-blue-900/30 text-blue-400 border border-blue-500/30" data-mode="b64_encode">Text ➔ Base64</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="b64_decode">Base64 ➔ Text</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="url_encode">URL Encode</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="url_decode">URL Decode</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="text_hex">Text ➔ Hex</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="hex_text">Hex ➔ Text</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="text_bin">Text ➔ Binary</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="bin_text">Binary ➔ Text</button>
             
-            <!-- Drag & Drop Zone -->
-            <div id="drop-zone" class="border-2 border-dashed border-gray-700 hover:border-purple-500 bg-gray-900/50 rounded-xl p-8 text-center cursor-pointer transition-colors group relative">
-                <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                <div class="text-4xl mb-3 group-hover:scale-110 transition-transform duration-200">📦</div>
-                <span class="text-sm font-mono font-bold text-gray-300 block">CLICK OR DROP FILE HERE</span>
-                <span class="text-xs font-mono text-gray-500 block mt-2">File will be processed entirely locally in your browser.</span>
+            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mt-4 mb-2">Code Format</div>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="json_pretty">JSON Format</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="json_minify">JSON Minify</button>
+            
+            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mt-4 mb-2">Design & Assets</div>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="px_rem">PX ➔ REM</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="hex_rgb">HEX ➔ RGB</button>
+            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="file_b64">File ➔ Base64</button>
+        </aside>
+
+        <!-- Main Conversion Area -->
+        <main class="flex-1 p-4 md:p-6 flex flex-col min-h-0 bg-[#0a0a0a]">
+            
+            <!-- Context Header -->
+            <div class="mb-4 flex justify-between items-end">
+                <h2 id="mode-title" class="text-lg font-bold text-gray-200 uppercase tracking-wide">Text ➔ Base64</h2>
+                <span id="status-msg" class="text-xs font-mono text-emerald-400 transition-opacity opacity-0">Action Complete!</span>
             </div>
 
-            <!-- Status Indicator -->
-            <div id="status-bar" class="hidden flex items-center gap-2 p-3 rounded-lg bg-gray-900 border border-gray-800">
-                <div id="status-spinner" class="w-3 h-3 rounded-full bg-purple-500 animate-ping"></div>
-                <span id="status-text" class="text-xs font-mono text-gray-300">Processing...</span>
-            </div>
-
-            <!-- Output Box -->
-            <div class="flex-grow flex flex-col space-y-2">
-                <div class="flex justify-between items-end">
-                    <label class="text-xs font-mono tracking-widest text-purple-400 font-bold uppercase">Compiled Output</label>
-                    <span id="file-size-display" class="text-[10px] font-mono text-gray-500"></span>
+            <!-- Dynamic Input Area -->
+            <div id="input-container" class="flex-1 flex flex-col mb-4 min-h-0">
+                <label class="text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-2 block">Input / Source</label>
+                
+                <!-- Text Input -->
+                <textarea id="data-input" class="flex-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm font-mono text-gray-300 focus:border-blue-500 outline-none resize-none transition-colors" placeholder="Type or paste data here..."></textarea>
+                
+                <!-- File Input (Hidden by default) -->
+                <div id="file-drop-zone" class="hidden flex-1 w-full border-2 border-dashed border-gray-700 hover:border-blue-500 bg-gray-900/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors group">
+                    <input type="file" id="file-input" class="hidden">
+                    <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">📂</div>
+                    <span class="text-sm font-bold text-gray-400">Click or Drop File</span>
+                    <span id="file-name-display" class="text-xs font-mono text-gray-500 mt-2"></span>
                 </div>
-                
-                <textarea id="output-area" readonly placeholder="Awaiting file payload..." class="w-full h-48 md:h-64 bg-[#0a0a0a] text-gray-400 font-mono text-xs p-4 rounded-xl border border-gray-800 outline-none resize-none focus:border-purple-500 transition-colors no-scrollbar"></textarea>
-                
-                <button id="copy-btn" class="w-full py-4 bg-purple-900 hover:bg-purple-800 active:scale-[0.98] transition-all text-purple-100 font-black tracking-widest rounded-xl text-sm border-b-4 border-purple-950 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg" disabled>
-                    COPY BASE64 STRING
-                </button>
             </div>
-            
-        </div>
+
+            <!-- Output Area -->
+            <div class="flex-1 flex flex-col min-h-0">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-[10px] font-mono tracking-widest text-gray-500 uppercase block">Output / Result</label>
+                    <div class="flex gap-2">
+                        <!-- New Download Button -->
+                        <button id="download-btn" class="px-3 py-1 bg-blue-900 hover:bg-blue-800 active:scale-95 text-[10px] font-bold tracking-wider text-blue-100 rounded border border-blue-800 transition-all shadow-lg">
+                            DOWNLOAD .TXT
+                        </button>
+                        <button id="copy-btn" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-[10px] font-bold tracking-wider text-gray-300 rounded border border-gray-700 transition-all">
+                            COPY RESULT
+                        </button>
+                    </div>
+                </div>
+                <textarea id="data-output" readonly class="flex-1 w-full bg-black border border-gray-800 rounded-xl p-4 text-sm font-mono text-emerald-400 outline-none resize-none no-scrollbar" placeholder="Result will appear here..."></textarea>
+            </div>
+
+        </main>
     </div>
 
     <script>
-        const dropZone = document.getElementById('drop-zone');
+        // DOM Elements
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const modeTitle = document.getElementById('mode-title');
+        const dataInput = document.getElementById('data-input');
+        const dataOutput = document.getElementById('data-output');
+        const fileDropZone = document.getElementById('file-drop-zone');
         const fileInput = document.getElementById('file-input');
-        const outputArea = document.getElementById('output-area');
+        const fileNameDisplay = document.getElementById('file-name-display');
         const copyBtn = document.getElementById('copy-btn');
-        const statusBar = document.getElementById('status-bar');
-        const statusText = document.getElementById('status-text');
-        const statusSpinner = document.getElementById('status-spinner');
-        const fileSizeDisplay = document.getElementById('file-size-display');
+        const downloadBtn = document.getElementById('download-btn');
+        const statusMsg = document.getElementById('status-msg');
 
-        // Handle Drag Events for styling
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-purple-500', 'bg-purple-900/20');
-        });
+        let currentMode = 'b64_encode';
+        let originalFileName = 'nexus_asset';
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-purple-500', 'bg-purple-900/20');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-purple-500', 'bg-purple-900/20');
-            if (e.dataTransfer.files.length > 0) {
-                processFile(e.dataTransfer.files[0]);
+        // --- Core Conversion Logic ---
+        const converters = {
+            b64_encode: (val) => btoa(unescape(encodeURIComponent(val))),
+            b64_decode: (val) => decodeURIComponent(escape(atob(val))),
+            url_encode: (val) => encodeURIComponent(val),
+            url_decode: (val) => decodeURIComponent(val),
+            text_hex: (val) => Array.from(val).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '),
+            hex_text: (val) => val.split(/\s+/).map(h => String.fromCharCode(parseInt(h, 16))).join(''),
+            text_bin: (val) => Array.from(val).map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '),
+            bin_text: (val) => val.split(/\s+/).map(b => String.fromCharCode(parseInt(b, 2))).join(''),
+            json_pretty: (val) => JSON.stringify(JSON.parse(val), null, 4),
+            json_minify: (val) => JSON.stringify(JSON.parse(val)),
+            px_rem: (val) => {
+                const px = parseFloat(val.replace(/[^0-9.]/g, ''));
+                if (isNaN(px)) throw new Error("Enter a valid pixel number");
+                return `${(px / 16).toFixed(4)}rem`;
+            },
+            hex_rgb: (val) => {
+                let hex = val.replace(/^#/, '');
+                if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+                if (hex.length !== 6) throw new Error("Invalid HEX");
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                return `rgb(${r}, ${g}, ${b})`;
             }
-        });
+        };
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                processFile(e.target.files[0]);
+        // --- Processing Engine ---
+        function processInput() {
+            const val = dataInput.value.trim();
+            if (!val && currentMode !== 'file_b64') {
+                dataOutput.value = '';
+                return;
             }
+
+            try {
+                if (currentMode !== 'file_b64') {
+                    dataOutput.value = converters[currentMode](val);
+                    dataOutput.classList.remove('text-red-400');
+                    dataOutput.classList.add('text-emerald-400');
+                }
+            } catch (err) {
+                dataOutput.value = `Error: ${err.message}\n(Check your input format)`;
+                dataOutput.classList.remove('text-emerald-400');
+                dataOutput.classList.add('text-red-400');
+            }
+        }
+
+        // --- UI & Event Listeners ---
+        dataInput.addEventListener('input', processInput);
+
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                navBtns.forEach(b => {
+                    b.classList.remove('bg-blue-900/30', 'text-blue-400', 'border-blue-500/30');
+                    b.classList.add('text-gray-400');
+                    b.style.border = "none";
+                });
+                e.target.classList.add('bg-blue-900/30', 'text-blue-400');
+                e.target.style.border = "1px solid rgba(59, 130, 246, 0.3)";
+                
+                currentMode = e.target.dataset.mode;
+                modeTitle.textContent = e.target.textContent;
+
+                if (currentMode === 'file_b64') {
+                    dataInput.classList.add('hidden');
+                    fileDropZone.classList.remove('hidden');
+                    fileDropZone.classList.add('flex');
+                    dataOutput.value = "Awaiting file drop...";
+                    dataOutput.classList.replace('text-red-400', 'text-emerald-400');
+                } else {
+                    fileDropZone.classList.add('hidden');
+                    fileDropZone.classList.remove('flex');
+                    dataInput.classList.remove('hidden');
+                    if (currentMode === 'px_rem') dataInput.placeholder = "e.g., 24";
+                    else if (currentMode === 'hex_rgb') dataInput.placeholder = "e.g., #10b981";
+                    else dataInput.placeholder = "Type or paste data here...";
+                    processInput();
+                }
+            });
         });
 
-        function processFile(file) {
-            // UI Reset
-            outputArea.value = "";
-            copyBtn.disabled = true;
-            copyBtn.innerText = "COPY BASE64 STRING";
-            statusBar.classList.remove('hidden');
-            statusSpinner.classList.remove('hidden');
-            statusSpinner.classList.replace('bg-emerald-500', 'bg-purple-500');
-            statusText.innerText = `Reading memory blocks for: ${file.name}...`;
-            statusText.className = "text-xs font-mono text-purple-300";
-            fileSizeDisplay.innerText = `Original Size: ${(file.size / 1024).toFixed(2)} KB`;
-
-            const reader = new FileReader();
+        // --- File Processing Logic ---
+        const processFile = (file) => {
+            originalFileName = file.name.split('.')[0] || 'nexus_asset';
+            fileNameDisplay.textContent = `Selected: ${file.name}`;
+            dataOutput.value = "Reading file geometry and chunking data...";
+            dataOutput.classList.replace('text-red-400', 'text-emerald-400');
             
-            reader.onload = function(event) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
                 try {
-                    statusText.innerText = `Encoding binary stream...`;
-                    
-                    // We use ArrayBuffer instead of DataURL to handle massive binary files safely
                     const arrayBuffer = event.target.result;
                     const bytes = new Uint8Array(arrayBuffer);
-                    
                     let binaryStr = "";
-                    // Chunking prevents "Maximum call stack size exceeded" errors on big files
                     const chunkSize = 8192; 
                     for (let i = 0; i < bytes.length; i += chunkSize) {
                         binaryStr += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
                     }
+                    dataOutput.value = btoa(binaryStr);
                     
-                    const compiledBase64 = btoa(binaryStr);
-                    
-                    outputArea.value = compiledBase64;
-                    copyBtn.disabled = false;
-                    
-                    statusSpinner.classList.add('hidden');
-                    statusText.innerText = `COMPILER SUCCESS: "${file.name}" packed cleanly.`;
-                    statusText.className = "text-xs font-mono font-bold text-emerald-400";
-                    
+                    statusMsg.textContent = "File Compiled!";
+                    statusMsg.style.opacity = '1';
+                    setTimeout(() => statusMsg.style.opacity = '0', 2500);
+
                 } catch (err) {
-                    statusSpinner.classList.add('hidden');
-                    statusText.innerText = `COMPILER FAULT: ${err.message}`;
-                    statusText.className = "text-xs font-mono font-bold text-red-400";
-                    outputArea.value = `ERROR:\n${err.message}`;
+                    dataOutput.value = `Conversion failed: ${err.message}`;
+                    dataOutput.classList.replace('text-emerald-400', 'text-red-400');
                 }
             };
-
-            reader.onerror = function() {
-                statusSpinner.classList.add('hidden');
-                statusText.innerText = "COMPILER FAULT: File read failed.";
-                statusText.className = "text-xs font-mono font-bold text-red-400";
-            };
-
-            // Needs to be read as ArrayBuffer for clean parsing of arbitrary .task/.wasm files
             reader.readAsArrayBuffer(file);
+        };
+
+        fileDropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+        
+        fileDropZone.ondragover = (e) => { e.preventDefault(); fileDropZone.classList.add('border-blue-500', 'bg-gray-800'); };
+        fileDropZone.ondragleave = () => fileDropZone.classList.remove('border-blue-500', 'bg-gray-800');
+        fileDropZone.ondrop = (e) => {
+            e.preventDefault();
+            fileDropZone.classList.remove('border-blue-500', 'bg-gray-800');
+            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+        };
+
+        // --- Feedback / Action Trigger System ---
+        function triggerStatus(msg) {
+            statusMsg.textContent = msg;
+            statusMsg.style.opacity = '1';
+            setTimeout(() => statusMsg.style.opacity = '0', 2000);
         }
 
-        copyBtn.addEventListener('click', async () => {
-            if (!outputArea.value) return;
+        // --- Clipboard ---
+        copyBtn.addEventListener('click', () => {
+            if (!dataOutput.value || dataOutput.value.startsWith('Error') || dataOutput.value.startsWith('Awaiting')) return;
             
-            const originalText = copyBtn.innerText;
-            const originalClasses = copyBtn.className;
-
-            const setSuccessUI = () => {
-                copyBtn.innerText = "COPIED TO CLIPBOARD! ✔️";
-                copyBtn.classList.replace('bg-purple-900', 'bg-emerald-700');
-                copyBtn.classList.replace('hover:bg-purple-800', 'hover:bg-emerald-600');
-                copyBtn.classList.replace('border-purple-950', 'border-emerald-900');
-                copyBtn.classList.replace('text-purple-100', 'text-white');
-                
-                setTimeout(() => {
-                    copyBtn.innerText = originalText;
-                    copyBtn.className = originalClasses;
-                }, 2000);
-            };
-
-            try {
-                // Method 1: Modern Async Clipboard API
-                await navigator.clipboard.writeText(outputArea.value);
-                setSuccessUI();
-            } catch (err) {
-                // Method 2: Fallback for local `file:///` protocols
-                outputArea.select();
+            navigator.clipboard.writeText(dataOutput.value).then(() => {
+                triggerStatus("Copied to Clipboard!");
+            }).catch(() => {
+                dataOutput.select();
                 try {
                     document.execCommand('copy');
-                    setSuccessUI();
-                } catch (fallbackErr) {
-                    alert("Copy blocked by browser. Please select the text and copy manually (Ctrl+C).");
+                    triggerStatus("Copied (Legacy)!");
+                } catch(e) {
+                    triggerStatus("Clipboard Blocked");
                 }
-                // Deselect text
-                window.getSelection().removeAllRanges();
-            }
+            });
         });
+
+        // --- File Download Generator ---
+        downloadBtn.addEventListener('click', () => {
+            if (!dataOutput.value || dataOutput.value.startsWith('Error') || dataOutput.value.startsWith('Awaiting')) return;
+            
+            // Package the output into a blob
+            const blob = new Blob([dataOutput.value], { type: 'text/plain' });
+            
+            // Create a temporary URL
+            const downloadUrl = URL.createObjectURL(blob);
+            
+            // Create a hidden anchor tag to force the download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            
+            // Name the file cleanly based on the mode
+            if (currentMode === 'file_b64') {
+                link.download = `${originalFileName}_b64.txt`;
+            } else {
+                link.download = `nexus_${currentMode}_result.txt`;
+            }
+            
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up the memory
+            document.body.removeChild(link);
+            URL.revokeObjectURL(downloadUrl);
+            
+            triggerStatus("File Downloaded!");
+        });
+
     </script>
 </body>
 </html>
