@@ -308,26 +308,80 @@
         };
 
         // --- Finger Math & Drawing ---
-        function countFingers(lm) {
-            let count = 0;
-            const wrist = lm[0]; 
-            const isExtended = (tipIdx, pipIdx) => {
-                const tipDist = Math.hypot(lm[tipIdx].x - wrist.x, lm[tipIdx].y - wrist.y);
-                const pipDist = Math.hypot(lm[pipIdx].x - wrist.x, lm[pipIdx].y - wrist.y);
-                return tipDist > (pipDist * 1.2); 
-            };
+        // --- 1. VOLUMETRIC 3D STATE ANALYZER ---
+function analyzeHandState(lm) {
+    // Calculate true 3D distance including depth (z-axis)
+    const dist3D = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
+    const wrist = lm[0];
 
-            if (isExtended(8, 6)) count++;   
-            if (isExtended(12, 10)) count++; 
-            if (isExtended(16, 14)) count++; 
-            if (isExtended(20, 18)) count++; 
+    // Fingers: Evaluated as OPEN if the Tip is 20% further from the wrist than the PIP joint
+    const isExtended = (tip, pip) => dist3D(wrist, lm[tip]) > (dist3D(wrist, lm[pip]) * 1.2);
+    
+    const I = isExtended(8, 6);
+    const M = isExtended(12, 10);
+    const R = isExtended(16, 14);
+    const P = isExtended(20, 18);
 
-            const thumbTipToIndexBase = Math.hypot(lm[4].x - lm[5].x, lm[4].y - lm[5].y);
-            const thumbKnuckleToIndexBase = Math.hypot(lm[2].x - lm[5].x, lm[2].y - lm[5].y);
-            if (thumbTipToIndexBase > (thumbKnuckleToIndexBase * 1.3)) count++;
+    // Thumb: Evaluated as OPEN if the tip is further from the palm center than the width of the palm
+    const thumbToPalm = dist3D(lm[4], lm[9]);
+    const palmWidth = dist3D(lm[5], lm[17]);
+    const T = (thumbToPalm / palmWidth) > 1.0;
 
-            return count;
-        }
+    // Specialty Checks
+    const isPinching = dist3D(lm[4], lm[8]) < 0.08;
+
+    return { T, I, M, R, P, isPinching, lm };
+}
+
+// --- 2. MATRIX SIGNATURE MAPPER ---
+function determineGestureName(state) {
+    const { T, I, M, R, P, isPinching, lm } = state;
+    
+    // Find primary hand direction using palm vector
+    const dx = lm[9].x - lm[0].x;
+    const dy = lm[9].y - lm[0].y;
+    const palmDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "right" : "left") : (dy < 0 ? "up" : "down");
+    
+    // Find isolated thumb direction (for thumbs up/down vectors)
+    const tDx = lm[4].x - lm[2].x;
+    const tDy = lm[4].y - lm[2].y;
+    const thumbDir = Math.abs(tDx) > Math.abs(tDy) ? (tDx < 0 ? "right" : "left") : (tDy < 0 ? "up" : "down");
+
+    // --- EXACT EMOJI SIGNATURE MATCHING ---
+    
+    if (isPinching && M && R && P) return "👌 OK Sign";
+    if (isPinching && !M && !R && !P) return "🤏 Pinch";
+    
+    if (T && !I && !M && !R && !P) return `👍/👎 Thumb ${thumbDir}`;
+    
+    // Pointing logic (handles both strict 1-finger and your natural 'thumb-out' gun point)
+    if (!T && I && !M && !R && !P) return `☝️ 1 Finger ${palmDir}`;
+    if (T && I && !M && !R && !P) return `🫵 Point / Gun ${palmDir}`;
+    
+    if (!T && !I && M && !R && !P) return `🖕 Middle Finger`;
+    
+    if (!T && I && M && !R && !P) return `✌️ Peace ${palmDir}`;
+    if (T && I && M && !R && !P) return `✌️ Peace (Thumb Out) ${palmDir}`;
+    
+    if (!T && I && !M && !R && P) return `🤘 Rock On`;
+    if (T && I && !M && !R && P) return `🤟 I Love You`;
+    if (T && !I && !M && !R && P) return `🤙 Shaka`;
+    
+    if (!T && !I && !M && !R && !P) return `✊/👊 Fist ${palmDir}`;
+    
+    if (!T && I && M && R && !P) return `3 Fingers ${palmDir}`;
+    if (!T && I && M && R && P) return `✋ 4 Fingers ${palmDir}`;
+    
+    if (T && I && M && R && P) {
+        // Measure the physical gap between the Middle and Ring fingers to separate Vulcan from 5 Fingers
+        const gap = Math.hypot(lm[12].x - lm[16].x, lm[12].y - lm[16].y);
+        return gap > 0.12 ? `🖖 Vulcan` : `🖐️ 5 Fingers ${palmDir}`;
+    }
+
+    // Dynamic Fallback for unlabeled transitions
+    const count = [T, I, M, R, P].filter(Boolean).length;
+    return `hand_${count}_${palmDir}`;
+}
 
         function drawSkeleton(ctx, landmarks, w, h) {
             const connectors = [
@@ -365,19 +419,11 @@
                         const lm = results.landmarks[0];
                         drawSkeleton(canvasCtx, lm, w, h);
 
-                        const fingers = countFingers(lm);
-                        const dx = lm[9].x - lm[0].x; 
-                        const dy = lm[9].y - lm[0].y; 
-                        let dir = "";
-                        
-                        if (Math.abs(dx) > Math.abs(dy)) {
-                            dir = dx < 0 ? "right" : "left"; 
-                        } else {
-                            dir = dy < 0 ? "up" : "down"; 
-                        }
-                        
-                        const currentGesture = (fingers === 0) ? "hand_fist" : `hand_${fingers}_${dir}`;
-                        hudCurrentGesture.textContent = currentGesture;
+                        // Remove the old finger math, and drop this in instead:
+const state = analyzeHandState(lm);
+const currentGesture = determineGestureName(state);
+hudCurrentGesture.textContent = currentGesture;
+
 
                         if (capturePending !== false) {
                             processSuccessfulCapture(lm, currentGesture);
