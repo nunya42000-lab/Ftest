@@ -3,289 +3,369 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus Universal Converter</title>
+    <title>Vision Engine Trainer (CDN Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #030712; color: #f3f4f6; overscroll-behavior: none; }
+        body { 
+            background-color: #030712; 
+            color: #f3f4f6; 
+            touch-action: none; 
+            overscroll-behavior: none; 
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Flipped video/canvas for mirror effect */
+        .mirror { transform: scaleX(-1); }
     </style>
 </head>
-<body class="flex flex-col h-screen font-sans">
+<body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
 
     <!-- Header -->
-    <header class="p-4 md:p-6 border-b border-gray-800 bg-gray-900/50 flex-shrink-0">
-        <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-500">
-            UNIVERSAL CONVERTER MATRIX
-        </h1>
-        <p class="text-xs text-gray-500 font-mono mt-1">OMNI-FORMAT PROCESSING UTILITY</p>
+    <header class="flex justify-between items-center mb-4 flex-shrink-0">
+        <div>
+            <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
+                VISION ENGINE LAB
+            </h1>
+            <p class="text-xs text-gray-500 font-mono">ONLINE DEPENDENCY & GITHUB ROOT ASSETS</p>
+        </div>
+        <div id="vision-status-badge" class="bg-gray-900 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 text-xs font-mono font-bold tracking-widest">
+            LOADING AI...
+        </div>
     </header>
 
-    <div class="flex flex-col lg:flex-row flex-1 min-h-0">
+    <!-- Instruction Director -->
+    <section class="mb-4 bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
+        <div class="space-y-1">
+            <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/20">Target Gesture</span>
+            <h2 id="director-prompt" class="text-lg font-black tracking-wide text-white flex items-center gap-2">
+                Waiting for initialization...
+            </h2>
+        </div>
+        <button id="next-prompt-btn" class="w-full sm:w-auto px-5 py-2.5 bg-gray-800 hover:bg-gray-700 active:scale-95 transition-all text-xs font-mono font-bold tracking-widest rounded-lg border border-gray-700">
+            NEXT TARGET ⏭️
+        </button>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 pb-4">
         
-        <!-- Sidebar / Navigation -->
-        <aside class="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-gray-800 bg-gray-950 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto no-scrollbar p-2 lg:p-4 gap-2 flex-shrink-0">
-            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mb-2">Strings & Data</div>
-            <button class="nav-btn active flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold bg-blue-900/30 text-blue-400 border border-blue-500/30" data-mode="b64_encode">Text ➔ Base64</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="b64_decode">Base64 ➔ Text</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="url_encode">URL Encode</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="url_decode">URL Decode</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="text_hex">Text ➔ Hex</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="hex_text">Hex ➔ Text</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="text_bin">Text ➔ Binary</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="bin_text">Binary ➔ Text</button>
-            
-            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mt-4 mb-2">Code Format</div>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="json_pretty">JSON Format</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="json_minify">JSON Minify</button>
-            
-            <div class="text-[10px] font-mono tracking-widest text-gray-500 uppercase px-2 hidden lg:block mt-4 mb-2">Design & Assets</div>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="px_rem">PX ➔ REM</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="hex_rgb">HEX ➔ RGB</button>
-            <button class="nav-btn flex-shrink-0 lg:w-full text-left px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-gray-900 transition-colors" data-mode="file_b64">File ➔ Base64</button>
-        </aside>
-
-        <!-- Main Conversion Area -->
-        <main class="flex-1 p-4 md:p-6 flex flex-col min-h-0 bg-[#0a0a0a]">
-            
-            <!-- Context Header -->
-            <div class="mb-4 flex justify-between items-end">
-                <h2 id="mode-title" class="text-lg font-bold text-gray-200 uppercase tracking-wide">Text ➔ Base64</h2>
-                <span id="status-msg" class="text-xs font-mono text-emerald-400 transition-opacity opacity-0">Action Complete!</span>
+        <!-- Video Feed & Controls -->
+        <div class="flex flex-col min-h-0 space-y-4">
+            <div class="relative w-full aspect-video bg-gray-950 rounded-xl overflow-hidden border border-gray-800 shadow-2xl flex-shrink-0">
+                <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror bg-black" autoplay playsinline></video>
+                <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
             </div>
+            <button id="start-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800 disabled:opacity-40 disabled:pointer-events-none" disabled>
+                BOOT CAMERA HARDWARE
+            </button>
+        </div>
 
-            <!-- Dynamic Input Area -->
-            <div id="input-container" class="flex-1 flex flex-col mb-4 min-h-0">
-                <label class="text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-2 block">Input / Source</label>
-                
-                <!-- Text Input -->
-                <textarea id="data-input" class="flex-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm font-mono text-gray-300 focus:border-blue-500 outline-none resize-none transition-colors" placeholder="Type or paste data here..."></textarea>
-                
-                <!-- File Input (Hidden by default) -->
-                <div id="file-drop-zone" class="hidden flex-1 w-full border-2 border-dashed border-gray-700 hover:border-blue-500 bg-gray-900/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors group">
-                    <input type="file" id="file-input" class="hidden">
-                    <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">📂</div>
-                    <span class="text-sm font-bold text-gray-400">Click or Drop File</span>
-                    <span id="file-name-display" class="text-xs font-mono text-gray-500 mt-2"></span>
+        <!-- Telemetry Logs -->
+        <div class="flex flex-col min-h-0 border border-gray-800 bg-gray-950 rounded-xl p-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800 mb-3 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
+                    <span class="text-xs font-mono font-bold tracking-wider text-gray-300">TELEMETRY MONITOR</span>
                 </div>
+                <button id="copy-log-btn" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 active:scale-95 text-[10px] font-mono font-bold text-gray-300 hover:text-white rounded border border-gray-700 transition-all shadow-lg">
+                    COPY LOGS 📋
+                </button>
             </div>
-
-            <!-- Output Area -->
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-[10px] font-mono tracking-widest text-gray-500 uppercase block">Output / Result</label>
-                    <div class="flex gap-2">
-                        <!-- New Download Button -->
-                        <button id="download-btn" class="px-3 py-1 bg-blue-900 hover:bg-blue-800 active:scale-95 text-[10px] font-bold tracking-wider text-blue-100 rounded border border-blue-800 transition-all shadow-lg">
-                            DOWNLOAD .TXT
-                        </button>
-                        <button id="copy-btn" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-[10px] font-bold tracking-wider text-gray-300 rounded border border-gray-700 transition-all">
-                            COPY RESULT
-                        </button>
-                    </div>
-                </div>
-                <textarea id="data-output" readonly class="flex-1 w-full bg-black border border-gray-800 rounded-xl p-4 text-sm font-mono text-emerald-400 outline-none resize-none no-scrollbar" placeholder="Result will appear here..."></textarea>
+            
+            <div id="log-container" class="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 pr-1 no-scrollbar flex flex-col-reverse">
+                <div class="text-gray-600 text-xs italic mt-auto border-t border-gray-900/50 pt-2">System stand-by loop initiated...</div>
             </div>
+        </div>
+    </main>
 
-        </main>
-    </div>
+    <!-- Load MediaPipe Module from Official CDN -->
+    <script type="module">
+        import { FilesetResolver, GestureRecognizer } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-    <script>
-        // DOM Elements
-        const navBtns = document.querySelectorAll('.nav-btn');
-        const modeTitle = document.getElementById('mode-title');
-        const dataInput = document.getElementById('data-input');
-        const dataOutput = document.getElementById('data-output');
-        const fileDropZone = document.getElementById('file-drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const fileNameDisplay = document.getElementById('file-name-display');
-        const copyBtn = document.getElementById('copy-btn');
-        const downloadBtn = document.getElementById('download-btn');
-        const statusMsg = document.getElementById('status-msg');
+        // --- DOM Elements ---
+        const video = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const statusBadge = document.getElementById('vision-status-badge');
+        const logContainer = document.getElementById('log-container');
+        const copyLogBtn = document.getElementById('copy-log-btn');
+        const directorPrompt = document.getElementById('director-prompt');
+        const nextPromptBtn = document.getElementById('next-prompt-btn');
 
-        let currentMode = 'b64_encode';
-        let originalFileName = 'nexus_asset';
+        // --- State Variables ---
+        let recognizer;
+        let webcamRunning = false;
+        let lastVideoTime = -1;
+        let history = [];
+        let cooldown = 0;
+        const REQUIRED_FRAMES = 5;
+        let logsMemory = [];
 
-        // --- Core Conversion Logic ---
-        const converters = {
-            b64_encode: (val) => btoa(unescape(encodeURIComponent(val))),
-            b64_decode: (val) => decodeURIComponent(escape(atob(val))),
-            url_encode: (val) => encodeURIComponent(val),
-            url_decode: (val) => decodeURIComponent(val),
-            text_hex: (val) => Array.from(val).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '),
-            hex_text: (val) => val.split(/\s+/).map(h => String.fromCharCode(parseInt(h, 16))).join(''),
-            text_bin: (val) => Array.from(val).map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '),
-            bin_text: (val) => val.split(/\s+/).map(b => String.fromCharCode(parseInt(b, 2))).join(''),
-            json_pretty: (val) => JSON.stringify(JSON.parse(val), null, 4),
-            json_minify: (val) => JSON.stringify(JSON.parse(val)),
-            px_rem: (val) => {
-                const px = parseFloat(val.replace(/[^0-9.]/g, ''));
-                if (isNaN(px)) throw new Error("Enter a valid pixel number");
-                return `${(px / 16).toFixed(4)}rem`;
-            },
-            hex_rgb: (val) => {
-                let hex = val.replace(/^#/, '');
-                if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
-                if (hex.length !== 6) throw new Error("Invalid HEX");
-                const r = parseInt(hex.substring(0, 2), 16);
-                const g = parseInt(hex.substring(2, 4), 16);
-                const b = parseInt(hex.substring(4, 6), 16);
-                return `rgb(${r}, ${g}, ${b})`;
+        // --- Prompts ---
+        const PROMPT_POOL = [
+            { label: "1 Finger UP ☝️", pattern: "hand_1_up" },
+            { label: "2 Fingers UP ✌️", pattern: "hand_2_up" },
+            { label: "3 Fingers UP 🤟", pattern: "hand_3_up" },
+            { label: "4 Fingers UP 🖖", pattern: "hand_4_up" },
+            { label: "5 Fingers UP 🖐️", pattern: "hand_5_up" },
+            { label: "1 Finger DOWN 👇", pattern: "hand_1_down" },
+            { label: "2 Fingers DOWN", pattern: "hand_2_down" },
+            { label: "3 Fingers DOWN", pattern: "hand_3_down" },
+            { label: "4 Fingers DOWN", pattern: "hand_4_down" },
+            { label: "Fist ✊", pattern: "hand_fist" }
+        ];
+        let currentPromptIndex = 0;
+
+        function updatePrompt() {
+            const active = PROMPT_POOL[currentPromptIndex];
+            directorPrompt.innerHTML = `Show hand signal: <span class="text-emerald-400 font-mono font-black">${active.label}</span>`;
+            streamLog(`Target changed to: ${active.pattern}`, "info");
+        }
+
+        nextPromptBtn.onclick = () => {
+            currentPromptIndex = (currentPromptIndex + 1) % PROMPT_POOL.length;
+            updatePrompt();
+        };
+
+        // --- Logging System ---
+        function streamLog(msg, type = 'normal') {
+            const timestamp = new Date().toISOString().slice(11, 19);
+            const rawLine = `[${timestamp}] ${msg}`;
+            logsMemory.push(rawLine);
+
+            const row = document.createElement('div');
+            if (type === 'trigger') {
+                row.className = 'py-1.5 px-2 mb-1.5 rounded bg-emerald-950/60 text-emerald-400 font-bold border border-emerald-500/50 text-xs tracking-wide animate-pulse';
+            } else if (type === 'info') {
+                row.className = 'text-gray-500 text-[11px] italic pl-2 border-l-2 border-gray-700';
+            } else if (type === 'error') {
+                row.className = 'text-red-400 text-[11px] font-bold';
+            } else {
+                row.className = 'text-gray-300 text-[11px]';
+            }
+            row.textContent = rawLine;
+            logContainer.prepend(row);
+        }
+
+        // --- Robust Copy System ---
+        copyLogBtn.onclick = async () => {
+            if (logsMemory.length === 0) return;
+            const textToCopy = logsMemory.join('\n');
+            const originalText = copyLogBtn.innerHTML;
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                showCopySuccess();
+            } catch (err) {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopySuccess();
+                } catch (fallbackErr) {
+                    streamLog("COPY FAILED: Your browser blocked clipboard access.", "error");
+                    copyLogBtn.innerHTML = "FAILED ❌";
+                    setTimeout(() => copyLogBtn.innerHTML = originalText, 2000);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            function showCopySuccess() {
+                copyLogBtn.innerHTML = "COPIED! ✔️";
+                copyLogBtn.classList.replace('bg-gray-800', 'bg-emerald-700');
+                copyLogBtn.classList.replace('text-gray-300', 'text-white');
+                setTimeout(() => {
+                    copyLogBtn.innerHTML = originalText;
+                    copyLogBtn.classList.replace('bg-emerald-700', 'bg-gray-800');
+                    copyLogBtn.classList.replace('text-white', 'text-gray-300');
+                }, 2000);
             }
         };
 
-        // --- Processing Engine ---
-        function processInput() {
-            const val = dataInput.value.trim();
-            if (!val && currentMode !== 'file_b64') {
-                dataOutput.value = '';
+        // --- AI Initialization (CDN wrapper, local root WASM files) ---
+        async function initAI() {
+            streamLog("Fetching MediaPipe wrapper from CDN...", "info");
+            try {
+                // Point the resolver to look in the root folder "./" for the WASM binaries
+                const vision = await FilesetResolver.forVisionTasks("./");
+                
+                // Boot the recognizer and look in the root folder for the .task model
+                recognizer = await GestureRecognizer.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "./gesture_recognizer.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+                
+                statusBadge.textContent = "AI READY";
+                statusBadge.className = "bg-emerald-900 text-emerald-400 px-3 py-1 rounded border border-emerald-500/50 text-xs font-mono font-bold tracking-widest";
+                startBtn.disabled = false;
+                streamLog("Vision Engine initialized. Dependencies routed correctly.", "normal");
+                updatePrompt();
+                
+            } catch (e) {
+                streamLog(`FATAL INIT ERROR: ${e.message}`, "error");
+                statusBadge.textContent = "AI FAILED";
+                statusBadge.classList.replace("text-yellow-500", "text-red-400");
+                statusBadge.classList.replace("border-yellow-500/30", "border-red-500/50");
+            }
+        }
+
+        // --- Camera Toggle ---
+        startBtn.onclick = () => {
+            if (!recognizer) return;
+
+            if (webcamRunning) {
+                webcamRunning = false;
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                }
+                startBtn.innerText = "BOOT CAMERA HARDWARE";
+                startBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800";
+                streamLog("Camera disconnected.", "info");
                 return;
             }
 
-            try {
-                if (currentMode !== 'file_b64') {
-                    dataOutput.value = converters[currentMode](val);
-                    dataOutput.classList.remove('text-red-400');
-                    dataOutput.classList.add('text-emerald-400');
-                }
-            } catch (err) {
-                dataOutput.value = `Error: ${err.message}\n(Check your input format)`;
-                dataOutput.classList.remove('text-emerald-400');
-                dataOutput.classList.add('text-red-400');
-            }
-        }
-
-        // --- UI & Event Listeners ---
-        dataInput.addEventListener('input', processInput);
-
-        navBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                navBtns.forEach(b => {
-                    b.classList.remove('bg-blue-900/30', 'text-blue-400', 'border-blue-500/30');
-                    b.classList.add('text-gray-400');
-                    b.style.border = "none";
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                .then((stream) => {
+                    video.srcObject = stream;
+                    video.addEventListener("loadeddata", predictWebcam);
+                    webcamRunning = true;
+                    startBtn.innerText = "KILL CAMERA STREAM";
+                    startBtn.className = "w-full bg-red-900 hover:bg-red-800 border border-red-500/40 text-red-400 font-black tracking-widest py-4 rounded-xl text-sm transition-all";
+                    streamLog("Camera activated. Beginning frame analysis...", "normal");
+                })
+                .catch((err) => {
+                    streamLog(`CAMERA EXCEPTION: ${err.message}`, "error");
                 });
-                e.target.classList.add('bg-blue-900/30', 'text-blue-400');
-                e.target.style.border = "1px solid rgba(59, 130, 246, 0.3)";
-                
-                currentMode = e.target.dataset.mode;
-                modeTitle.textContent = e.target.textContent;
+        };
 
-                if (currentMode === 'file_b64') {
-                    dataInput.classList.add('hidden');
-                    fileDropZone.classList.remove('hidden');
-                    fileDropZone.classList.add('flex');
-                    dataOutput.value = "Awaiting file drop...";
-                    dataOutput.classList.replace('text-red-400', 'text-emerald-400');
-                } else {
-                    fileDropZone.classList.add('hidden');
-                    fileDropZone.classList.remove('flex');
-                    dataInput.classList.remove('hidden');
-                    if (currentMode === 'px_rem') dataInput.placeholder = "e.g., 24";
-                    else if (currentMode === 'hex_rgb') dataInput.placeholder = "e.g., #10b981";
-                    else dataInput.placeholder = "Type or paste data here...";
-                    processInput();
-                }
-            });
-        });
-
-        // --- File Processing Logic ---
-        const processFile = (file) => {
-            originalFileName = file.name.split('.')[0] || 'nexus_asset';
-            fileNameDisplay.textContent = `Selected: ${file.name}`;
-            dataOutput.value = "Reading file geometry and chunking data...";
-            dataOutput.classList.replace('text-red-400', 'text-emerald-400');
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const arrayBuffer = event.target.result;
-                    const bytes = new Uint8Array(arrayBuffer);
-                    let binaryStr = "";
-                    const chunkSize = 8192; 
-                    for (let i = 0; i < bytes.length; i += chunkSize) {
-                        binaryStr += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-                    }
-                    dataOutput.value = btoa(binaryStr);
-                    
-                    statusMsg.textContent = "File Compiled!";
-                    statusMsg.style.opacity = '1';
-                    setTimeout(() => statusMsg.style.opacity = '0', 2500);
-
-                } catch (err) {
-                    dataOutput.value = `Conversion failed: ${err.message}`;
-                    dataOutput.classList.replace('text-emerald-400', 'text-red-400');
-                }
+        // --- Custom Logic Processing ---
+        function countFingers(lm) {
+            let count = 0;
+            if (lm[4].x < lm[3].x && lm[4].x < lm[2].x) count++;
+            const w = lm[0]; 
+            const isExtended = (tip, pip) => {
+                const dTip = Math.hypot(tip.x - w.x, tip.y - w.y);
+                const dPip = Math.hypot(pip.x - w.x, pip.y - w.y);
+                return dTip > (dPip * 1.15); 
             };
-            reader.readAsArrayBuffer(file);
-        };
-
-        fileDropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
-        
-        fileDropZone.ondragover = (e) => { e.preventDefault(); fileDropZone.classList.add('border-blue-500', 'bg-gray-800'); };
-        fileDropZone.ondragleave = () => fileDropZone.classList.remove('border-blue-500', 'bg-gray-800');
-        fileDropZone.ondrop = (e) => {
-            e.preventDefault();
-            fileDropZone.classList.remove('border-blue-500', 'bg-gray-800');
-            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
-        };
-
-        // --- Feedback / Action Trigger System ---
-        function triggerStatus(msg) {
-            statusMsg.textContent = msg;
-            statusMsg.style.opacity = '1';
-            setTimeout(() => statusMsg.style.opacity = '0', 2000);
+            if (isExtended(lm[8], lm[6])) count++;   
+            if (isExtended(lm[12], lm[10])) count++; 
+            if (isExtended(lm[16], lm[14])) count++; 
+            if (isExtended(lm[20], lm[18])) count++; 
+            return Math.min(5, count);
         }
 
-        // --- Clipboard ---
-        copyBtn.addEventListener('click', () => {
-            if (!dataOutput.value || dataOutput.value.startsWith('Error') || dataOutput.value.startsWith('Awaiting')) return;
-            
-            navigator.clipboard.writeText(dataOutput.value).then(() => {
-                triggerStatus("Copied to Clipboard!");
-            }).catch(() => {
-                dataOutput.select();
-                try {
-                    document.execCommand('copy');
-                    triggerStatus("Copied (Legacy)!");
-                } catch(e) {
-                    triggerStatus("Clipboard Blocked");
-                }
-            });
-        });
+        function drawSkeleton(ctx, landmarks, w, h) {
+            const connectors = [
+                [0, 1], [1, 2], [2, 3], [3, 4],           
+                [0, 5], [5, 6], [6, 7], [7, 8],           
+                [5, 9], [9, 10], [10, 11], [11, 12],      
+                [9, 13], [13, 14], [14, 15], [15, 16],    
+                [13, 17], [0, 17], [17, 18], [18, 19], [19, 20] 
+            ];
 
-        // --- File Download Generator ---
-        downloadBtn.addEventListener('click', () => {
-            if (!dataOutput.value || dataOutput.value.startsWith('Error') || dataOutput.value.startsWith('Awaiting')) return;
-            
-            // Package the output into a blob
-            const blob = new Blob([dataOutput.value], { type: 'text/plain' });
-            
-            // Create a temporary URL
-            const downloadUrl = URL.createObjectURL(blob);
-            
-            // Create a hidden anchor tag to force the download
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            
-            // Name the file cleanly based on the mode
-            if (currentMode === 'file_b64') {
-                link.download = `${originalFileName}_b64.txt`;
-            } else {
-                link.download = `nexus_${currentMode}_result.txt`;
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
+
+            for (const [start, end] of connectors) {
+                const p1 = landmarks[start];
+                const p2 = landmarks[end];
+                ctx.beginPath();
+                ctx.moveTo(p1.x * w, p1.y * h); 
+                ctx.lineTo(p2.x * w, p2.y * h);
+                ctx.stroke();
             }
-            
-            document.body.appendChild(link);
-            link.click();
-            
-            // Clean up the memory
-            document.body.removeChild(link);
-            URL.revokeObjectURL(downloadUrl);
-            
-            triggerStatus("File Downloaded!");
-        });
 
+            ctx.fillStyle = "#ffffff"; 
+            for (const point of landmarks) {
+                ctx.beginPath();
+                ctx.arc(point.x * w, point.y * h, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // --- Main Prediction Loop ---
+        function predictWebcam() {
+            if (!webcamRunning) return;
+
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                const startTimeMs = performance.now();
+                
+                try {
+                    const results = recognizer.recognizeForVideo(video, startTimeMs);
+                    canvasCtx.clearRect(0, 0, w, h);
+
+                    if (cooldown > 0) cooldown--;
+
+                    let currentGesture = "none";
+
+                    if (results.landmarks && results.landmarks.length > 0) {
+                        const lm = results.landmarks[0];
+                        drawSkeleton(canvasCtx, lm, w, h);
+
+                        const fingers = countFingers(lm);
+                        const dx = lm[9].x - lm[0].x;
+                        const dy = lm[9].y - lm[0].y;
+                        let dir = "";
+                        
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            dir = dx < 0 ? "right" : "left"; 
+                        } else {
+                            dir = dy < 0 ? "up" : "down"; 
+                        }
+
+                        if (fingers === 0) {
+                            currentGesture = "hand_fist";
+                        } else {
+                            currentGesture = `hand_${fingers}_${dir}`;
+                        }
+                    }
+
+                    history.push(currentGesture);
+                    if (history.length > REQUIRED_FRAMES) history.shift();
+
+                    const isStable = history.length === REQUIRED_FRAMES && history.every(v => v === currentGesture);
+
+                    if (isStable && currentGesture !== "none" && cooldown <= 0) {
+                        const targetPattern = PROMPT_POOL[currentPromptIndex].pattern;
+                        
+                        if (currentGesture === targetPattern) {
+                            streamLog(`🎯 MATCH CONFIRMED: [ ${currentGesture} ]`, 'trigger');
+                            
+                            document.body.style.backgroundColor = '#064e3b';
+                            setTimeout(() => document.body.style.backgroundColor = '#030712', 150);
+                            
+                            cooldown = 45; 
+                            history = [];
+                        }
+                    }
+
+                } catch (e) {
+                    streamLog(`Frame Analysis Error: ${e.message}`, "error");
+                }
+            }
+
+            requestAnimationFrame(predictWebcam);
+        }
+
+        // Boot
+        initAI();
     </script>
 </body>
 </html>
