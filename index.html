@@ -3,369 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vision Engine Trainer (CDN Mode)</title>
+    <title>Nexus Vision Trainer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            background-color: #030712; 
-            color: #f3f4f6; 
-            touch-action: none; 
-            overscroll-behavior: none; 
-        }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Flipped video/canvas for mirror effect */
+        body { background-color: #030712; color: #fff; touch-action: manipulation; }
         .mirror { transform: scaleX(-1); }
+        /* Forces scrollable log area */
+        #log-container { height: 300px; overflow-y: scroll; }
     </style>
 </head>
-<body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
+<body class="flex flex-col h-screen overflow-hidden">
 
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-4 flex-shrink-0">
-        <div>
-            <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
-                VISION ENGINE LAB
-            </h1>
-            <p class="text-xs text-gray-500 font-mono">ONLINE DEPENDENCY & GITHUB ROOT ASSETS</p>
-        </div>
-        <div id="vision-status-badge" class="bg-gray-900 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 text-xs font-mono font-bold tracking-widest">
-            LOADING AI...
-        </div>
+    <!-- Fixed Header -->
+    <header class="p-4 border-b border-gray-800 bg-gray-950 flex justify-between items-center z-50">
+        <h1 class="text-lg font-black text-emerald-400">VISION TRAINER</h1>
+        <div id="status-badge" class="px-2 py-1 rounded bg-gray-900 border border-gray-700 text-[10px] font-mono">INIT...</div>
     </header>
 
-    <!-- Instruction Director -->
-    <section class="mb-4 bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
-        <div class="space-y-1">
-            <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/20">Target Gesture</span>
-            <h2 id="director-prompt" class="text-lg font-black tracking-wide text-white flex items-center gap-2">
-                Waiting for initialization...
-            </h2>
-        </div>
-        <button id="next-prompt-btn" class="w-full sm:w-auto px-5 py-2.5 bg-gray-800 hover:bg-gray-700 active:scale-95 transition-all text-xs font-mono font-bold tracking-widest rounded-lg border border-gray-700">
-            NEXT TARGET ⏭️
-        </button>
-    </section>
-
-    <!-- Main Workspace -->
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 pb-4">
+    <!-- Scrolling Wrapper -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
         
-        <!-- Video Feed & Controls -->
-        <div class="flex flex-col min-h-0 space-y-4">
-            <div class="relative w-full aspect-video bg-gray-950 rounded-xl overflow-hidden border border-gray-800 shadow-2xl flex-shrink-0">
-                <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror bg-black" autoplay playsinline></video>
-                <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
-            </div>
-            <button id="start-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800 disabled:opacity-40 disabled:pointer-events-none" disabled>
-                BOOT CAMERA HARDWARE
-            </button>
+        <!-- Camera Area -->
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-700">
+            <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror" autoplay playsinline></video>
+            <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10"></canvas>
         </div>
 
-        <!-- Telemetry Logs -->
-        <div class="flex flex-col min-h-0 border border-gray-800 bg-gray-950 rounded-xl p-4">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-800 mb-3 flex-shrink-0">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
-                    <span class="text-xs font-mono font-bold tracking-wider text-gray-300">TELEMETRY MONITOR</span>
-                </div>
-                <button id="copy-log-btn" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 active:scale-95 text-[10px] font-mono font-bold text-gray-300 hover:text-white rounded border border-gray-700 transition-all shadow-lg">
-                    COPY LOGS 📋
-                </button>
-            </div>
-            
-            <div id="log-container" class="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 pr-1 no-scrollbar flex flex-col-reverse">
-                <div class="text-gray-600 text-xs italic mt-auto border-t border-gray-900/50 pt-2">System stand-by loop initiated...</div>
-            </div>
+        <!-- Prompt -->
+        <div id="director-prompt" class="bg-gray-900 p-4 rounded-xl text-center font-bold border border-gray-800">
+            Click 'Boot' to start...
         </div>
-    </main>
 
-    <!-- Load MediaPipe Module from Official CDN -->
+        <!-- Logs -->
+        <div id="log-container" class="bg-black p-4 rounded-xl border border-gray-800 font-mono text-[10px] space-y-2">
+            <div class="text-gray-500">Log output initialized...</div>
+        </div>
+
+    </div>
+
+    <!-- Fixed Footer Control -->
+    <footer class="p-4 bg-gray-950 border-t border-gray-800">
+        <button id="start-btn" class="w-full bg-emerald-600 py-4 rounded-xl font-black text-white active:scale-95 transition-transform">
+            BOOT CAMERA HARDWARE
+        </button>
+    </footer>
+
     <script type="module">
         import { FilesetResolver, GestureRecognizer } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-        // --- DOM Elements ---
         const video = document.getElementById('webcam');
-        const canvasElement = document.getElementById('output_canvas');
-        const canvasCtx = canvasElement.getContext('2d');
+        const canvas = document.getElementById('output_canvas');
+        const ctx = canvas.getContext('2d');
         const startBtn = document.getElementById('start-btn');
-        const statusBadge = document.getElementById('vision-status-badge');
-        const logContainer = document.getElementById('log-container');
-        const copyLogBtn = document.getElementById('copy-log-btn');
-        const directorPrompt = document.getElementById('director-prompt');
-        const nextPromptBtn = document.getElementById('next-prompt-btn');
+        const status = document.getElementById('status-badge');
+        const log = document.getElementById('log-container');
+        const prompt = document.getElementById('director-prompt');
 
-        // --- State Variables ---
         let recognizer;
-        let webcamRunning = false;
-        let lastVideoTime = -1;
-        let history = [];
-        let cooldown = 0;
-        const REQUIRED_FRAMES = 5;
-        let logsMemory = [];
+        let running = false;
 
-        // --- Prompts ---
-        const PROMPT_POOL = [
-            { label: "1 Finger UP ☝️", pattern: "hand_1_up" },
-            { label: "2 Fingers UP ✌️", pattern: "hand_2_up" },
-            { label: "3 Fingers UP 🤟", pattern: "hand_3_up" },
-            { label: "4 Fingers UP 🖖", pattern: "hand_4_up" },
-            { label: "5 Fingers UP 🖐️", pattern: "hand_5_up" },
-            { label: "1 Finger DOWN 👇", pattern: "hand_1_down" },
-            { label: "2 Fingers DOWN", pattern: "hand_2_down" },
-            { label: "3 Fingers DOWN", pattern: "hand_3_down" },
-            { label: "4 Fingers DOWN", pattern: "hand_4_down" },
-            { label: "Fist ✊", pattern: "hand_fist" }
-        ];
-        let currentPromptIndex = 0;
-
-        function updatePrompt() {
-            const active = PROMPT_POOL[currentPromptIndex];
-            directorPrompt.innerHTML = `Show hand signal: <span class="text-emerald-400 font-mono font-black">${active.label}</span>`;
-            streamLog(`Target changed to: ${active.pattern}`, "info");
+        function addLog(msg) {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            log.prepend(div);
         }
 
-        nextPromptBtn.onclick = () => {
-            currentPromptIndex = (currentPromptIndex + 1) % PROMPT_POOL.length;
-            updatePrompt();
-        };
-
-        // --- Logging System ---
-        function streamLog(msg, type = 'normal') {
-            const timestamp = new Date().toISOString().slice(11, 19);
-            const rawLine = `[${timestamp}] ${msg}`;
-            logsMemory.push(rawLine);
-
-            const row = document.createElement('div');
-            if (type === 'trigger') {
-                row.className = 'py-1.5 px-2 mb-1.5 rounded bg-emerald-950/60 text-emerald-400 font-bold border border-emerald-500/50 text-xs tracking-wide animate-pulse';
-            } else if (type === 'info') {
-                row.className = 'text-gray-500 text-[11px] italic pl-2 border-l-2 border-gray-700';
-            } else if (type === 'error') {
-                row.className = 'text-red-400 text-[11px] font-bold';
-            } else {
-                row.className = 'text-gray-300 text-[11px]';
-            }
-            row.textContent = rawLine;
-            logContainer.prepend(row);
+        async function init() {
+            const vision = await FilesetResolver.forVisionTasks("./");
+            recognizer = await GestureRecognizer.createFromOptions(vision, {
+                baseOptions: { modelAssetPath: "./gesture_recognizer.task", delegate: "GPU" },
+                runningMode: "VIDEO",
+                numHands: 1
+            });
+            status.textContent = "AI READY";
+            status.className = "px-2 py-1 rounded bg-emerald-900 border border-emerald-500 text-[10px] font-mono";
+            addLog("Engine ready.");
         }
 
-        // --- Robust Copy System ---
-        copyLogBtn.onclick = async () => {
-            if (logsMemory.length === 0) return;
-            const textToCopy = logsMemory.join('\n');
-            const originalText = copyLogBtn.innerHTML;
-
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                showCopySuccess();
-            } catch (err) {
-                const textArea = document.createElement("textarea");
-                textArea.value = textToCopy;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    showCopySuccess();
-                } catch (fallbackErr) {
-                    streamLog("COPY FAILED: Your browser blocked clipboard access.", "error");
-                    copyLogBtn.innerHTML = "FAILED ❌";
-                    setTimeout(() => copyLogBtn.innerHTML = originalText, 2000);
-                }
-                document.body.removeChild(textArea);
-            }
-
-            function showCopySuccess() {
-                copyLogBtn.innerHTML = "COPIED! ✔️";
-                copyLogBtn.classList.replace('bg-gray-800', 'bg-emerald-700');
-                copyLogBtn.classList.replace('text-gray-300', 'text-white');
-                setTimeout(() => {
-                    copyLogBtn.innerHTML = originalText;
-                    copyLogBtn.classList.replace('bg-emerald-700', 'bg-gray-800');
-                    copyLogBtn.classList.replace('text-white', 'text-gray-300');
-                }, 2000);
-            }
-        };
-
-        // --- AI Initialization (CDN wrapper, local root WASM files) ---
-        async function initAI() {
-            streamLog("Fetching MediaPipe wrapper from CDN...", "info");
-            try {
-                // Point the resolver to look in the root folder "./" for the WASM binaries
-                const vision = await FilesetResolver.forVisionTasks("./");
-                
-                // Boot the recognizer and look in the root folder for the .task model
-                recognizer = await GestureRecognizer.createFromOptions(vision, {
-                    baseOptions: {
-                        modelAssetPath: "./gesture_recognizer.task",
-                        delegate: "GPU"
-                    },
-                    runningMode: "VIDEO",
-                    numHands: 1
-                });
-                
-                statusBadge.textContent = "AI READY";
-                statusBadge.className = "bg-emerald-900 text-emerald-400 px-3 py-1 rounded border border-emerald-500/50 text-xs font-mono font-bold tracking-widest";
-                startBtn.disabled = false;
-                streamLog("Vision Engine initialized. Dependencies routed correctly.", "normal");
-                updatePrompt();
-                
-            } catch (e) {
-                streamLog(`FATAL INIT ERROR: ${e.message}`, "error");
-                statusBadge.textContent = "AI FAILED";
-                statusBadge.classList.replace("text-yellow-500", "text-red-400");
-                statusBadge.classList.replace("border-yellow-500/30", "border-red-500/50");
-            }
-        }
-
-        // --- Camera Toggle ---
-        startBtn.onclick = () => {
-            if (!recognizer) return;
-
-            if (webcamRunning) {
-                webcamRunning = false;
-                if (video.srcObject) {
-                    video.srcObject.getTracks().forEach(track => track.stop());
-                }
-                startBtn.innerText = "BOOT CAMERA HARDWARE";
-                startBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800";
-                streamLog("Camera disconnected.", "info");
+        startBtn.onclick = async () => {
+            if (running) {
+                location.reload();
                 return;
             }
-
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                .then((stream) => {
-                    video.srcObject = stream;
-                    video.addEventListener("loadeddata", predictWebcam);
-                    webcamRunning = true;
-                    startBtn.innerText = "KILL CAMERA STREAM";
-                    startBtn.className = "w-full bg-red-900 hover:bg-red-800 border border-red-500/40 text-red-400 font-black tracking-widest py-4 rounded-xl text-sm transition-all";
-                    streamLog("Camera activated. Beginning frame analysis...", "normal");
-                })
-                .catch((err) => {
-                    streamLog(`CAMERA EXCEPTION: ${err.message}`, "error");
-                });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            running = true;
+            startBtn.textContent = "RELOAD ENGINE";
+            predict();
         };
 
-        // --- Custom Logic Processing ---
-        function countFingers(lm) {
-            let count = 0;
-            if (lm[4].x < lm[3].x && lm[4].x < lm[2].x) count++;
-            const w = lm[0]; 
-            const isExtended = (tip, pip) => {
-                const dTip = Math.hypot(tip.x - w.x, tip.y - w.y);
-                const dPip = Math.hypot(pip.x - w.x, pip.y - w.y);
-                return dTip > (dPip * 1.15); 
-            };
-            if (isExtended(lm[8], lm[6])) count++;   
-            if (isExtended(lm[12], lm[10])) count++; 
-            if (isExtended(lm[16], lm[14])) count++; 
-            if (isExtended(lm[20], lm[18])) count++; 
-            return Math.min(5, count);
-        }
-
-        function drawSkeleton(ctx, landmarks, w, h) {
-            const connectors = [
-                [0, 1], [1, 2], [2, 3], [3, 4],           
-                [0, 5], [5, 6], [6, 7], [7, 8],           
-                [5, 9], [9, 10], [10, 11], [11, 12],      
-                [9, 13], [13, 14], [14, 15], [15, 16],    
-                [13, 17], [0, 17], [17, 18], [18, 19], [19, 20] 
-            ];
-
-            ctx.lineWidth = 4;
-            ctx.lineCap = "round";
-            ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
-
-            for (const [start, end] of connectors) {
-                const p1 = landmarks[start];
-                const p2 = landmarks[end];
-                ctx.beginPath();
-                ctx.moveTo(p1.x * w, p1.y * h); 
-                ctx.lineTo(p2.x * w, p2.y * h);
-                ctx.stroke();
-            }
-
-            ctx.fillStyle = "#ffffff"; 
-            for (const point of landmarks) {
-                ctx.beginPath();
-                ctx.arc(point.x * w, point.y * h, 3, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-        }
-
-        // --- Main Prediction Loop ---
-        function predictWebcam() {
-            if (!webcamRunning) return;
-
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-            const w = canvasElement.width;
-            const h = canvasElement.height;
-
-            if (lastVideoTime !== video.currentTime) {
-                lastVideoTime = video.currentTime;
-                const startTimeMs = performance.now();
+        function predict() {
+            if (!running) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const results = recognizer.recognizeForVideo(video, performance.now());
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (results.landmarks && results.landmarks.length > 0) {
+                const lm = results.landmarks[0];
                 
-                try {
-                    const results = recognizer.recognizeForVideo(video, startTimeMs);
-                    canvasCtx.clearRect(0, 0, w, h);
-
-                    if (cooldown > 0) cooldown--;
-
-                    let currentGesture = "none";
-
-                    if (results.landmarks && results.landmarks.length > 0) {
-                        const lm = results.landmarks[0];
-                        drawSkeleton(canvasCtx, lm, w, h);
-
-                        const fingers = countFingers(lm);
-                        const dx = lm[9].x - lm[0].x;
-                        const dy = lm[9].y - lm[0].y;
-                        let dir = "";
-                        
-                        if (Math.abs(dx) > Math.abs(dy)) {
-                            dir = dx < 0 ? "right" : "left"; 
-                        } else {
-                            dir = dy < 0 ? "up" : "down"; 
-                        }
-
-                        if (fingers === 0) {
-                            currentGesture = "hand_fist";
-                        } else {
-                            currentGesture = `hand_${fingers}_${dir}`;
-                        }
-                    }
-
-                    history.push(currentGesture);
-                    if (history.length > REQUIRED_FRAMES) history.shift();
-
-                    const isStable = history.length === REQUIRED_FRAMES && history.every(v => v === currentGesture);
-
-                    if (isStable && currentGesture !== "none" && cooldown <= 0) {
-                        const targetPattern = PROMPT_POOL[currentPromptIndex].pattern;
-                        
-                        if (currentGesture === targetPattern) {
-                            streamLog(`🎯 MATCH CONFIRMED: [ ${currentGesture} ]`, 'trigger');
-                            
-                            document.body.style.backgroundColor = '#064e3b';
-                            setTimeout(() => document.body.style.backgroundColor = '#030712', 150);
-                            
-                            cooldown = 45; 
-                            history = [];
-                        }
-                    }
-
-                } catch (e) {
-                    streamLog(`Frame Analysis Error: ${e.message}`, "error");
-                }
+                // Draw Skeleton
+                ctx.strokeStyle = "#10b981";
+                ctx.lineWidth = 3;
+                lm.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, 2 * Math.PI);
+                    ctx.stroke();
+                });
+                addLog("Hand detected, tracking...");
             }
-
-            requestAnimationFrame(predictWebcam);
+            
+            requestAnimationFrame(predict);
         }
 
-        // Boot
-        initAI();
+        init();
     </script>
 </body>
 </html>
