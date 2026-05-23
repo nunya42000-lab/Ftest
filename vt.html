@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voice Engine Trainer & Stream Latency Parser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #030307; color: #f3f4f6; touch-action: none; overscroll-behavior: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
+
+    <!-- Header Block -->
+    <header class="flex justify-between items-center mb-4 flex-shrink-0 border-b border-indigo-950/40 pb-3">
+        <div>
+            <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">
+                VOICE PARSER DIAGNOSTIC LAB
+            </h1>
+            <p class="text-xs text-gray-500 font-mono tracking-wider">INTERIM RECOGNITION STREAM ANALYZER & LATENCY PROFILER</p>
+        </div>
+    </header>
+
+    <!-- Target Director Frame -->
+    <section class="mb-4 bg-gray-950 border border-indigo-950/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0 shadow-lg">
+        <div class="space-y-1">
+            <span class="text-[10px] uppercase font-mono tracking-widest text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-500/20">Target Bus Command String</span>
+            <h2 id="director-prompt" class="text-lg font-black tracking-wide text-white flex items-center gap-2">
+                Say: <span class="text-indigo-400 font-mono text-xl">"Add Four"</span>
+            </h2>
+        </div>
+        <button id="next-prompt-btn" class="w-full sm:w-auto px-5 py-2.5 bg-gray-900 hover:bg-gray-800 active:scale-95 transition-all text-xs font-mono font-bold tracking-widest text-indigo-400 rounded-lg border border-gray-800">
+            SKIP TARGET ⏭️
+        </button>
+    </section>
+
+    <!-- Content Split Matrix -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 pb-4">
+        
+        <!-- Interactive Interface Settings Panel -->
+        <div class="flex flex-col min-h-0 space-y-4">
+            <div class="bg-black p-5 rounded-xl border border-gray-900 shadow-2xl flex-shrink-0 space-y-4">
+                <div>
+                    <label class="block text-[10px] font-mono tracking-widest text-indigo-400 mb-2 uppercase font-black">Active Wake / Prefix Keys:</label>
+                    <input type="text" id="trigger-word" value="add, plus, press, enter, input" class="bg-gray-950 text-indigo-400 p-4 font-mono text-sm rounded-xl w-full border border-gray-900 focus:border-indigo-500 transition-colors shadow-inner outline-none font-bold">
+                    <p class="text-[10px] text-gray-500 font-mono mt-1">Comma separated list of production prefixes.</p>
+                </div>
+                
+                <div class="p-3 bg-indigo-950/20 rounded-lg border border-indigo-500/10 text-xs text-gray-400 leading-relaxed font-mono">
+                    <span class="text-indigo-300 font-bold block mb-1">Bus Real-Time Optimization:</span>
+                    This console parses interim tokens using native regex maps. Matching a prefix instantly flushes the data stream stack to achieve raw sub-100ms calculation drops.
+                </div>
+            </div>
+            
+            <!-- Dynamic Latency Tracking Indicator Grid -->
+            <div class="grid grid-cols-2 gap-3 flex-shrink-0">
+                <div class="bg-black border border-gray-900 p-4 rounded-xl text-center">
+                    <span class="block text-[10px] font-mono text-gray-500">LAST MATCH RUNTIME</span>
+                    <span id="stat-latency" class="text-2xl font-black font-mono text-indigo-400">0 ms</span>
+                </div>
+                <div class="bg-black border border-gray-900 p-4 rounded-xl text-center">
+                    <span class="block text-[10px] font-mono text-gray-500">BUFFER INGEST STATUS</span>
+                    <span id="stat-buffer" class="text-sm font-bold font-mono text-gray-400 block mt-1">IDLE</span>
+                </div>
+            </div>
+
+            <button id="start-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-white font-black tracking-widest py-5 rounded-xl text-lg border-b-4 border-indigo-800">
+                INITIALIZE CAPTURE CORE
+            </button>
+        </div>
+
+        <!-- System Ingest Logs Terminal -->
+        <div class="flex flex-col min-h-0 border border-gray-900 bg-black rounded-xl p-4 shadow-xl">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-900 mb-3 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>
+                    <span class="text-xs font-mono font-bold tracking-wider text-gray-400">INGEST TOKEN BUS MONITOR</span>
+                </div>
+                <button id="copy-log-btn" class="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 active:scale-95 text-[10px] font-mono font-bold text-gray-300 hover:text-white rounded border border-gray-800 transition-all shadow-md">
+                    COPY DATASTREAM BUS 📋
+                </button>
+            </div>
+            
+            <div id="log-container" class="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 pr-1 no-scrollbar flex flex-col-reverse">
+                <div class="text-gray-700 text-xs italic mt-auto border-t border-gray-900/30 pt-2">Audio buffer mapping layer on standby...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Production dictionary mapping
+        const PHONETIC_MAP = {
+            '1': '1', 'one': '1', 'won': '1', '2': '2', 'two': '2', 'to': '2', 'too': '2',
+            '3': '3', 'three': '3', 'tree': '3', '4': '4', 'four': '4', 'for': '4', 'fore': '4',
+            '5': '5', 'five': '5', '6': '6', 'six': '6', '7': '7', 'seven': '7',
+            '8': '8', 'eight': '8', 'ate': '8', '9': '9', 'nine': '9', '10': '10', 'ten': '10',
+            '11': '11', 'eleven': '11', '12': '12', 'twelve': '12',
+            'a': 'A', 'b': 'B', 'bee': 'B', 'be': 'B', 'c': 'C', 'see': 'C', 'sea': 'C', 'd': 'D', 'e': 'E', 'f': 'F', 'g': 'G'
+        };
+
+        const PROMPT_POOL = [
+            { label: "Add One", target: "1" },
+            { label: "Plus Four", target: "4" },
+            { label: "Input Seven", target: "7" },
+            { label: "Press Nine", target: "9" },
+            { label: "Enter Twelve", target: "12" },
+            { label: "Input C", target: "C" },
+            { label: "Add A", target: "A" }
+        ];
+
+        const logContainer = document.getElementById('log-container');
+        const startBtn = document.getElementById('start-btn');
+        const triggerInput = document.getElementById('trigger-word');
+        const copyLogBtn = document.getElementById('copy-log-btn');
+        const directorPrompt = document.getElementById('director-prompt');
+        const nextPromptBtn = document.getElementById('next-prompt-btn');
+        const statLatency = document.getElementById('stat-latency');
+        const statBuffer = document.getElementById('stat-buffer');
+
+        let recognition;
+        let isListening = false;
+        let logsMemory = [];
+        let currentPromptIndex = 0;
+        let phraseStartTime = 0;
+
+        function updatePrompt() {
+            const active = PROMPT_POOL[currentPromptIndex];
+            directorPrompt.innerHTML = `Say command: <span class="text-indigo-400 font-mono font-black">"${active.label}"</span>`;
+            phraseStartTime = performance.now();
+        }
+
+        nextPromptBtn.onclick = () => {
+            currentPromptIndex = (currentPromptIndex + 1) % PROMPT_POOL.length;
+            updatePrompt();
+        };
+
+        function streamLog(msg, type = 'normal') {
+            const timestamp = new Date().toISOString().slice(11, 19);
+            const rawLine = `[${timestamp}] ${msg}`;
+            logsMemory.push(rawLine);
+
+            const row = document.createElement('div');
+            if (type === 'match') {
+                row.className = 'py-2 px-3 mb-2 rounded bg-indigo-950/40 text-indigo-400 font-bold border border-indigo-500/30 text-sm tracking-wide shadow-md';
+            } else if (type === 'interim') {
+                row.className = 'text-gray-600 text-[11px] italic pl-2 border-l-2 border-gray-800';
+            } else if (type === 'error') {
+                row.className = 'text-red-400/80 text-[11px] font-medium';
+            } else {
+                row.className = 'text-gray-400 text-[11px]';
+            }
+            row.textContent = rawLine;
+            logContainer.prepend(row);
+        }
+
+        copyLogBtn.onclick = async () => {
+            if (logsMemory.length === 0) return;
+            const textToCopy = logsMemory.join('\n');
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const prev = copyLogBtn.innerHTML; copyLogBtn.innerHTML = "FLUSHED TO CLIPBOARD ✔️";
+                setTimeout(() => copyLogBtn.innerHTML = prev, 1500);
+            } catch (err) { alert("Clipboard block detected."); }
+        };
+
+        // --- Core Audio Engine Thread ---
+        function initVoice() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                streamLog("CORE ERROR: SpeechRecognition API structural validation failed.", "error");
+                return;
+            }
+
+            recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                isListening = true;
+                statBuffer.textContent = "LISTENING BUS";
+                statBuffer.className = "text-sm font-bold font-mono text-indigo-400 block mt-1 animate-pulse";
+                startBtn.textContent = "SHUTDOWN CAPTURE CORE";
+                startBtn.className = "w-full bg-red-950 border border-red-500/30 text-red-400 font-black tracking-widest py-5 rounded-xl text-lg transition-all";
+                streamLog("Voice capture data stream connected successfully.", "normal");
+                phraseStartTime = performance.now();
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    try { recognition.start(); } catch(e) {} // Seamless stack flush rebound
+                } else {
+                    statBuffer.textContent = "IDLE";
+                    statBuffer.className = "text-sm font-bold font-mono text-gray-500 block mt-1";
+                    startBtn.textContent = "INITIALIZE CAPTURE CORE";
+                    startBtn.className = "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black tracking-widest py-5 rounded-xl text-lg border-b-4 border-indigo-800";
+                }
+            };
+
+            recognition.onerror = (e) => streamLog(`Audio Pipeline Fault: ${e.error}`, "error");
+
+            recognition.onresult = (event) => {
+                // Collect and convert raw token arrays
+                const allowedPrefixes = triggerInput.value.toLowerCase().split(',').map(p => p.trim());
+                const targetValue = PROMPT_POOL[currentPromptIndex].target;
+                
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript.toLowerCase();
+                    streamLog(`Ingest Inbound: "${transcript}"`, 'interim');
+                    
+                    const words = transcript.split(/\s+/).filter(w => w !== "");
+                    
+                    // Iterate and extract backwards for instant priority commands
+                    for (let p of allowedPrefixes) {
+                        const triggerIdx = words.lastIndexOf(p);
+                        if (triggerIdx !== -1 && triggerIdx < words.length - 1) {
+                            const nextWord = words[triggerIdx + 1];
+                            const mappedValue = PHONETIC_MAP[nextWord];
+
+                            if (mappedValue) {
+                                if (mappedValue === targetValue) {
+                                    const calculatedLatency = Math.round(performance.now() - phraseStartTime);
+                                    statLatency.textContent = `${calculatedLatency} ms`;
+                                    
+                                    streamLog(`🎯 CORE VERIFIED INSTANT EXECUTE: Value [ ${mappedValue} ]`, 'match');
+                                    
+                                    document.body.style.backgroundColor = '#111029';
+                                    setTimeout(() => document.body.style.backgroundColor = '#030307', 100);
+
+                                    nextPromptBtn.click();
+                                } else {
+                                    streamLog(`⚠️ REJECTED INGEST BOUNDS: Parsed [ ${mappedValue} ], Required [ ${targetValue} ]`, 'error');
+                                }
+                                
+                                recognition.abort(); // Structural flush to bypass native continuous trailing latency
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        startBtn.onclick = () => {
+            if (!recognition) initVoice();
+            if (!recognition) return;
+            if (isListening) {
+                isListening = false;
+                recognition.stop();
+                streamLog("Capture core dropped cleanly.", "normal");
+            } else {
+                recognition.start();
+            }
+        };
+
+        updatePrompt();
+    </script>
+</body>
+</html>

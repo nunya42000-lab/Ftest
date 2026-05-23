@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus OmniGesture Core Engine Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #05050a; color: #f3f4f6; touch-action: none; overscroll-behavior: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .mirror { transform: scaleX(-1); }
+    </style>
+</head>
+<body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
+
+    <!-- Header Grid -->
+    <header class="flex justify-between items-center mb-4 flex-shrink-0 border-b border-emerald-950/40 pb-3">
+        <div>
+            <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500">
+                NEXUS GESTURE MATRIX LAB
+            </h1>
+            <p class="text-xs text-gray-500 font-mono tracking-wider">OMNIGESTURE ENGINE TESTING MATRIX (v313)</p>
+        </div>
+        <div id="vision-status-badge" class="bg-emerald-950/30 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 text-xs font-mono font-bold tracking-widest animate-pulse">
+            LOADING MATRIX CORE...
+        </div>
+    </header>
+
+    <!-- Interactive Prompt Matrix Director -->
+    <section class="mb-4 bg-gray-950 border border-emerald-950/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0 shadow-lg relative overflow-hidden">
+        <div class="space-y-1 z-10">
+            <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/20">Target Signature Mapping</span>
+            <h2 id="director-prompt" class="text-lg font-black tracking-wide text-white flex items-center gap-2">
+                Waiting for initialization...
+            </h2>
+        </div>
+        <div class="flex gap-2 w-full sm:w-auto z-10">
+            <button id="prev-prompt-btn" class="flex-1 sm:flex-initial px-4 py-2.5 bg-gray-900 hover:bg-gray-800 active:scale-95 transition-all text-xs font-mono font-bold text-gray-400 rounded-lg border border-gray-800">
+                ◀ BACK
+            </button>
+            <button id="next-prompt-btn" class="flex-1 sm:flex-initial px-5 py-2.5 bg-emerald-950/40 hover:bg-emerald-900/50 active:scale-95 transition-all text-xs font-mono font-bold tracking-widest text-emerald-400 rounded-lg border border-emerald-800/60">
+                NEXT ▶
+            </button>
+        </div>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 pb-4">
+        
+        <!-- Video Feed Frame Block -->
+        <div class="flex flex-col min-h-0 space-y-4">
+            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-900 shadow-2xl flex-shrink-0">
+                <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror" autoplay playsinline></video>
+                <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
+                <div id="gesture-hud-overlay" class="absolute bottom-4 left-4 z-20 bg-black/80 px-4 py-2 rounded-lg border border-emerald-500/30 font-mono text-xs hidden">
+                    Current: <span id="hud-current-gesture" class="text-emerald-400 font-bold">none</span>
+                </div>
+            </div>
+            <button id="start-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800 disabled:opacity-40 disabled:pointer-events-none" disabled>
+                BOOT CAMERA PIPELINE
+            </button>
+        </div>
+
+        <!-- System Logs & Diagnostic Console -->
+        <div class="flex flex-col min-h-0 border border-gray-900 bg-black rounded-xl p-4 shadow-xl">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-900 mb-3 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
+                    <span class="text-xs font-mono font-bold tracking-wider text-gray-400">CORE TELEMETRY STREAM</span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="clear-log-btn" class="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 active:scale-95 text-[10px] font-mono font-bold text-gray-500 hover:text-gray-300 rounded border border-gray-800 transition-all">
+                        CLEAR
+                    </button>
+                    <button id="copy-log-btn" class="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 active:scale-95 text-[10px] font-mono font-bold text-gray-300 hover:text-white rounded border border-gray-800 transition-all shadow-md">
+                        COPY BUS LOGS 📋
+                    </button>
+                </div>
+            </div>
+            
+            <div id="log-container" class="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 pr-1 no-scrollbar flex flex-col-reverse">
+                <div class="text-gray-700 text-xs italic mt-auto border-t border-gray-900/30 pt-2">Hardware execution loop ready...</div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { FilesetResolver, GestureRecognizer } from "./wasm/vision_bundle.js";
+
+        // Provide file path fallback logic for pure offline operations
+        const TASK_FILE_PATH = "./wasm/gesture_recognizer.task";
+
+        // --- DOM Elements ---
+        const video = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const statusBadge = document.getElementById('vision-status-badge');
+        const logContainer = document.getElementById('log-container');
+        const copyLogBtn = document.getElementById('copy-log-btn');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        const directorPrompt = document.getElementById('director-prompt');
+        const nextPromptBtn = document.getElementById('next-prompt-btn');
+        const prevPromptBtn = document.getElementById('prev-prompt-btn');
+        const hudOverlay = document.getElementById('gesture-hud-overlay');
+        const hudCurrentGesture = document.getElementById('hud-current-gesture');
+
+        // --- Engine Processing State Configuration ---
+        let recognizer;
+        let webcamRunning = false;
+        let lastVideoTime = -1;
+        let history = [];
+        let cooldown = 0;
+        const REQUIRED_FRAMES = 5; // Direct matching filter constraint
+        let logsMemory = [];
+
+        // --- Full Vector Prompts Engine Definition (Matches gesture-groups.js fully) ---
+        const PROMPT_POOL = [
+            { label: "1 Finger UP ☝️", pattern: "hand_1_up" },
+            { label: "2 Fingers UP ✌️", pattern: "hand_2_up" },
+            { label: "3 Fingers UP 🤟", pattern: "hand_3_up" },
+            { label: "4 Fingers UP 🖖", pattern: "hand_4_up" },
+            { label: "5 Fingers UP 🖐️", pattern: "hand_5_up" },
+            { label: "1 Finger DOWN 👇", pattern: "hand_1_down" },
+            { label: "2 Fingers DOWN", pattern: "hand_2_down" },
+            { label: "3 Fingers DOWN", pattern: "hand_3_down" },
+            { label: "4 Fingers DOWN", pattern: "hand_4_down" },
+            { label: "5 Fingers DOWN", pattern: "hand_5_down" },
+            { label: "1 Finger LEFT 👈", pattern: "hand_1_left" },
+            { label: "2 Fingers LEFT", pattern: "hand_2_left" },
+            { label: "3 Fingers LEFT", pattern: "hand_3_left" },
+            { label: "4 Fingers LEFT", pattern: "hand_4_left" },
+            { label: "5 Fingers LEFT", pattern: "hand_5_left" },
+            { label: "1 Finger RIGHT 👉", pattern: "hand_1_right" },
+            { label: "2 Fingers RIGHT", pattern: "hand_2_right" },
+            { label: "3 Fingers RIGHT", pattern: "hand_3_right" },
+            { label: "4 Fingers RIGHT", pattern: "hand_4_right" },
+            { label: "5 Fingers RIGHT", pattern: "hand_5_right" },
+            { label: "Fist ✊", pattern: "hand_fist" }
+        ];
+        let currentPromptIndex = 0;
+
+        function updatePrompt() {
+            const active = PROMPT_POOL[currentPromptIndex];
+            directorPrompt.innerHTML = `Track Vector signature: <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 font-mono font-black">${active.label}</span>`;
+            streamLog(`Active bus pattern shift: ${active.pattern}`, "info");
+        }
+
+        nextPromptBtn.onclick = () => {
+            currentPromptIndex = (currentPromptIndex + 1) % PROMPT_POOL.length;
+            updatePrompt();
+        };
+
+        prevPromptBtn.onclick = () => {
+            currentPromptIndex = (currentPromptIndex - 1 + PROMPT_POOL.length) % PROMPT_POOL.length;
+            updatePrompt();
+        };
+
+        // --- Advanced Diagnostics Data Output Line Logger ---
+        function streamLog(msg, type = 'normal') {
+            const timestamp = new Date().toISOString().slice(11, 19);
+            const rawLine = `[${timestamp}] ${msg}`;
+            logsMemory.push(rawLine);
+
+            const row = document.createElement('div');
+            if (type === 'trigger') {
+                row.className = 'py-1.5 px-2 mb-1.5 rounded bg-emerald-950/40 text-emerald-400 font-bold border border-emerald-500/30 text-xs tracking-wide animate-pulse';
+            } else if (type === 'info') {
+                row.className = 'text-gray-600 text-[11px] italic pl-2 border-l-2 border-gray-800';
+            } else if (type === 'error') {
+                row.className = 'text-red-400 text-[11px] font-bold';
+            } else {
+                row.className = 'text-gray-400 text-[11px]';
+            }
+            row.textContent = rawLine;
+            logContainer.prepend(row);
+        }
+
+        clearLogBtn.onclick = () => {
+            logContainer.innerHTML = '<div class="text-gray-700 text-xs italic mt-auto border-t border-gray-900/30 pt-2">Logs flushed. Hardware running...</div>';
+            logsMemory = [];
+        };
+
+        copyLogBtn.onclick = async () => {
+            if (logsMemory.length === 0) return;
+            const textToCopy = logsMemory.join('\n');
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                showSuccess();
+            } catch (err) {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed"; opacity=0; document.body.appendChild(textArea); textArea.select();
+                document.execCommand('copy'); document.body.removeChild(textArea); showSuccess();
+            }
+            function showSuccess() {
+                const prev = copyLogBtn.innerHTML; copyLogBtn.innerHTML = "FLUSHED TO CLIPBOARD ✔️";
+                setTimeout(() => copyLogBtn.innerHTML = prev, 1500);
+            }
+        };
+
+        // --- AI Model Loader Pipeline Initialization ---
+        async function initAI() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks("./wasm");
+                recognizer = await GestureRecognizer.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: TASK_FILE_PATH,
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+                
+                statusBadge.textContent = "CORE ONLINE";
+                statusBadge.className = "bg-emerald-950 text-emerald-400 px-3 py-1 rounded border border-emerald-500/40 text-xs font-mono font-bold tracking-widest";
+                startBtn.disabled = false;
+                streamLog("OmniGesture Task Module running successfully.", "normal");
+                updatePrompt();
+                
+            } catch (e) {
+                streamLog(`FALLBACK CONFIG: Native initialization failed. Checking standard task assets -> ${e.message}`, "error");
+                statusBadge.textContent = "CORE FAULT";
+            }
+        }
+
+        // --- Camera Feed State Hooks ---
+        startBtn.onclick = () => {
+            if (!recognizer) return;
+            if (webcamRunning) {
+                webcamRunning = false;
+                if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+                startBtn.innerText = "BOOT CAMERA PIPELINE";
+                startBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800";
+                hudOverlay.classList.add('hidden');
+                streamLog("Video processing pipeline closed.", "info");
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640, height: 480 } })
+                .then((stream) => {
+                    video.srcObject = stream;
+                    video.addEventListener("loadeddata", () => {
+                        webcamRunning = true;
+                        hudOverlay.classList.remove('hidden');
+                        startBtn.innerText = "SHUTDOWN RAW STREAM";
+                        startBtn.className = "w-full bg-red-950 hover:bg-red-900 border border-red-500/40 text-red-400 font-black tracking-widest py-4 rounded-xl text-sm transition-all";
+                        streamLog("Hardware connection linked. Stream analyzer active.", "normal");
+                        predictWebcam();
+                    });
+                })
+                .catch((err) => streamLog(`STREAM BOOT EXCEPTION: ${err.message}`, "error"));
+        };
+
+        // --- Production Arithmetic Calculations ---
+        function countFingers(lm) {
+            let count = 0;
+            if (lm[4].x < lm[3].x && lm[4].x < lm[2].x) count++; // Thumb extraction
+            const w = lm[0]; 
+            const isExtended = (tip, pip) => {
+                return Math.hypot(tip.x - w.x, tip.y - w.y) > (Math.hypot(pip.x - w.x, pip.y - w.y) * 1.15); 
+            };
+            if (isExtended(lm[8], lm[6])) count++;   
+            if (isExtended(lm[12], lm[10])) count++; 
+            if (isExtended(lm[16], lm[14])) count++; 
+            if (isExtended(lm[20], lm[18])) count++; 
+            return Math.min(5, count);
+        }
+
+        function drawSkeleton(ctx, landmarks, w, h) {
+            const connectors = [
+                [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
+                [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16],
+                [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
+            ];
+            ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#059669";
+            for (const [start, end] of connectors) {
+                ctx.beginPath(); ctx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
+                ctx.lineTo(landmarks[end].x * w, landmarks[end].y * h); ctx.stroke();
+            }
+            ctx.fillStyle = "#ffffff";
+            for (const p of landmarks) {
+                ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 2.5, 0, 2 * Math.PI); ctx.fill();
+            }
+        }
+
+        // --- Hardware Execution Predictive Frame Analysis Loop ---
+        function predictWebcam() {
+            if (!webcamRunning) return;
+
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                try {
+                    const results = recognizer.recognizeForVideo(video, performance.now());
+                    canvasCtx.clearRect(0, 0, w, h);
+                    if (cooldown > 0) cooldown--;
+
+                    let currentGesture = "none";
+
+                    if (results.landmarks && results.landmarks.length > 0) {
+                        const lm = results.landmarks[0];
+                        drawSkeleton(canvasCtx, lm, w, h);
+
+                        const fingers = countFingers(lm);
+                        const dx = lm[9].x - lm[0].x;
+                        const dy = lm[9].y - lm[0].y;
+                        let dir = "";
+                        
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            dir = dx < 0 ? "right" : "left"; 
+                        } else {
+                            dir = dy < 0 ? "up" : "down"; 
+                        }
+                        currentGesture = (fingers === 0) ? "hand_fist" : `hand_${fingers}_${dir}`;
+                    }
+
+                    hudCurrentGesture.textContent = currentGesture;
+                    history.push(currentGesture);
+                    if (history.length > REQUIRED_FRAMES) history.shift();
+
+                    if (history.length === REQUIRED_FRAMES && history.every(v => v === currentGesture) && currentGesture !== "none" && cooldown <= 0) {
+                        const targetPattern = PROMPT_POOL[currentPromptIndex].pattern;
+                        if (currentGesture === targetPattern) {
+                            streamLog(`⚡ INTERRUPT RECOGNIZED: Verified Signature [ ${currentGesture} ]`, 'trigger');
+                            document.body.style.backgroundColor = '#022c22';
+                            setTimeout(() => document.body.style.backgroundColor = '#05050a', 100);
+                            cooldown = 30; history = [];
+                            nextPromptBtn.click();
+                        }
+                    }
+                } catch (e) {
+                    streamLog(`Frame Pipeline Intercept Fail: ${e.message}`, "error");
+                }
+            }
+            requestAnimationFrame(predictWebcam);
+        }
+
+        initAI();
+    </script>
+</body>
+</html>
