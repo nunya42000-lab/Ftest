@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus OmniGesture Core Engine Lab</title>
+    <title>Nexus Gesture Batch Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #05050a; color: #f3f4f6; touch-action: none; overscroll-behavior: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .mirror { transform: scaleX(-1); }
+        .zoom-wrapper { transition: transform 0.3s ease; transform-origin: top center; }
     </style>
 </head>
 <body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
@@ -18,78 +19,100 @@
     <header class="flex justify-between items-center mb-4 flex-shrink-0 border-b border-emerald-950/40 pb-3">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500">
-                NEXUS GESTURE MATRIX & CALIBRATION LAB
+                NEXUS BATCH CALIBRATION
             </h1>
-            <p class="text-xs text-gray-500 font-mono tracking-wider">LIVE ENGINE TESTING & SKELETAL SNAPSHOT EXTRACTOR</p>
+            <p class="text-xs text-gray-500 font-mono tracking-wider">OMNIGESTURE DATASET GENERATOR</p>
         </div>
-        <div id="vision-status-badge" class="bg-emerald-950/30 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 text-xs font-mono font-bold tracking-widest animate-pulse">
-            LOADING MATRIX CORE...
+        <div class="flex gap-3 items-center">
+            <select id="camera-zoom" class="bg-gray-900 border border-gray-700 text-emerald-400 text-xs font-mono font-bold rounded px-2 py-1 outline-none focus:border-emerald-500 transition-all">
+                <option value="1">ZOOM: 100%</option>
+                <option value="0.9">ZOOM: 90%</option>
+                <option value="0.7">ZOOM: 70%</option>
+                <option value="0.5">ZOOM: 50%</option>
+            </select>
+            <div id="vision-status-badge" class="bg-emerald-950/30 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 text-xs font-mono font-bold tracking-widest animate-pulse">
+                LOADING MATRIX...
+            </div>
         </div>
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 pb-4">
+    <main class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 pb-4 relative">
         
-        <!-- Video Feed Frame Block -->
-        <div class="flex flex-col min-h-0 space-y-4">
-            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-900 shadow-2xl flex-shrink-0">
-                <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror" autoplay playsinline></video>
-                <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
+        <!-- Setup Phase: Queue Editor (Overlayed until started) -->
+        <div id="setup-panel" class="absolute inset-0 z-40 bg-black flex flex-col gap-4 pb-4">
+            <div class="bg-gray-950 p-4 rounded-xl border border-emerald-900/50 shadow-lg flex-1 flex flex-col min-h-0">
+                <div class="flex justify-between items-center mb-2 flex-shrink-0">
+                    <span class="text-sm font-mono text-emerald-400 font-bold tracking-widest">GESTURE QUEUE EDITOR</span>
+                    <span class="text-[10px] text-gray-500 font-mono">ADD/REMOVE LINE BY LINE</span>
+                </div>
+                <textarea id="queue-editor" class="flex-1 bg-black text-emerald-300 p-4 rounded-lg border border-gray-800 font-mono text-sm focus:border-emerald-500 outline-none transition-colors resize-none whitespace-pre no-scrollbar shadow-inner"></textarea>
+            </div>
+            <button id="start-batch-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-5 rounded-xl text-lg border-b-4 border-emerald-800 shadow-xl">
+                LOCK QUEUE & BOOT CAMERA PIPELINE
+            </button>
+        </div>
+
+        <!-- Video & Controls Block -->
+        <div class="flex flex-col min-h-0 space-y-4 lg:w-1/2 flex-shrink-0">
+            <!-- Active Target Display -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 flex justify-between items-center shadow-md">
+                <div class="space-y-1">
+                    <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-500">Current Target Pose</span>
+                    <h2 id="active-target-label" class="text-xl font-black tracking-wide text-white">--</h2>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] uppercase font-mono tracking-widest text-gray-500">Progress</span>
+                    <h2 id="queue-progress" class="text-lg font-mono font-bold text-gray-300">0 / 0</h2>
+                </div>
+            </div>
+
+            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-900 shadow-2xl flex-shrink-0 flex items-center justify-center">
+                <div id="video-wrapper" class="relative w-full h-full zoom-wrapper">
+                    <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror" autoplay playsinline></video>
+                    <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
+                </div>
                 
                 <!-- Live Engine HUD -->
-                <div id="gesture-hud-overlay" class="absolute bottom-4 left-4 z-20 bg-black/80 px-4 py-2 rounded-lg border border-emerald-500/30 font-mono text-xs hidden shadow-lg">
-                    Engine Output: <span id="hud-current-gesture" class="text-emerald-400 font-black tracking-widest text-sm">none</span>
+                <div id="gesture-hud-overlay" class="absolute bottom-4 left-4 z-20 bg-black/80 px-4 py-2 rounded-lg border border-emerald-500/30 font-mono text-xs shadow-lg">
+                    Engine Says: <span id="hud-current-gesture" class="text-emerald-400 font-black tracking-widest text-sm">none</span>
                 </div>
 
-                <!-- Countdown Overlay for Snapshots -->
+                <!-- Countdown Overlay -->
                 <div id="countdown-overlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/60 hidden backdrop-blur-sm">
                     <span id="countdown-text" class="text-7xl font-black text-emerald-400 animate-ping">3</span>
                 </div>
             </div>
 
-            <!-- Hardware Toggle -->
-            <button id="start-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-800 disabled:opacity-40 disabled:pointer-events-none" disabled>
-                BOOT CAMERA PIPELINE
-            </button>
-
-            <!-- Calibration Snapshot Tool -->
-            <div class="bg-gray-950 p-4 rounded-xl border border-emerald-900/50 shadow-lg space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-mono text-emerald-400 font-bold tracking-widest">SNAPSHOT TOOL</span>
-                    <span class="text-[10px] text-gray-500 font-mono">EXTRACT RAW (X,Y,Z)</span>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" id="gesture-label" placeholder="e.g. custom_peace_sign" class="flex-1 bg-black text-white px-3 py-2 rounded-lg border border-gray-800 font-mono text-sm focus:border-emerald-500 outline-none transition-colors">
-                    <button id="snapshot-btn" class="bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-lg font-bold font-mono text-xs transition-all border border-emerald-500 shadow-lg">
-                        📸 CAPTURE (3s)
-                    </button>
-                </div>
+            <!-- Action Controls -->
+            <div class="flex gap-2">
+                <button id="skip-btn" class="flex-1 bg-gray-900 hover:bg-gray-800 active:scale-95 text-gray-400 font-black tracking-widest py-4 rounded-xl text-sm border border-gray-800 transition-all">
+                    ⏭️ SKIP
+                </button>
+                <button id="snapshot-btn" class="flex-[2] bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-black tracking-widest py-4 rounded-xl text-sm border-b-4 border-emerald-900 transition-all shadow-lg flex justify-center items-center gap-2">
+                    <span>📸 CAPTURE (3s)</span>
+                </button>
             </div>
         </div>
 
         <!-- System Logs & Export Console -->
-        <div class="flex flex-col min-h-0 border border-gray-900 bg-black rounded-xl p-4 shadow-xl">
+        <div class="flex flex-col min-h-0 border border-gray-900 bg-black rounded-xl p-4 shadow-xl lg:w-1/2">
             <div class="flex items-center justify-between pb-3 border-b border-gray-900 mb-3 flex-shrink-0">
                 <div class="flex items-center gap-2">
                     <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
-                    <span class="text-xs font-mono font-bold tracking-wider text-gray-400">DATA EXPORT BUFFER</span>
+                    <span class="text-xs font-mono font-bold tracking-wider text-gray-400">DATASET MASTER JSON</span>
                 </div>
                 <div class="flex gap-2">
-                    <button id="clear-export-btn" class="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 active:scale-95 text-[10px] font-mono font-bold text-gray-500 hover:text-gray-300 rounded border border-gray-800 transition-all">
-                        CLEAR
-                    </button>
-                    <button id="copy-export-btn" class="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 active:scale-95 text-[10px] font-mono font-bold text-emerald-400 hover:text-white rounded border border-emerald-900 transition-all shadow-md">
-                        COPY JSON DATA 📋
+                    <button id="copy-export-btn" class="px-5 py-2 bg-emerald-950/40 hover:bg-emerald-900/60 active:scale-95 text-[10px] font-mono font-bold text-emerald-400 hover:text-white rounded border border-emerald-800 transition-all shadow-md">
+                        COPY ALL JSON 📋
                     </button>
                 </div>
             </div>
             
-            <!-- JSON Output Area -->
-            <textarea id="json-export" class="flex-1 bg-gray-950 border border-gray-900 rounded-lg p-3 font-mono text-[10px] text-emerald-500/80 resize-none outline-none focus:border-emerald-900 transition-all" readonly placeholder="// Extracted 21-point skeletal arrays will appear here..."></textarea>
+            <textarea id="json-export" class="flex-1 bg-gray-950 border border-gray-900 rounded-lg p-3 font-mono text-[10px] text-emerald-500/80 resize-none outline-none focus:border-emerald-900 transition-all" readonly placeholder="// Complete batch dataset will compile here..."></textarea>
             
-            <!-- Standard Log -->
-            <div id="log-container" class="h-28 overflow-y-auto font-mono text-[10px] space-y-1 pr-1 mt-3 border-t border-gray-900/50 pt-2 no-scrollbar flex flex-col-reverse">
-                <div class="text-gray-700 italic mt-auto">Hardware execution loop ready...</div>
+            <div id="log-container" class="h-24 overflow-y-auto font-mono text-[10px] space-y-1 pr-1 mt-3 border-t border-gray-900/50 pt-2 no-scrollbar flex flex-col-reverse">
+                <div class="text-gray-700 italic mt-auto">Hardware ready. Configure queue to begin...</div>
             </div>
         </div>
     </main>
@@ -97,36 +120,55 @@
     <script type="module">
         import { FilesetResolver, GestureRecognizer } from "./wasm/vision_bundle.js";
 
-        // Provide file path fallback logic for offline execution
         const TASK_FILE_PATH = "./wasm/gesture_recognizer.task";
 
+        // --- Default Pre-Made Queue ---
+        const DEFAULT_QUEUE = [
+            "hand_1_up ☝️", "hand_2_up ✌️", "hand_3_up 🤟", "hand_4_up 🖖", "hand_5_up 🖐️",
+            "hand_1_down 👇", "hand_2_down ✌️ (Down)", "hand_3_down 🤟 (Down)", "hand_4_down 🖖 (Down)", "hand_5_down 🖐️ (Down)",
+            "hand_1_left 👈", "hand_2_left ✌️ (Left)", "hand_3_left 🤟 (Left)", "hand_4_left 🖖 (Left)", "hand_5_left 🖐️ (Left)",
+            "hand_1_right 👉", "hand_2_right ✌️ (Right)", "hand_3_right 🤟 (Right)", "hand_4_right 🖖 (Right)", "hand_5_right 🖐️ (Right)",
+            "hand_fist ✊"
+        ];
+
         // --- DOM Elements ---
+        const queueEditor = document.getElementById('queue-editor');
+        const setupPanel = document.getElementById('setup-panel');
+        const startBatchBtn = document.getElementById('start-batch-btn');
+        const videoWrapper = document.getElementById('video-wrapper');
+        const cameraZoom = document.getElementById('camera-zoom');
+        
+        const activeTargetLabel = document.getElementById('active-target-label');
+        const queueProgress = document.getElementById('queue-progress');
+        const skipBtn = document.getElementById('skip-btn');
+        const snapshotBtn = document.getElementById('snapshot-btn');
+        
         const video = document.getElementById('webcam');
         const canvasElement = document.getElementById('output_canvas');
         const canvasCtx = canvasElement.getContext('2d');
-        const startBtn = document.getElementById('start-btn');
         const statusBadge = document.getElementById('vision-status-badge');
         const logContainer = document.getElementById('log-container');
-        
-        const hudOverlay = document.getElementById('gesture-hud-overlay');
         const hudCurrentGesture = document.getElementById('hud-current-gesture');
-
-        const snapshotBtn = document.getElementById('snapshot-btn');
-        const gestureLabel = document.getElementById('gesture-label');
+        
         const jsonExport = document.getElementById('json-export');
         const copyExportBtn = document.getElementById('copy-export-btn');
-        const clearExportBtn = document.getElementById('clear-export-btn');
         const countdownOverlay = document.getElementById('countdown-overlay');
         const countdownText = document.getElementById('countdown-text');
 
-        // --- Engine State Configuration ---
+        // --- Batch Engine State ---
         let recognizer;
         let webcamRunning = false;
         let lastVideoTime = -1;
         let capturePending = false;
-        let snapshots = [];
+        
+        let batchQueue = [];
+        let currentIndex = 0;
+        let dataset = [];
 
-        // --- Core Logging Pipeline ---
+        // Initialize Textarea
+        queueEditor.value = DEFAULT_QUEUE.join("\n");
+
+        // --- Logging & Export ---
         function streamLog(msg, type = 'normal') {
             const timestamp = new Date().toISOString().slice(11, 19);
             const row = document.createElement('div');
@@ -137,12 +179,48 @@
             logContainer.prepend(row);
         }
 
-        // --- Calibration Snapshot Trigger Logic ---
+        copyExportBtn.onclick = async () => {
+            if (dataset.length === 0) return;
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(dataset, null, 2));
+                const prev = copyExportBtn.innerHTML; 
+                copyExportBtn.innerHTML = "COPIED TO CLIPBOARD! ✔️";
+                setTimeout(() => copyExportBtn.innerHTML = prev, 1500);
+            } catch (err) { alert("Clipboard blocked. Select text manually."); }
+        };
+
+        // --- Digital Zoom Handler ---
+        cameraZoom.addEventListener('change', (e) => {
+            const scaleVal = e.target.value;
+            videoWrapper.style.transform = `scale(${scaleVal})`;
+        });
+
+        // --- Batch Sequence Logic ---
+        function loadCurrentTarget() {
+            if (currentIndex >= batchQueue.length) {
+                activeTargetLabel.textContent = "🎉 BATCH COMPLETE";
+                activeTargetLabel.className = "text-xl font-black tracking-wide text-yellow-400";
+                queueProgress.textContent = `${currentIndex} / ${batchQueue.length}`;
+                snapshotBtn.disabled = true;
+                skipBtn.disabled = true;
+                streamLog("Queue completely parsed. Ready for export.", "trigger");
+                return;
+            }
+            activeTargetLabel.textContent = batchQueue[currentIndex];
+            queueProgress.textContent = `${currentIndex + 1} / ${batchQueue.length}`;
+        }
+
+        skipBtn.onclick = () => {
+            streamLog(`Skipped: ${batchQueue[currentIndex]}`, "info");
+            currentIndex++;
+            loadCurrentTarget();
+        };
+
         snapshotBtn.onclick = () => {
-            if (!webcamRunning) return streamLog("Camera hardware offline.", "error");
-            const label = gestureLabel.value.trim() || "unlabeled_pose";
+            if (!webcamRunning) return streamLog("Camera offline.", "error");
             
             snapshotBtn.disabled = true;
+            skipBtn.disabled = true;
             countdownOverlay.classList.remove('hidden');
             
             let count = 3;
@@ -155,29 +233,37 @@
                 } else {
                     clearInterval(timer);
                     countdownOverlay.classList.add('hidden');
-                    capturePending = label; // Arm the trap for the next video frame
-                    snapshotBtn.disabled = false;
+                    capturePending = batchQueue[currentIndex]; // Arm trap with target name
                 }
             }, 1000);
         };
 
-        clearExportBtn.onclick = () => {
-            snapshots = [];
-            jsonExport.value = "";
-            streamLog("Export buffer flushed.", "info");
-        };
+        function processSuccessfulCapture(landmarkData, engineRead) {
+            const snapshotData = {
+                target_label: capturePending,
+                engine_interpretation: engineRead,
+                capture_mode: "static_frame", // Tagged for future sequence architectural planning
+                timestamp: Date.now(),
+                landmarks: landmarkData.map(p => ({ x: p.x.toFixed(4), y: p.y.toFixed(4), z: p.z.toFixed(4) }))
+            };
+            
+            dataset.push(snapshotData);
+            jsonExport.value = JSON.stringify(dataset, null, 2);
+            jsonExport.scrollTop = jsonExport.scrollHeight; 
+            
+            streamLog(`SAVED: [${capturePending}]`, 'trigger');
+            document.body.style.backgroundColor = '#ffffff'; 
+            setTimeout(() => document.body.style.backgroundColor = '#05050a', 150);
+            
+            capturePending = false; 
+            currentIndex++;
+            loadCurrentTarget();
+            
+            snapshotBtn.disabled = false;
+            skipBtn.disabled = false;
+        }
 
-        copyExportBtn.onclick = async () => {
-            if (snapshots.length === 0) return;
-            try {
-                await navigator.clipboard.writeText(JSON.stringify(snapshots, null, 2));
-                const prev = copyExportBtn.innerHTML; 
-                copyExportBtn.innerHTML = "COPIED TO CLIPBOARD! ✔️";
-                setTimeout(() => copyExportBtn.innerHTML = prev, 1500);
-            } catch (err) { alert("Clipboard blocked. Select text manually."); }
-        };
-
-        // --- AI Model Loader Pipeline Initialization ---
+        // --- Camera & AI Initialization ---
         async function initAI() {
             try {
                 const vision = await FilesetResolver.forVisionTasks("./wasm");
@@ -188,88 +274,83 @@
                 
                 statusBadge.textContent = "CORE ONLINE";
                 statusBadge.className = "bg-emerald-950 text-emerald-400 px-3 py-1 rounded border border-emerald-500/40 text-xs font-mono font-bold tracking-widest";
-                startBtn.disabled = false;
-                streamLog("Skeletal Task Module running.", "normal");
-                
+                streamLog("Skeletal Module loaded.", "normal");
             } catch (e) {
                 streamLog(`INIT ERROR: ${e.message}`, "error");
                 statusBadge.textContent = "CORE FAULT";
             }
         }
 
-        // --- Camera Feed State Hooks ---
-        startBtn.onclick = () => {
-            if (!recognizer) return;
-            if (webcamRunning) {
-                webcamRunning = false;
-                if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-                startBtn.innerText = "BOOT CAMERA PIPELINE";
-                startBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl text-sm border-b-4 border-emerald-800";
-                hudOverlay.classList.add('hidden');
-                return;
-            }
+        startBatchBtn.onclick = () => {
+            // Parse queue
+            const rawText = queueEditor.value.trim();
+            if (!rawText) return alert("Queue is empty!");
+            batchQueue = rawText.split('\n').map(line => line.trim()).filter(line => line !== "");
+            
+            setupPanel.classList.add('hidden'); // Hide editor
+            loadCurrentTarget();
 
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640, height: 480 } })
+            // Force wide field of view request via high resolution constraints
+            const constraints = { 
+                video: { 
+                    facingMode: "user", 
+                    width: { ideal: 1920 }, 
+                    height: { ideal: 1080 } 
+                } 
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then((stream) => {
                     video.srcObject = stream;
                     video.addEventListener("loadeddata", () => {
                         webcamRunning = true;
-                        hudOverlay.classList.remove('hidden');
-                        startBtn.innerText = "SHUTDOWN RAW STREAM";
-                        startBtn.className = "w-full bg-red-950 text-red-400 font-black py-4 rounded-xl text-sm border border-red-500/40";
+                        streamLog("Batch pipeline active.", "normal");
                         predictWebcam();
                     });
                 })
                 .catch((err) => streamLog(`STREAM EXCEPTION: ${err.message}`, "error"));
         };
 
-        // --- Upgraded Omni-Directional Finger Counter (Fixes Thumb Off-By-One) ---
+        // --- Finger Math & Drawing ---
         function countFingers(lm) {
             let count = 0;
             const wrist = lm[0]; 
-            
-            // 1. Standard Fingers: Is the tip further from the wrist than the middle knuckle?
             const isExtended = (tipIdx, pipIdx) => {
                 const tipDist = Math.hypot(lm[tipIdx].x - wrist.x, lm[tipIdx].y - wrist.y);
                 const pipDist = Math.hypot(lm[pipIdx].x - wrist.x, lm[pipIdx].y - wrist.y);
                 return tipDist > (pipDist * 1.2); 
             };
 
-            if (isExtended(8, 6)) count++;   // Index
-            if (isExtended(12, 10)) count++; // Middle
-            if (isExtended(16, 14)) count++; // Ring
-            if (isExtended(20, 18)) count++; // Pinky
+            if (isExtended(8, 6)) count++;   
+            if (isExtended(12, 10)) count++; 
+            if (isExtended(16, 14)) count++; 
+            if (isExtended(20, 18)) count++; 
 
-            // 2. Thumb Logic: Compares thumb tip to index base instead of strict X-axis.
             const thumbTipToIndexBase = Math.hypot(lm[4].x - lm[5].x, lm[4].y - lm[5].y);
             const thumbKnuckleToIndexBase = Math.hypot(lm[2].x - lm[5].x, lm[2].y - lm[5].y);
-            
-            if (thumbTipToIndexBase > (thumbKnuckleToIndexBase * 1.3)) {
-                count++;
-            }
+            if (thumbTipToIndexBase > (thumbKnuckleToIndexBase * 1.3)) count++;
 
             return count;
         }
 
-        // --- Production Visual Renderer ---
         function drawSkeleton(ctx, landmarks, w, h) {
             const connectors = [
                 [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
                 [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16],
                 [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
             ];
-            ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#059669";
+            ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.strokeStyle = "#059669";
             for (const [start, end] of connectors) {
                 ctx.beginPath(); ctx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
                 ctx.lineTo(landmarks[end].x * w, landmarks[end].y * h); ctx.stroke();
             }
             ctx.fillStyle = "#ffffff";
             for (const p of landmarks) {
-                ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 2.5, 0, 2 * Math.PI); ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3, 0, 2 * Math.PI); ctx.fill();
             }
         }
 
-        // --- Hardware Execution Predictive Frame Analysis Loop ---
+        // --- Hardware Execution Loop ---
         function predictWebcam() {
             if (!webcamRunning) return;
 
@@ -288,15 +369,13 @@
                         const lm = results.landmarks[0];
                         drawSkeleton(canvasCtx, lm, w, h);
 
-                        // --- 1. LIVE ENGINE EVALUATION ---
                         const fingers = countFingers(lm);
-                        const dx = lm[9].x - lm[0].x; // Middle finger base vs Wrist X
-                        const dy = lm[9].y - lm[0].y; // Middle finger base vs Wrist Y
+                        const dx = lm[9].x - lm[0].x; 
+                        const dy = lm[9].y - lm[0].y; 
                         let dir = "";
                         
-                        // Calculate primary vector direction
                         if (Math.abs(dx) > Math.abs(dy)) {
-                            dir = dx < 0 ? "right" : "left"; // Flipped for mirror mode
+                            dir = dx < 0 ? "right" : "left"; 
                         } else {
                             dir = dy < 0 ? "up" : "down"; 
                         }
@@ -304,34 +383,20 @@
                         const currentGesture = (fingers === 0) ? "hand_fist" : `hand_${fingers}_${dir}`;
                         hudCurrentGesture.textContent = currentGesture;
 
-                        // --- 2. SNAPSHOT EXTRACTION TRAP ---
                         if (capturePending !== false) {
-                            const snapshotData = {
-                                label: capturePending,
-                                engine_interpretation: currentGesture,
-                                timestamp: Date.now(),
-                                landmarks: lm.map(p => ({ x: p.x.toFixed(4), y: p.y.toFixed(4), z: p.z.toFixed(4) }))
-                            };
-                            
-                            snapshots.push(snapshotData);
-                            jsonExport.value = JSON.stringify(snapshots, null, 2);
-                            jsonExport.scrollTop = jsonExport.scrollHeight; // Auto-scroll
-                            
-                            streamLog(`SNAPSHOT SAVED: [${capturePending}]`, 'trigger');
-                            document.body.style.backgroundColor = '#ffffff'; // Screen flash
-                            setTimeout(() => document.body.style.backgroundColor = '#05050a', 150);
-                            
-                            capturePending = false; // Disarm trap
+                            processSuccessfulCapture(lm, currentGesture);
                         }
                     } else {
                         hudCurrentGesture.textContent = "none";
                         if (capturePending !== false) {
-                            streamLog(`SNAPSHOT FAILED: No hand detected in frame.`, 'error');
+                            streamLog(`CAPTURE FAILED: Hand lost from frame. Retry.`, 'error');
                             capturePending = false;
+                            snapshotBtn.disabled = false;
+                            skipBtn.disabled = false;
                         }
                     }
                 } catch (e) {
-                    streamLog(`Frame Analysis Pipeline Error: ${e.message}`, "error");
+                    streamLog(`Frame Analysis Error: ${e.message}`, "error");
                 }
             }
             requestAnimationFrame(predictWebcam);
