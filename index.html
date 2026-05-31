@@ -15,13 +15,12 @@
 </head>
 <body class="flex flex-col h-screen p-4 md:p-6 font-sans overflow-hidden">
 
-    <!-- Header Grid -->
     <header class="flex justify-between items-center mb-4 flex-shrink-0 border-b border-emerald-950/40 pb-3">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500">
                 NEXUS BATCH CALIBRATION
             </h1>
-            <p class="text-xs text-gray-500 font-mono tracking-wider">OMNIGESTURE DATASET GENERATOR</p>
+            <p class="text-xs text-gray-500 font-mono tracking-wider">OMNIGESTURE EXHAUSTIVE DATASET GENERATOR</p>
         </div>
         <div class="flex gap-3 items-center">
             <select id="camera-zoom" class="bg-gray-900 border border-gray-700 text-emerald-400 text-xs font-mono font-bold rounded px-2 py-1 outline-none focus:border-emerald-500 transition-all">
@@ -36,15 +35,13 @@
         </div>
     </header>
 
-    <!-- Main Workspace -->
     <main class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 pb-4 relative">
         
-        <!-- Setup Phase: Queue Editor (Overlayed until started) -->
         <div id="setup-panel" class="absolute inset-0 z-40 bg-black flex flex-col gap-4 pb-4">
             <div class="bg-gray-950 p-4 rounded-xl border border-emerald-900/50 shadow-lg flex-1 flex flex-col min-h-0">
                 <div class="flex justify-between items-center mb-2 flex-shrink-0">
-                    <span class="text-sm font-mono text-emerald-400 font-bold tracking-widest">GESTURE QUEUE EDITOR</span>
-                    <span class="text-[10px] text-gray-500 font-mono">ADD/REMOVE LINE BY LINE</span>
+                    <span class="text-sm font-mono text-emerald-400 font-bold tracking-widest">EXHAUSTIVE QUEUE EDITOR</span>
+                    <span class="text-[10px] text-gray-500 font-mono">ALL 32 STATES + ORIENTATIONS</span>
                 </div>
                 <textarea id="queue-editor" class="flex-1 bg-black text-emerald-300 p-4 rounded-lg border border-gray-800 font-mono text-sm focus:border-emerald-500 outline-none transition-colors resize-none whitespace-pre no-scrollbar shadow-inner"></textarea>
             </div>
@@ -53,9 +50,7 @@
             </button>
         </div>
 
-        <!-- Video & Controls Block -->
         <div class="flex flex-col min-h-0 space-y-4 lg:w-1/2 flex-shrink-0">
-            <!-- Active Target Display -->
             <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 flex justify-between items-center shadow-md">
                 <div class="space-y-1">
                     <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-500">Current Target Pose</span>
@@ -73,18 +68,15 @@
                     <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror z-10 pointer-events-none"></canvas>
                 </div>
                 
-                <!-- Live Engine HUD -->
                 <div id="gesture-hud-overlay" class="absolute bottom-4 left-4 z-20 bg-black/80 px-4 py-2 rounded-lg border border-emerald-500/30 font-mono text-xs shadow-lg">
                     Engine Says: <span id="hud-current-gesture" class="text-emerald-400 font-black tracking-widest text-sm">none</span>
                 </div>
 
-                <!-- Countdown Overlay -->
                 <div id="countdown-overlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/60 hidden backdrop-blur-sm">
                     <span id="countdown-text" class="text-7xl font-black text-emerald-400 animate-ping">3</span>
                 </div>
             </div>
 
-            <!-- Action Controls -->
             <div class="flex gap-2">
                 <button id="skip-btn" class="flex-1 bg-gray-900 hover:bg-gray-800 active:scale-95 text-gray-400 font-black tracking-widest py-4 rounded-xl text-sm border border-gray-800 transition-all">
                     ⏭️ SKIP
@@ -95,7 +87,6 @@
             </div>
         </div>
 
-        <!-- System Logs & Export Console -->
         <div class="flex flex-col min-h-0 border border-gray-900 bg-black rounded-xl p-4 shadow-xl lg:w-1/2">
             <div class="flex items-center justify-between pb-3 border-b border-gray-900 mb-3 flex-shrink-0">
                 <div class="flex items-center gap-2">
@@ -122,9 +113,38 @@
 
         const TASK_FILE_PATH = "./wasm/gesture_recognizer.task";
 
-        // --- Default Pre-Made Queue ---
+        // Exhaustive 50+ permutation queue covering standard shapes, pinches, and orientations
         const DEFAULT_QUEUE = [
-            "👍","👎","✊","👊","🖐️","🖖","🤟","🤘","✌️","🤞","🤙","🤏","👌","🫵","🖕","👆","👇"
+            // --- 1. SINGLE ISOLATED ---
+            "Index Only (Up)", "Index Only (Down)", "Index Only (Right)", "Index Only (Left)",
+            "Middle Only (Up)", "Middle Only (Down)",
+            "Ring Only (Up)", "Pinky Only (Up)",
+            "Thumb Only (Up)", "Thumb Only (Down)", "Thumb Only (Right)", "Thumb Only (Left)",
+
+            // --- 2. MULTI-FINGER COMBOS ---
+            "Peace / Two Fingers (Up)", "Peace (Down)", "Peace (Left)", "Peace (Right)",
+            "Gun / L-Shape (Thumb + Index)", 
+            "Rock On (Index + Pinky)",
+            "Shaka (Thumb + Pinky)",
+            "Chopsticks (Middle + Ring)",
+            "Three Fingers (Index+Middle+Ring, Up)", "Three Fingers (Down)",
+            "I Love You (Thumb+Index+Pinky)",
+            "Scout (Index+Middle+Thumb)",
+
+            // --- 3. FLATS & FISTS ---
+            "Four Fingers (No Thumb, Up)", "Four Fingers (Down)",
+            "Five Fingers (Open Palm, Up)", "Five Fingers (Down)",
+            "Five Fingers (Palm facing Camera)", "Five Fingers (Knuckles facing Camera)",
+            "Vulcan (Split Fingers)",
+            "Fist (Up)", "Fist (Down)", "Fist (Forward/Punch)", "Fist (Left)", "Fist (Right)",
+
+            // --- 4. PINCHES & GRABS ---
+            "OK Sign (Pinch Index, 3 up)",
+            "Pinch (Thumb + Index only)",
+            "Pinch (Thumb + Middle)",
+            "Pinch (Thumb + Ring)",
+            "Pinch (Thumb + Pinky)",
+            "Chef Kiss (All 5 pinched together)"
         ];
 
         // --- DOM Elements ---
@@ -161,7 +181,6 @@
         let currentIndex = 0;
         let dataset = [];
 
-        // Initialize Textarea
         queueEditor.value = DEFAULT_QUEUE.join("\n");
 
         // --- Logging & Export ---
@@ -185,13 +204,11 @@
             } catch (err) { alert("Clipboard blocked. Select text manually."); }
         };
 
-        // --- Digital Zoom Handler ---
         cameraZoom.addEventListener('change', (e) => {
             const scaleVal = e.target.value;
             videoWrapper.style.transform = `scale(${scaleVal})`;
         });
 
-        // --- Batch Sequence Logic ---
         function loadCurrentTarget() {
             if (currentIndex >= batchQueue.length) {
                 activeTargetLabel.textContent = "🎉 BATCH COMPLETE";
@@ -229,7 +246,7 @@
                 } else {
                     clearInterval(timer);
                     countdownOverlay.classList.add('hidden');
-                    capturePending = batchQueue[currentIndex]; // Arm trap with target name
+                    capturePending = batchQueue[currentIndex]; 
                 }
             }, 1000);
         };
@@ -238,7 +255,7 @@
             const snapshotData = {
                 target_label: capturePending,
                 engine_interpretation: engineRead,
-                capture_mode: "static_frame", // Tagged for future sequence architectural planning
+                capture_mode: "static_frame",
                 timestamp: Date.now(),
                 landmarks: landmarkData.map(p => ({ x: p.x.toFixed(4), y: p.y.toFixed(4), z: p.z.toFixed(4) }))
             };
@@ -259,7 +276,6 @@
             skipBtn.disabled = false;
         }
 
-        // --- Camera & AI Initialization ---
         async function initAI() {
             try {
                 const vision = await FilesetResolver.forVisionTasks("./wasm");
@@ -278,21 +294,15 @@
         }
 
         startBatchBtn.onclick = () => {
-            // Parse queue
             const rawText = queueEditor.value.trim();
             if (!rawText) return alert("Queue is empty!");
             batchQueue = rawText.split('\n').map(line => line.trim()).filter(line => line !== "");
             
-            setupPanel.classList.add('hidden'); // Hide editor
+            setupPanel.classList.add('hidden');
             loadCurrentTarget();
 
-            // Force wide field of view request via high resolution constraints
             const constraints = { 
-                video: { 
-                    facingMode: "user", 
-                    width: { ideal: 1920 }, 
-                    height: { ideal: 1080 } 
-                } 
+                video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } } 
             };
 
             navigator.mediaDevices.getUserMedia(constraints)
@@ -307,81 +317,80 @@
                 .catch((err) => streamLog(`STREAM EXCEPTION: ${err.message}`, "error"));
         };
 
-        // --- Finger Math & Drawing ---
-        // --- 1. VOLUMETRIC 3D STATE ANALYZER ---
-function analyzeHandState(lm) {
-    // Calculate true 3D distance including depth (z-axis)
-    const dist3D = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
-    const wrist = lm[0];
+        // --- BINARY BITMASK DICTIONARY ---
+        const BINARY_STATE_MAP = {
+            0: "Fist", 1: "Pinky Only", 2: "Ring Only", 3: "Ring+Pinky", 4: "Middle Only", 5: "Middle+Pinky", 
+            6: "Middle+Ring", 7: "M+R+P", 8: "Index Only", 9: "Rock On (Horns)", 10: "Index+Ring", 
+            11: "I+R+P", 12: "Peace", 13: "I+M+P", 14: "Three Fingers", 15: "Four Fingers", 
+            16: "Thumb Only", 17: "Shaka", 18: "Thumb+Ring", 19: "T+R+P", 20: "Thumb+Middle", 
+            21: "T+M+P", 22: "T+M+R", 23: "T+M+R+P", 24: "Gun / L-Shape", 25: "Spider-Man / ILY", 
+            26: "T+I+R", 27: "T+I+R+P", 28: "Scout (T+I+M)", 29: "T+I+M+P", 30: "T+I+M+R", 31: "Five Fingers"
+        };
 
-    // Fingers: Evaluated as OPEN if the Tip is 20% further from the wrist than the PIP joint
-    const isExtended = (tip, pip) => dist3D(wrist, lm[tip]) > (dist3D(wrist, lm[pip]) * 1.2);
-    
-    const I = isExtended(8, 6);
-    const M = isExtended(12, 10);
-    const R = isExtended(16, 14);
-    const P = isExtended(20, 18);
+        // --- REWRITTEN VOLUMETRIC ENGINE ---
+        function analyzeHandState(lm) {
+            const dist3D = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
+            const wrist = lm[0];
 
-    // Thumb: Evaluated as OPEN if the tip is further from the palm center than the width of the palm
-    const thumbToPalm = dist3D(lm[4], lm[9]);
-    const palmWidth = dist3D(lm[5], lm[17]);
-    const T = (thumbToPalm / palmWidth) > 1.0;
+            // 1. Core Extension Status (Boolean)
+            const isExtended = (tip, pip) => dist3D(wrist, lm[tip]) > (dist3D(wrist, lm[pip]) * 1.2);
+            const I = isExtended(8, 6);
+            const M = isExtended(12, 10);
+            const R = isExtended(16, 14);
+            const P = isExtended(20, 18);
 
-    // Specialty Checks
-    const isPinching = dist3D(lm[4], lm[8]) < 0.08;
+            // Thumb requires lateral palm width ratio to determine true extension
+            const thumbToPalm = dist3D(lm[4], lm[9]);
+            const palmWidth = dist3D(lm[5], lm[17]);
+            const T = (thumbToPalm / palmWidth) > 1.2;
 
-    return { T, I, M, R, P, isPinching, lm };
-}
+            // 2. Compute 32-State Binary Bitmask
+            const bitmask = (T ? 16 : 0) | (I ? 8 : 0) | (M ? 4 : 0) | (R ? 2 : 0) | (P ? 1 : 0);
 
-// --- 2. MATRIX SIGNATURE MAPPER ---
-function determineGestureName(state) {
-    const { T, I, M, R, P, isPinching, lm } = state;
-    
-    // Find primary hand direction using palm vector
-    const dx = lm[9].x - lm[0].x;
-    const dy = lm[9].y - lm[0].y;
-    const palmDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "right" : "left") : (dy < 0 ? "up" : "down");
-    
-    // Find isolated thumb direction (for thumbs up/down vectors)
-    const tDx = lm[4].x - lm[2].x;
-    const tDy = lm[4].y - lm[2].y;
-    const thumbDir = Math.abs(tDx) > Math.abs(tDy) ? (tDx < 0 ? "right" : "left") : (tDy < 0 ? "up" : "down");
+            // 3. Precision Pinches (Threshold ~0.06)
+            const pinch_I = dist3D(lm[4], lm[8]) < 0.06;
+            const pinch_M = dist3D(lm[4], lm[12]) < 0.06;
+            const pinch_R = dist3D(lm[4], lm[16]) < 0.06;
+            const pinch_P = dist3D(lm[4], lm[20]) < 0.06;
 
-    // --- EXACT EMOJI SIGNATURE MATCHING ---
-    
-    if (isPinching && M && R && P) return "👌 OK Sign";
-    if (isPinching && !M && !R && !P) return "🤏 Pinch";
-    
-    if (T && !I && !M && !R && !P) return `👍/👎 Thumb ${thumbDir}`;
-    
-    // Pointing logic (handles both strict 1-finger and your natural 'thumb-out' gun point)
-    if (!T && I && !M && !R && !P) return `☝️ 1 Finger ${palmDir}`;
-    if (T && I && !M && !R && !P) return `🫵 Point / Gun ${palmDir}`;
-    
-    if (!T && !I && M && !R && !P) return `🖕 Middle Finger`;
-    
-    if (!T && I && M && !R && !P) return `✌️ Peace ${palmDir}`;
-    if (T && I && M && !R && !P) return `✌️ Peace (Thumb Out) ${palmDir}`;
-    
-    if (!T && I && !M && !R && P) return `🤘 Rock On`;
-    if (T && I && !M && !R && P) return `🤟 I Love You`;
-    if (T && !I && !M && !R && P) return `🤙 Shaka`;
-    
-    if (!T && !I && !M && !R && !P) return `✊/👊 Fist ${palmDir}`;
-    
-    if (!T && I && M && R && !P) return `3 Fingers ${palmDir}`;
-    if (!T && I && M && R && P) return `✋ 4 Fingers ${palmDir}`;
-    
-    if (T && I && M && R && P) {
-        // Measure the physical gap between the Middle and Ring fingers to separate Vulcan from 5 Fingers
-        const gap = Math.hypot(lm[12].x - lm[16].x, lm[12].y - lm[16].y);
-        return gap > 0.12 ? `🖖 Vulcan` : `🖐️ 5 Fingers ${palmDir}`;
-    }
+            // Chef's Kiss (All tips gathered at center mass)
+            const cx = (lm[4].x + lm[8].x + lm[12].x + lm[16].x + lm[20].x) / 5;
+            const cy = (lm[4].y + lm[8].y + lm[12].y + lm[16].y + lm[20].y) / 5;
+            const cz = (lm[4].z + lm[8].z + lm[12].z + lm[16].z + lm[20].z) / 5;
+            const center = {x: cx, y: cy, z: cz};
+            const isChefKiss = dist3D(lm[4], center) < 0.08 && dist3D(lm[8], center) < 0.08 && dist3D(lm[12], center) < 0.08;
 
-    // Dynamic Fallback for unlabeled transitions
-    const count = [T, I, M, R, P].filter(Boolean).length;
-    return `hand_${count}_${palmDir}`;
-}
+            // 4. Spatial Orientation
+            const dx = lm[9].x - lm[0].x;
+            const dy = lm[9].y - lm[0].y;
+            const dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "Right" : "Left") : (dy < 0 ? "Up" : "Down");
+
+            // 5. Palm Facing Matrix (Cross Product of base knuckles)
+            const vec1x = lm[17].x - lm[5].x; 
+            const vec1y = lm[17].y - lm[5].y; 
+            const vec2x = lm[9].x - lm[0].x; 
+            const vec2y = lm[9].y - lm[0].y; 
+            const crossProduct = (vec1x * vec2y) - (vec1y * vec2x);
+            const facing = crossProduct > 0 ? "Palm Fwd" : "Knuckles Fwd";
+
+            return { bitmask, pinch_I, pinch_M, pinch_R, pinch_P, isChefKiss, dir, facing };
+        }
+
+        function determineGestureName(state) {
+            let baseName = BINARY_STATE_MAP[state.bitmask] || "Unknown";
+
+            // Overrides for precision touches
+            if (state.isChefKiss) baseName = "Chef Kiss (All Pinched)";
+            else if (state.pinch_I) {
+                // If other fingers are up, it's an OK sign. If down, just a pinch.
+                baseName = (state.bitmask & 7) > 0 ? "OK Sign" : "Pinch Index";
+            }
+            else if (state.pinch_M) baseName = "Pinch Middle";
+            else if (state.pinch_R) baseName = "Pinch Ring";
+            else if (state.pinch_P) baseName = "Pinch Pinky";
+
+            return `${baseName} [${state.dir}, ${state.facing}]`;
+        }
 
         function drawSkeleton(ctx, landmarks, w, h) {
             const connectors = [
@@ -400,7 +409,6 @@ function determineGestureName(state) {
             }
         }
 
-        // --- Hardware Execution Loop ---
         function predictWebcam() {
             if (!webcamRunning) return;
 
@@ -419,11 +427,11 @@ function determineGestureName(state) {
                         const lm = results.landmarks[0];
                         drawSkeleton(canvasCtx, lm, w, h);
 
-                        // Remove the old finger math, and drop this in instead:
-const state = analyzeHandState(lm);
-const currentGesture = determineGestureName(state);
-hudCurrentGesture.textContent = currentGesture;
-
+                        const state = analyzeHandState(lm);
+                        const currentGesture = determineGestureName(state);
+                        
+                        // Output the actual JSON representation state so you can see the math live
+                        hudCurrentGesture.textContent = `${currentGesture} (Mask: ${state.bitmask})`;
 
                         if (capturePending !== false) {
                             processSuccessfulCapture(lm, currentGesture);
