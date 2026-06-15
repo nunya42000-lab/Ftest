@@ -10,7 +10,6 @@ const CRITICAL_ASSETS = [
     './styles.css',
     './app.js',
     './settings.js',
-    './sensors.js',
     './gestures.js',
     './comments.js',
     './manifest.json',
