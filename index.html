@@ -69,7 +69,7 @@ body.hide-controls .control-row { display: none !important; }
 .header-btn-active { background-color: var(--seq-bubble) !important; border-color: var(--text-main) !important; box-shadow: 0 0 10px var(--seq-bubble) !important; }
 body.input-gestures-mode #input-footer { display: none !important; }
 body.input-gestures-mode #gesture-pad-wrapper { display: block !important; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 30; background: rgba(0, 0, 0, 0.05); }
-body.input-gestures-mode #gesture-pad { width: 100% !important; height: 100% !important; margin: 0 !important; border: none !important; border-radius: 0 !important; background: transparent !important;v}
+body.input-gestures-mode #gesture-pad { width: 100% !important; height: 100% !important; margin: 0 !important; border: none !important; border-radius: 0 !important; background: transparent !important;}
 body.input-gestures-mode #gesture-indicator { font-size: 1.2rem; font-weight: bold; opacity: 0.3; pointer-events: none; color: var(--text-main); }
 .ar-background-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1;  opacity: 1; }
 body.ar-active { background-color: rgba(0, 0, 0, 0.2) !important; }
@@ -78,7 +78,7 @@ body.ar-active .settings-modal-bg { background-color: rgba(18, 18, 18, 0.75) !im
 body.ar-active header { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%); }
 body.hide-controls .control-row { display: none !important; }
 body.hide-controls #pad-key9 .btn-pad-number,
-body.hide-controls #pad-key12 .btn-pad-number { height: 85px; font-size: 2.2rem; transition: all 0.3s ease;bbox-shadow: 0 8px 15px rgba(0,0,0,0.4); }
+body.hide-controls #pad-key12 .btn-pad-number { height: 85px; font-size: 2.2rem; transition: all 0.3s ease;box-shadow: 0 8px 15px rgba(0,0,0,0.4); }
 body.hide-controls #piano-keys { height: 300px; transition: height 0.3s ease; }
 @media (orientation: landscape) { body.hide-controls #input-footer .max-w-md, body.hide-controls #input-footer .max-w-lg, body.hide-controls #input-footer .max-w-2xl { max-width: 95vw !important; } body.hide-controls #pad-key9 .btn-pad-number, body.hide-controls #pad-key12 .btn-pad-number { height: 18vh; font-size: 2.5rem; width: 100%; } body.hide-controls #input-footer { padding: 5px !important;} body.hide-controls #piano-keys { height: 50vh !important; } }
 body.fullscreen-mode #app { padding-top: 4rem !important; }
@@ -973,39 +973,6 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
 <button data-action="backspace" class="btn-input btn-control col-span-1 text-xl">←</button>
 <button data-action="open-settings" class="btn-input btn-control !bg-primary-app col-span-1 text-white text-xl">⚙️</button>
 </div></div>
-
-<div id="pad-piano" class="max-w-2xl mx-auto pt-0 pb-1" style="display:none;">
-<div id="piano-keys" class="relative h-40 w-full mb-2 border border-custom">
-<div class="flex h-full w-full">
-<div class="key-container"><button data-value="C" class="piano-key-white btn-input btn-pad-number">C</button></div>
-<div class="key-container"><button data-value="D" class="piano-key-white btn-input btn-pad-number">D</button></div>
-<div class="key-container"><button data-value="E" class="piano-key-white btn-input btn-pad-number">E</button></div>
-<div class="key-container"><button data-value="F" class="piano-key-white btn-input btn-pad-number">F</button></div>
-<div class="key-container"><button data-value="G" class="piano-key-white btn-input btn-pad-number">G</button></div>
-<div class="key-container"><button data-value="A" class="piano-key-white btn-input btn-pad-number">A</button></div>
-<div class="key-container"><button data-value="B" class="piano-key-white btn-input btn-pad-number">B</button></div>
-</div>
-<button data-value="1" class="piano-key-black btn-input btn-pad-number black-1">1</button>
-<button data-value="2" class="piano-key-black btn-input btn-pad-number black-2">2</button>
-<button data-value="3" class="piano-key-black btn-input btn-pad-number black-3">3</button>
-<button data-value="4" class="piano-key-black btn-input btn-pad-number black-4">4</button>
-<button data-value="5" class="piano-key-black btn-input btn-pad-number black-5">5</button>
-</div>
-<div class="grid grid-cols-3 gap-2 max-w-lg mx-auto control-row">
-<button data-action="reset-unique-rounds" class="reset-button btn-input btn-control !bg-red-600 text-sm font-bold col-span-3 mb-2" style="display:none">RESET ROUNDS</button>
-<button data-action="play-demo" class="btn-input btn-control !bg-primary-app col-span-1 text-white text-xl">▶</button>
-<button data-action="backspace" class="btn-input btn-control col-span-1 text-xl">←</button>
-<button data-action="open-settings" class="btn-input btn-control !bg-primary-app col-span-1 text-white text-xl">⚙️</button>
-</div></div></footer>
-
-<div id="ar-playback-container" class="fixed inset-0 z-[100] hidden bg-black flex-col justify-center items-center touch-none">
-<video id="ar-playback-video" class="w-full h-full object-contain" playsinline controls></video>
-<button id="ar-close-playback-btn" class="absolute top-8 right-8 bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-bold shadow-lg text-lg z-[101]">Close & Return</button>
-</div>
-
-<button id="ar-record-btn" class="fixed bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-red-600 rounded-full border-4 border-white shadow-[0_0_20px_rgba(255,0,0,0.8)] z-50 hidden active:scale-95 transition-transform items-center justify-center text-white font-bold text-lg pointer-events-auto">REC</button>   
-
-<div id="toast-notification" class="fixed top-20 left-1/2 -translate-x-1/2 bg-primary-app text-white px-6 py-3 rounded-xl shadow-lg z-[99] transition-all duration-300 opacity-0 transform -translate-y-10"><span id="toast-message"></span></div>
 
 <div id="pad-piano" class="max-w-2xl mx-auto pt-0 pb-1" style="display:none;">
 <div id="piano-keys" class="relative h-40 w-full mb-2 border border-custom">
