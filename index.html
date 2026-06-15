@@ -1042,40 +1042,6 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
 import { getFirestore, enableIndexedDbPersistence, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import { FilesetResolver, GestureRecognizer } from "./wasm/vision_bundle.js";
-const DEFAULT_APP = { 
-globalUiScale: 100, uiScaleMultiplier: 1.0, showWelcomeScreen: true, gestureResizeMode: 'global', playbackSpeed: 1.0, 
-isAutoplayEnabled: true, isUniqueRoundsAutoClearEnabled: true, 
-isAudioEnabled: false, 
-isHapticsEnabled: true, 
-isFlashEnabled: true,  
-pauseSetting: 'none',
-isSpeedDeletingEnabled: true, 
-isSpeedGesturesEnabled: false, 
-isVolumeGesturesEnabled: false,
-isArModeEnabled: false, 
-isVoiceInputEnabled: false, 
-arPlaybackSpeed: 1.00,
-voiceTriggerWord: 'set', // Defaanchor
-gestureHoldFrames: 30, 
-isDeleteGestureEnabled: true, 
-isClearGestureEnabled: true,
-isAutoTimerEnabled: false,
-isAutoCounterEnabled: false,
-isWakeLockEnabled: true,
-isUpsidedownEnabled: false,
-isFullScreenEnabled: false,
-isEcoModeEnabled: true,
-isLongPressAutoplayEnabled: true, isbiggerEnabled: false, 
-activeTheme: 'default', customThemes: {}, sensorAudioThresh: -85, sensorCamThresh: 30, 
-isBlackoutFeatureEnabled: false, isBlackoutGesturesEnabled: false, isHapticMorseEnabled: false, 
-showMicBtn: false, showCamBtn: false, autoInputMode: 'none', 
-showTimer: false, showCounter: false,
-activeProfileId: 'profile_1', profiles: JSON.parse(JSON.stringify(PREMADE_PROFILES)), 
-runtimeSettings: JSON.parse(JSON.stringify(DEFAULT_PROFILE_SETTINGS)), 
-isPracticeModeEnabled: false, voicePitch: 1.0, voiceRate: 1.0, voiceVolume: 1.0, 
-selectedVoice: null, voicePresets: {}, activeVoicePresetId: 'standard', generalLanguage: 'en', 
-isGestureInputEnabled: false, gestureMappings: {} 
-};
 const HAND_GESTURE_GROUPS = [
 {
 id: "hand_poses",
@@ -1969,6 +1935,40 @@ help_gesture_detail: "Gestos BM: Un sistema de entrada 'sin mirar' para valores 
 const DICTIONARY = {
 en: { correct: "Correct", wrong: "Wrong", bigger: "Bigger Buttons Active", reset: "Reset to Round 1", stop: "Playback Stopped" },
 es: { correct: "Correcto", wrong: "Incorrecto", bigger: "Botones Grandes Activos", reset: "Volver a la Ronda 1", stop: "Reproducción Detenida" }
+};
+const DEFAULT_APP = { 
+globalUiScale: 100, uiScaleMultiplier: 1.0, showWelcomeScreen: true, gestureResizeMode: 'global', playbackSpeed: 1.0, 
+isAutoplayEnabled: true, isUniqueRoundsAutoClearEnabled: true, 
+isAudioEnabled: false, 
+isHapticsEnabled: true, 
+isFlashEnabled: true,  
+pauseSetting: 'none',
+isSpeedDeletingEnabled: true, 
+isSpeedGesturesEnabled: false, 
+isVolumeGesturesEnabled: false,
+isArModeEnabled: false, 
+isVoiceInputEnabled: false, 
+arPlaybackSpeed: 1.00,
+voiceTriggerWord: 'set', // Defaanchor
+gestureHoldFrames: 30, 
+isDeleteGestureEnabled: true, 
+isClearGestureEnabled: true,
+isAutoTimerEnabled: false,
+isAutoCounterEnabled: false,
+isWakeLockEnabled: true,
+isUpsidedownEnabled: false,
+isFullScreenEnabled: false,
+isEcoModeEnabled: true,
+isLongPressAutoplayEnabled: true, isbiggerEnabled: false, 
+activeTheme: 'default', customThemes: {}, sensorAudioThresh: -85, sensorCamThresh: 30, 
+isBlackoutFeatureEnabled: false, isBlackoutGesturesEnabled: false, isHapticMorseEnabled: false, 
+showMicBtn: false, showCamBtn: false, autoInputMode: 'none', 
+showTimer: false, showCounter: false,
+activeProfileId: 'profile_1', profiles: JSON.parse(JSON.stringify(PREMADE_PROFILES)), 
+runtimeSettings: JSON.parse(JSON.stringify(DEFAULT_PROFILE_SETTINGS)), 
+isPracticeModeEnabled: false, voicePitch: 1.0, voiceRate: 1.0, voiceVolume: 1.0, 
+selectedVoice: null, voicePresets: {}, activeVoicePresetId: 'standard', generalLanguage: 'en', 
+isGestureInputEnabled: false, gestureMappings: {} 
 };
 class SettingsManager {    
 constructor(appSettings, callbacks) {
