@@ -110,16 +110,16 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
 <header id="aux-control-header" class="fixed top-0 left-0 right-0 z-40 p-2 pt-safe-top transition-transform duration-300 pointer-events-none">
 <div class="max-w-7xl mx-auto w-full flex justify-between items-start">
 <div class="flex gap-2 pointer-events-auto">
-<button id="header-timer-btn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">⏱️</button>
-<button id="header-counter-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">#</button>
-<button id="header-mic-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🎤</button>
-<button id="header-tonecadence-btn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🎵</button>
-<button id="header-gesture-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🗒️</button>
-<button id="header-hand-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🖐️</button>
-<button id="header-cam-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">📷</button>
-<button id="header-bigger-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">⌨️</button>
-<button id="header-fullscreen-btn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🔲</button>
-<button id="header-upsidedown-btn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🙃</button>
+<button id="headerTimerBtn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">⏱️</button>
+<button id="headerCounterBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">#</button>
+<button id="headerMicBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🎤</button>
+<button id="headerToneCadenceBtn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🎵</button>
+<button id="headerGestureBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🗒️</button>
+<button id="headerHandBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🖐️</button>
+<button id="headerCamBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">📷</button>
+<button id="headerBiggerBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">⌨️</button>
+<button id="headerFullScreenBtn"class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🔲</button>
+<button id="headerUpsideDownBtn" class="hidden w-12 h-12 rounded-full bg-gray-800 border border-gray-600 text-white font-bold flex items-center justify-center shadow-lg active:scale-95 transition-transform">🙃</button>
 </div></div></header>
 <div id="game-setup-modal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60] transition-opacity duration-300 opacity-0 pointer-events-none">
 <div class="settings-modal-bg p-6 rounded-xl shadow-2xl max-w-lg w-full transform scale-90 transition-transform duration-300 flex flex-col relative border border-custom">
@@ -153,7 +153,7 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
 </div></div>
 <div class="flex justify-between items-center pt-4 border-t border-custom mt-2">
 <label class="flex items-center text-sm text-muted-custom">
-<input type="checkbox" id="dont-show-welcome-toggle" class="mr-2 rounded"> 
+<input type="checkbox" id="dont-showWelcomeToggle" class="mr-2 rounded"> 
 <span data-i18n="dont_show">Don't show again</span>
 </label>
 <button id="close-game-setup-modal" class="px-8 py-3 text-white bg-primary-app hover:opacity-90 rounded-lg font-bold shadow-lg transition transform active:scale-95" data-i18n="play_btn">PLAY</button>
@@ -414,94 +414,94 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
 <div class="grid grid-cols-2 gap-3">
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Timer ⏱️</span>
-<input type="checkbox" id="timer-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="timerToggle" class="h-6 w-6 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Auto Timer 🚀</span>
-<input type="checkbox" id="auto-timer-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="autoTimerToggle" class="h-6 w-6 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Counter #</span>
-<input type="checkbox" id="counter-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="counterToggle" class="h-6 w-6 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Auto Counter ➕</span>
-<input type="checkbox" id="auto-counter-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="autoCounterToggle" class="h-6 w-6 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Haptics 📳</span>
-<input type="checkbox" id="haptics-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="hapticsToggle" class="h-6 w-6 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Show Intro</span>
-<input type="checkbox" id="show-welcome-toggle" class="h-6 w-6 accent-indigo-500"></div>
+<input type="checkbox" id="showWelcomeToggle" class="h-6 w-6 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Upside Down 🙃</span>
-<input type="checkbox" id="upsidedown-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="upsideDownToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Full Screen 🔲</span>
-<input type="checkbox" id="fullscreen-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="fullScreenToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Eco Mode 🔋</span>
-<input type="checkbox" id="ecomode-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="ecoModeToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Wake Lock 💡</span>
-<input type="checkbox" id="wakelock-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="wakeLockToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Voice Input 🎤</span>
-<input type="checkbox" id="voice-input-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="voiceInputToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Voice Commands</span>
-<input type="checkbox" id="voice-commands-toggle" class="h-6 w-6 rounded accent-indigo-500"></div>
+<input type="checkbox" id="voiceCommandsToggle" class="h-6 w-6 rounded accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Tone Cadence Mode 🎵</span>
-<input type="checkbox" id="tone-cadence-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="toneCadenceToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Touch Gestures</span>
-<input type="checkbox" id="gesture-input-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="gestureInputToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Boss Mode 🌑</span>
-<input type="checkbox" id="blackout-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="blackoutToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">coming soon</span>
 <input type="checkbox" id="newToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Bigger Buttons </span>
-<input type="checkbox" id="bigger-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="biggerToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">AR Mode 📸</span>
-<input type="checkbox" id="ar-mode-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="arModeToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Hand Gestures🖐️</span>
-<input type="checkbox" id="hand-gestures-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="handGesturesToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex items-center justify-between p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Hand Signals🖐️</span>
-<input type="checkbox" id="hand-signals-toggle" class="h-6 w-6 rounded accent-indigo-500"></div>
+<input type="checkbox" id="handSignalsToggle" class="h-6 w-6 rounded accent-indigo-500"></div>
 
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">Quick Erase</span>
-<input type="checkbox" id="speed-delete-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="speedDeleteToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm text-muted-custom">AP Shortcut</span>
-<input type="checkbox" id="long-press-autoplay-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="longPressAutoPlayToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm">Vol. Gesture 🔊</span>
-<input type="checkbox" id="volume-gestures-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="volumeGesturesToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm">Speed Gesture ⚡</span>
-<input type="checkbox" id="speed-gestures-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="speedGesturesToggle" class="h-5 w-5 accent-indigo-500"></div>
 
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm">Delete Gesture 🧹</span>
-<input type="checkbox" id="delete-gesture-toggle" class="h-5 w-5 accent-indigo-500"></div>
+<input type="checkbox" id="deleteGestureToggle" class="h-5 w-5 accent-indigo-500"></div>
 <div class="flex justify-between items-center p-3 rounded-lg border border-custom settings-input">
 <span class="font-bold text-sm">Clear Gesture 💥</span>
-<input type="checkbox" id="clear-gesture-toggle" class="h-5 w-5 accent-indigo-500"></div>    
+<input type="checkbox" id="clearGestureToggle" class="h-5 w-5 accent-indigo-500"></div>    
 </div>
 
 <div class="grid grid-cols-2 gap-3 pt-2">
@@ -1977,43 +1977,43 @@ this.callbacks = callbacks;
 this.currentTargetKey = 'bubble';
 
 this.dom = {
-timertoggle: document.getElementById('timer-toggle'),
-autotimertoggle: document.getElementById('auto-timer-toggle'),
-countertoggle: document.getElementById('counter-toggle'),
-autocountertoggle: document.getElementById('auto-counter-toggle'),
-hapticstoggle: document.getElementById('haptics-toggle'),
-showwelcometoggle: document.getElementById('show-welcome-toggle'),
-upsidedowntoggle: document.getElementById('upsidedown-toggle'),
-fullscreentoggle: document.getElementById('fullscreen-toggle'),
-ecomodetoggle: document.getElementById('ecomode-toggle'),
-wakelocktoggle: document.getElementById('wakelock-toggle'),
-voiceinputtoggle: document.getElementById('voice-input-toggle'),
-voicecommandstoggle: document.getElementById('voice-commands-toggle'),
-tonecadencetoggle: document.getElementById('tone-cadence-toggle'),
-gestureinputtoggle: document.getElementById('gesture-input-toggle'),
-blackouttoggle: document.getElementById('blackout-toggle'),
+timertoggle: document.getElementById('timerToggle'),
+autotimertoggle: document.getElementById('autoTimerToggle'),
+countertoggle: document.getElementById('counterToggle'),
+autocountertoggle: document.getElementById('autoCounterToggle'),
+hapticstoggle: document.getElementById('hapticsToggle'),
+showwelcometoggle: document.getElementById('showWelcomeToggle'),
+upsidedowntoggle: document.getElementById('upsideDownToggle'),
+fullscreentoggle: document.getElementById('fullScreenToggle'),
+ecomodetoggle: document.getElementById('ecoModeToggle'),
+wakelocktoggle: document.getElementById('wakeLockToggle'),
+voiceinputtoggle: document.getElementById('voiceInputToggle'),
+voicecommandstoggle: document.getElementById('voiceCommandsToggle'),
+tonecadencetoggle: document.getElementById('toneCadenceToggle'),
+gestureinputtoggle: document.getElementById('gestureInputToggle'),
+blackouttoggle: document.getElementById('blackoutToggle'),
 newToggle: document.getElementById('newToggle'),
-biggertoggle: document.getElementById('bigger-toggle'),
-armodetoggle: document.getElementById('ar-mode-toggle'),
-handgesturestoggle: document.getElementById('hand-gestures-toggle'),
-handsignalstoggle: document.getElementById('hand-signals-toggle'),
-speeddeletetoggle: document.getElementById('speed-delete-toggle'),
-longpressautoplaytoggle: document.getElementById('long-press-autoplay-toggle'),
-volumegesturestoggle: document.getElementById('volume-gestures-toggle'),
-speedgesturestoggle: document.getElementById('speed-gestures-toggle'),
-deletegesturetoggle: document.getElementById('delete-gesture-toggle'),
-cleargesturetoggle: document.getElementById('clear-gesture-toggle'),
+biggertoggle: document.getElementById('biggerToggle'),
+armodetoggle: document.getElementById('arModeToggle'),
+handgesturestoggle: document.getElementById('handGesturesToggle'),
+handsignalstoggle: document.getElementById('handSignalsToggle'),
+speeddeletetoggle: document.getElementById('speedDeleteToggle'),
+longpressautoplaytoggle: document.getElementById('longPressAutoPlayToggle'),
+volumegesturestoggle: document.getElementById('volumeGesturesToggle'),
+speedgesturestoggle: document.getElementById('speedGesturesToggle'),
+deletegesturetoggle: document.getElementById('deleteGestureToggle'),
+cleargesturetoggle: document.getElementById('clearGestureToggle'),
 
-headertimerbtn: document.getElementById('header-timer-btn'),
-headercounterbtn: document.getElementById('header-counter-btn'),
-headermicbtn: document.getElementById('header-mic-btn'),
-headertonecadencebtn: document.getElementById('header-tonecadence-btn'),
-headergesturebtn: document.getElementById('header-gesture-btn'),
-headerhandbtn: document.getElementById('header-hand-btn'),
-headercambtn: document.getElementById('header-cam-btn'),
-headerbiggerbtn: document.getElementById('header-bigger-btn'),
-headerfullscreenbtn: document.getElementById('header-fullscreen-btn'),
-headerupsidedownbtn: document.getElementById('header-upsidedown-btn'),          
+headertimerbtn: document.getElementById('headerTimerBtn'),
+headercounterbtn: document.getElementById('headerCounterBtn'),
+headermicbtn: document.getElementById('headerMicBtn'),
+headertonecadencebtn: document.getElementById('headerToneCadenceBtn'),
+headergesturebtn: document.getElementById('headerGestureBtn'),
+headerhandbtn: document.getElementById('headerHandBtn'),
+headercambtn: document.getElementById('headerCamBtn'),
+headerbiggerbtn: document.getElementById('headerBiggerBtn'),
+headerfullscreenbtn: document.getElementById('headerFullScreenBtn'),
+headerupsidedownbtn: document.getElementById('headerUpsideDownBtn'),          
 // Voice Settings
 voicePresetSelect: document.getElementById('voice-preset-select'),
 voicePresetAdd: document.getElementById('voice-preset-add'),
@@ -2137,13 +2137,13 @@ if (applyCallback) applyCallback();
 }
 };
 
-bindToggle(this.dom.wakelock-toggle, 'isWakeLockEnabled', () => {
-if (typeof window.wakelock-toggle === 'function') {
-window.wakelock-toggle(this.appSettings.isWakeLockEnabled);
+bindToggle(this.dom.wakeLockToggle, 'isWakeLockEnabled', () => {
+if (typeof window.wakeLockToggle === 'function') {
+window.wakeLockToggle(this.appSettings.isWakeLockEnabled);
 }
 });
 
-bindToggle(this.dom.ecomode-toggle, 'isEcoModeEnabled', () => {
+bindToggle(this.dom.ecoModeToggle, 'isEcoModeEnabled', () => {
 document.body.classList.toggle('eco-mode', this.appSettings.isEcoModeEnabled);
 });
 
@@ -2554,45 +2554,45 @@ if (updateHeader) this.updateHeaderVisibility();
 };
 
 // Header Visibility Triggers (These 10 affect the header)
-bindToggle(this.dom.timer-toggle, 'showTimer', true);
-bindToggle(this.dom.counter-toggle, 'showCounter', true);
-bindToggle(this.dom.voice-input-toggle, 'isVoiceInputEnabled', true);
-bindToggle(this.dom.tone-cadence-toggle, 'isToneCadenceEnabled', true);
-bindToggle(this.dom.gesture-input-toggle, 'isGestureInputEnabled', true);
-bindToggle(this.dom.hand-gaestures-toggle, 'isHandGesturesEnabled', true);
-bindToggle(this.dom.ar-mode-toggle, 'isArModeEnabled', true);
-bindToggle(this.dom.bigger-toggle, 'isbiggerEnabled', true);
-bindToggle(this.dom.fullscreen-toggle, 'showFullscreenBtn', true);
-bindToggle(this.dom.upsidedown-toggle, 'showUpsideDownBtn', true);
-bindToggle(this.dom.auto-timer-toggle, 'isAutoTimerEnabled');
-bindToggle(this.dom.auto-counter-toggle, 'isAutoCounterEnabled');
-bindToggle(this.dom.haptics-toggle, 'isHapticsEnabled');
-bindToggle(this.dom.ecomode-toggle, 'isEcoModeEnabled');
-bindToggle(this.dom.voice-commands-toggle, 'isVoiceCommandsEnabled');
-bindToggle(this.dom.blackout-toggle, 'isBossModeEnabled');
+bindToggle(this.dom.timerToggle, 'showTimer', true);
+bindToggle(this.dom.counterToggle, 'showCounter', true);
+bindToggle(this.dom.voiceInputToggle, 'isVoiceInputEnabled', true);
+bindToggle(this.dom.toneCadenceToggle, 'isToneCadenceEnabled', true);
+bindToggle(this.dom.gestureInputToggle, 'isGestureInputEnabled', true);
+bindToggle(this.dom.handGesturesToggle, 'isHandGesturesEnabled', true);
+bindToggle(this.dom.arModeToggle, 'isArModeEnabled', true);
+bindToggle(this.dom.biggerToggle, 'isbiggerEnabled', true);
+bindToggle(this.dom.fullScreenToggle, 'showFullscreenBtn', true);
+bindToggle(this.dom.upsideDownToggle, 'showUpsideDownBtn', true);
+bindToggle(this.dom.autoTimerToggle, 'isAutoTimerEnabled');
+bindToggle(this.dom.autoCounterToggle, 'isAutoCounterEnabled');
+bindToggle(this.dom.hapticsToggle, 'isHapticsEnabled');
+bindToggle(this.dom.ecoModeToggle, 'isEcoModeEnabled');
+bindToggle(this.dom.voiceCommandsToggle, 'isVoiceCommandsEnabled');
+bindToggle(this.dom.blackoutToggle, 'isBossModeEnabled');
 bindToggle(this.dom.newToggle, 'isNewFeatureEnabled'); // Placeholder
-bindToggle(this.dom.hand-signals-toggle, 'isHandSignalsEnabled');
-bindToggle(this.dom.speed-delete-toggle, 'isSpeedDeletingEnabled');
-bindToggle(this.dom.long-press-autoplay-toggle, 'isApShortcutEnabled');
-bindToggle(this.dom.volume-gestures-toggle, 'isVolumeGesturesEnabled');
-bindToggle(this.dom.speed-gestures-toggle, 'isSpeedGesturesEnabled');
-bindToggle(this.dom.delete-gesture-toggle, 'isDeleteGestureEnabled');
-bindToggle(this.dom.clear-gesture-toggle, 'isClearGestureEnabled');
+bindToggle(this.dom.handSignalsToggle, 'isHandSignalsEnabled');
+bindToggle(this.dom.speedDeleteToggle, 'isSpeedDeletingEnabled');
+bindToggle(this.dom.longPressAutoPlayToggle, 'isApShortcutEnabled');
+bindToggle(this.dom.volumeGesturesToggle, 'isVolumeGesturesEnabled');
+bindToggle(this.dom.speedGesturesToggle, 'isSpeedGesturesEnabled');
+bindToggle(this.dom.deleteGestureToggle, 'isDeleteGestureEnabled');
+bindToggle(this.dom.clearGestureToggle, 'isClearGestureEnabled');
 
 // Special Overrides
-if (this.dom.show-welcome-toggle) {
-this.dom.show-welcome-toggle.onchange = (e) => { 
+if (this.dom.showWelcomeToggle) {
+this.dom.showWelcomeToggle.onchange = (e) => { 
 this.appSettings.showWelcomeScreen = e.target.checked; 
 this.callbacks.onSave(); 
 };
 }
 
-if (this.dom.wakelock-toggle) {
-this.dom.wakelock-toggle.onchange = (e) => {
+if (this.dom.wakeLockToggle) {
+this.dom.wakeLockToggle.onchange = (e) => {
 this.appSettings.isWakeLockEnabled = e.target.checked;
 this.callbacks.onSave();
-if (typeof window.wakelock-toggle === 'function') {
-window.wakelock-toggle(e.target.checked);
+if (typeof window.wakeLockToggle === 'function') {
+window.wakeLockToggle(e.target.checked);
 }
 };
 }
@@ -2661,45 +2661,45 @@ if (this.dom.voiceRate) this.dom.voiceRate.oninput = updateVoiceLive;
 if (this.dom.voiceVolume) this.dom.voiceVolume.oninput = updateVoiceLive;
 
 // Toggles
-if (this.dom.tone-cadence-toggle) {
-this.dom.tone-cadence-toggle.checked = !!this.appSettings.isToneCadenceEnabled;
-this.dom.tone-cadence-toggle.addEventListener('change', (e) => {
+if (this.dom.toneCadenceToggle) {
+this.dom.toneCadenceToggle.checked = !!this.appSettings.isToneCadenceEnabled;
+this.dom.toneCadenceToggle.addEventListener('change', (e) => {
 this.appSettings.isToneCadenceEnabled = e.target.checked;
 this.callbacks.onSave();
 this.updateHeaderVisibility(); 
 });
 }
 
-if (this.dom.fullscreen-toggle) {
-this.dom.fullscreen-toggle.checked = !!this.appSettings.showFullscreenBtn;
-this.dom.fullscreen-toggle.onchange = (e) => {
+if (this.dom.fullScreenToggle) {
+this.dom.fullScreenToggle.checked = !!this.appSettings.showFullscreenBtn;
+this.dom.fullScreenToggle.onchange = (e) => {
 this.appSettings.showFullscreenBtn = e.target.checked;
 this.updateHeaderVisibility();
 this.callbacks.onSave();
 };
 }
 
-if (this.dom.upsidedown-toggle) {
-this.dom.upsidedown-toggle.checked = !!this.appSettings.showUpsideDownBtn;
-this.dom.upsidedown-toggle.onchange = (e) => {
+if (this.dom.upsideDownToggle) {
+this.dom.upsideDownToggle.checked = !!this.appSettings.showUpsideDownBtn;
+this.dom.upsideDownToggle.onchange = (e) => {
 this.appSettings.showUpsideDownBtn = e.target.checked;
 this.updateHeaderVisibility();
 this.callbacks.onSave();
 };
 }
 
-if (this.dom.header-tonecadence-btn) {
-this.dom.header-tonecadence-btn.addEventListener('click', () => {
-const isActive = this.dom.header-tonecadence-btn.classList.contains('bg-indigo-600');
+if (this.dom.headerToneCadenceBtn) {
+this.dom.headerToneCadenceBtn.addEventListener('click', () => {
+const isActive = this.dom.headerToneCadenceBtn.classList.contains('bg-indigo-600');
 if (isActive) {
-this.dom.header-tonecadence-btn.classList.remove('bg-indigo-600', 'text-white');
-this.dom.header-tonecadence-btn.classList.add('bg-indigo-900/40', 'text-indigo-300');
-this.dom.header-tonecadence-btn.textContent = '🎵 Tones Off';
+this.dom.headerToneCadenceBtn.classList.remove('bg-indigo-600', 'text-white');
+this.dom.headerToneCadenceBtn.classList.add('bg-indigo-900/40', 'text-indigo-300');
+this.dom.headerToneCadenceBtn.textContent = '🎵 Tones Off';
 if (typeof toneEngine !== 'undefined') toneEngine.stop();
 } else {
-this.dom.header-tonecadence-btn.classList.add('bg-indigo-600', 'text-white');
-this.dom.header-tonecadence-btn.classList.remove('bg-indigo-900/40', 'text-indigo-300');
-this.dom.header-tonecadence-btn.textContent = '🎵 Tones ON';
+this.dom.headerToneCadenceBtn.classList.add('bg-indigo-600', 'text-white');
+this.dom.headerToneCadenceBtn.classList.remove('bg-indigo-900/40', 'text-indigo-300');
+this.dom.headerToneCadenceBtn.textContent = '🎵 Tones ON';
 if (typeof toneEngine !== 'undefined') toneEngine.start();
 }
 });
@@ -2801,18 +2801,18 @@ bind(this.dom.machines, 'machineCount', false, true);
 bind(this.dom.seqLength, 'sequenceLength', false, true); 
 bind(this.dom.autoClear, 'isUniqueRoundsAutoClearEnabled', true);
 bind(this.dom.longPressToggle, 'isLongPressAutoplayEnabled', true);
-bind(this.dom.timer-toggle, 'showTimer', true);
-bind(this.dom.counter-toggle, 'showCounter', true);
+bind(this.dom.timerToggle, 'showTimer', true);
+bind(this.dom.counterToggle, 'showCounter', true);
 
-if (this.dom.ar-mode-toggle) {
-this.dom.ar-mode-toggle.onchange = (e) => {
+if (this.dom.arModeToggle) {
+this.dom.arModeToggle.onchange = (e) => {
 this.appSettings.isArModeEnabled = e.target.checked;
 this.updateHeaderVisibility(); 
 this.callbacks.onSave();
 };
 }
 
-bind(this.dom.voice-input-toggle, 'isVoiceInputEnabled', true);
+bind(this.dom.voiceInputToggle, 'isVoiceInputEnabled', true);
 
 if (this.dom.mode) { 
 this.dom.mode.onchange = () => { 
@@ -2845,13 +2845,13 @@ if (this.dom.delay) this.dom.delay.onchange = (e) => { this.appSettings.runtimeS
 
 bind(this.dom.haptics, 'isHapticsEnabled', true); 
 bind(this.dom.speedDelete, 'isSpeedDeletingEnabled', true); 
-bind(this.dom.bigger-toggle, 'isbiggerEnabled', true);
-bind(this.dom.speed-gestures-toggle, 'isSpeedGesturesEnabled', true);
-bind(this.dom.volume-gestures-toggle, 'isVolumeGesturesEnabled', true);
-bind(this.dom.delete-gesture-toggle, 'isDeleteGestureEnabled', true);
-bind(this.dom.clear-gesture-toggle, 'isClearGestureEnabled', true);
-bind(this.dom.auto-timer-toggle, 'isAutoTimerEnabled', true);
-bind(this.dom.auto-counter-toggle, 'isAutoCounterEnabled', true);
+bind(this.dom.biggerToggle, 'isbiggerEnabled', true);
+bind(this.dom.speedGesturesToggle, 'isSpeedGesturesEnabled', true);
+bind(this.dom.volumeGesturesToggle, 'isVolumeGesturesEnabled', true);
+bind(this.dom.deleteGestureToggle, 'isDeleteGestureEnabled', true);
+bind(this.dom.clearGestureToggle, 'isClearGestureEnabled', true);
+bind(this.dom.autoTimerToggle, 'isAutoTimerEnabled', true);
+bind(this.dom.autoCounterToggle, 'isAutoCounterEnabled', true);
 bind(this.dom.practiceMode, 'isPracticeModeEnabled', true);
 
 if (this.dom.uiScale) this.dom.uiScale.onchange = (e) => { this.appSettings.globalUiScale = parseInt(e.target.value); this.callbacks.onUpdate(); };
@@ -2859,9 +2859,9 @@ if (this.dom.seqSize) this.dom.seqSize.onchange = (e) => { this.appSettings.uiSc
 if (this.dom.seqFontSize) this.dom.seqFontSize.onchange = (e) => { this.appSettings.uiFontSizeMultiplier = parseInt(e.target.value) / 100.0; this.callbacks.onSave(); this.callbacks.onUpdate(); };
 
 // STANDARD HAND GESTURES INTEGRATION
-if (this.dom.hand-gestures-toggle) {
-this.dom.hand-gestures-toggle.checked = !!this.appSettings.isHandGesturesEnabled;
-this.dom.hand-gestures-toggle.onchange = (e) => {
+if (this.dom.handGesturesToggle) {
+this.dom.handGesturesToggle.checked = !!this.appSettings.isHandGesturesEnabled;
+this.dom.handGesturesToggle.onchange = (e) => {
 this.appSettings.isHandGesturesEnabled = e.target.checked;
 this.updateHeaderVisibility(); 
 this.callbacks.onSave();
@@ -3102,32 +3102,32 @@ const ps = this.appSettings.runtimeSettings;
 if (!ps) return;
 
 // Apply visual states to the toggles
-if (this.dom.timer-toggle) this.dom.timer-toggle.checked = !!this.appSettings.showTimer;
-if (this.dom.auto-timer-toggle) this.dom.auto-timer-toggle.checked = !!this.appSettings.isAutoTimerEnabled;
-if (this.dom.counter-toggle) this.dom.counter-toggle.checked = !!this.appSettings.showCounter;
-if (this.dom.auto-counter-toggle) this.dom.auto-counter-toggle.checked = !!this.appSettings.isAutoCounterEnabled;
-if (this.dom.haptics-toggle) this.dom.haptics-toggle.checked = (typeof this.appSettings.isHapticsEnabled === 'undefined') ? true : this.appSettings.isHapticsEnabled;
-if (this.dom.show-welcome-toggle) this.dom.show-welcome-toggle.checked = !!this.appSettings.showWelcomeScreen;
-if (this.dom.upsidedown-toggle) this.dom.upsidedown-toggle.checked = !!this.appSettings.showUpsideDownBtn;
-if (this.dom.fullscreen-toggle) this.dom.fullscreen-toggle.checked = !!this.appSettings.showFullscreenBtn;
-if (this.dom.ecomode-toggle) this.dom.ecomode-toggle.checked = !!this.appSettings.isEcoModeEnabled;
-if (this.dom.wakelock-toggle) this.dom.wakelock-toggle.checked = (typeof this.appSettings.isWakeLockEnabled === 'undefined') ? true : this.appSettings.isWakeLockEnabled;
-if (this.dom.voice-input-toggle) this.dom.voice-input-toggle.checked = !!this.appSettings.isVoiceInputEnabled;
-if (this.dom.voice-commands-toggle) this.dom.voice-commands-toggle.checked = !!this.appSettings.isVoiceCommandsEnabled;
-if (this.dom.tone-cadence-toggle) this.dom.tone-cadence-toggle.checked = !!this.appSettings.isToneCadenceEnabled;
-if (this.dom.gesture-input-toggle) this.dom.gesture-input-toggle.checked = !!this.appSettings.isGestureInputEnabled;
-if (this.dom.blackout-toggle) this.dom.blackout-toggle.checked = !!this.appSettings.isBossModeEnabled;
+if (this.dom.timerToggle) this.dom.timerToggle.checked = !!this.appSettings.showTimer;
+if (this.dom.autoTimerToggle) this.dom.autoTimerToggle.checked = !!this.appSettings.isAutoTimerEnabled;
+if (this.dom.counterToggle) this.dom.counterToggle.checked = !!this.appSettings.showCounter;
+if (this.dom.autoCounterToggle) this.dom.autoCounterToggle.checked = !!this.appSettings.isAutoCounterEnabled;
+if (this.dom.hapticsToggle) this.dom.hapticsToggle.checked = (typeof this.appSettings.isHapticsEnabled === 'undefined') ? true : this.appSettings.isHapticsEnabled;
+if (this.dom.showWelcomeToggle) this.dom.showWelcomeToggle.checked = !!this.appSettings.showWelcomeScreen;
+if (this.dom.upsideDownToggle) this.dom.upsideDownToggle.checked = !!this.appSettings.showUpsideDownBtn;
+if (this.dom.fullScreenToggle) this.dom.fullScreenToggle.checked = !!this.appSettings.showFullscreenBtn;
+if (this.dom.ecoModeToggle) this.dom.ecoModeToggle.checked = !!this.appSettings.isEcoModeEnabled;
+if (this.dom.wakeLockToggle) this.dom.wakeLockToggle.checked = (typeof this.appSettings.isWakeLockEnabled === 'undefined') ? true : this.appSettings.isWakeLockEnabled;
+if (this.dom.voiceInputToggle) this.dom.voiceInputToggle.checked = !!this.appSettings.isVoiceInputEnabled;
+if (this.dom.voiceCommandsToggle) this.dom.voiceCommandsToggle.checked = !!this.appSettings.isVoiceCommandsEnabled;
+if (this.dom.toneCadenceToggle) this.dom.toneCadenceToggle.checked = !!this.appSettings.isToneCadenceEnabled;
+if (this.dom.gestureInputToggle) this.dom.gestureInputToggle.checked = !!this.appSettings.isGestureInputEnabled;
+if (this.dom.blackoutToggle) this.dom.blackoutToggle.checked = !!this.appSettings.isBossModeEnabled;
 if (this.dom.newToggle) this.dom.newToggle.checked = !!this.appSettings.isNewFeatureEnabled;
-if (this.dom.bigger-toggle) this.dom.bigger-toggle.checked = !!this.appSettings.isbiggerEnabled;
-if (this.dom.ar-mode-toggle) this.dom.ar-mode-toggle.checked = !!this.appSettings.isArModeEnabled;
-if (this.dom.hand-gestures-toggle) this.dom.hand-gestures-toggle.checked = !!this.appSettings.isHandGesturesEnabled;
-if (this.dom.hand-signals-toggle) this.dom.hand-signals-toggle.checked = !!this.appSettings.isHandSignalsEnabled;
-if (this.dom.speed-delete-toggle) this.dom.speed-delete-toggle.checked = (typeof this.appSettings.isSpeedDeletingEnabled === 'undefined') ? true : this.appSettings.isSpeedDeletingEnabled;
-if (this.dom.long-press-autoplay-toggle) this.dom.long-press-autoplay-toggle.checked = !!this.appSettings.isApShortcutEnabled;
-if (this.dom.volume-gestures-toggle) this.dom.volume-gestures-toggle.checked = !!this.appSettings.isVolumeGesturesEnabled;
-if (this.dom.speed-gestures-toggle) this.dom.speed-gestures-toggle.checked = !!this.appSettings.isSpeedGesturesEnabled;
-if (this.dom.delete-gesture-toggle) this.dom.delete-gesture-toggle.checked = !!this.appSettings.isDeleteGestureEnabled;
-if (this.dom.clear-gesture-toggle) this.dom.clear-gesture-toggle.checked = !!this.appSettings.isClearGestureEnabled;
+if (this.dom.biggerToggle) this.dom.biggerToggle.checked = !!this.appSettings.isbiggerEnabled;
+if (this.dom.arModeToggle) this.dom.arModeToggle.checked = !!this.appSettings.isArModeEnabled;
+if (this.dom.handGesturesToggle) this.dom.handGesturesToggle.checked = !!this.appSettings.isHandGesturesEnabled;
+if (this.dom.handSignalsToggle) this.dom.handSignalsToggle.checked = !!this.appSettings.isHandSignalsEnabled;
+if (this.dom.speedDeleteToggle) this.dom.speedDeleteToggle.checked = (typeof this.appSettings.isSpeedDeletingEnabled === 'undefined') ? true : this.appSettings.isSpeedDeletingEnabled;
+if (this.dom.longPressAutoPlayToggle) this.dom.longPressAutoPlayToggle.checked = !!this.appSettings.isApShortcutEnabled;
+if (this.dom.volumeGesturesToggle) this.dom.volumeGesturesToggle.checked = !!this.appSettings.isVolumeGesturesEnabled;
+if (this.dom.speedGesturesToggle) this.dom.speedGesturesToggle.checked = !!this.appSettings.isSpeedGesturesEnabled;
+if (this.dom.deleteGestureToggle) this.dom.deleteGestureToggle.checked = !!this.appSettings.isDeleteGestureEnabled;
+if (this.dom.clearGestureToggle) this.dom.clearGestureToggle.checked = !!this.appSettings.isClearGestureEnabled;
 
 // Trigger the header to reflect these current states
 this.updateHeaderVisibility();
@@ -3138,16 +3138,16 @@ const header = document.getElementById('aux-control-header');
 if (!header) return;
 
 // Toggle hidden classes based strictly on appSettings properties
-if (this.dom.header-timer-btn) this.dom.header-timer-btn.classList.toggle('hidden', !this.appSettings.showTimer);
-if (this.dom.header-counter-btn) this.dom.header-counter-btn.classList.toggle('hidden', !this.appSettings.showCounter);
-if (this.dom.header-mic-btn) this.dom.header-mic-btn.classList.toggle('hidden', !this.appSettings.isVoiceInputEnabled);
-if (this.dom.header-tonecadence-btn) this.dom.header-tonecadence-btn.classList.toggle('hidden', !this.appSettings.isToneCadenceEnabled);
-if (this.dom.header-gesture-btn) this.dom.header-gesture-btn.classList.toggle('hidden', !this.appSettings.isGestureInputEnabled);
-if (this.dom.header-hand-btn) this.dom.header-hand-btn.classList.toggle('hidden', !this.appSettings.isHandGesturesEnabled);
-if (this.dom.header-cam-btn) this.dom.header-cam-btn.classList.toggle('hidden', !this.appSettings.isArModeEnabled);
-if (this.dom.header-bigger-btn) this.dom.header-bigger-btn.classList.toggle('hidden', !this.appSettings.isbiggerEnabled);
-if (this.dom.header-fullscreen-btn) this.dom.header-fullscreen-btn.classList.toggle('hidden', !this.appSettings.showFullscreenBtn);
-if (this.dom.header-upsidedown-btn) this.dom.header-upsidedown-btn.classList.toggle('hidden', !this.appSettings.showUpsideDownBtn);
+if (this.dom.headerTimerBtn) this.dom.headerTimerBtn.classList.toggle('hidden', !this.appSettings.showTimer);
+if (this.dom.headerCounterBtn) this.dom.headerCounterBtn.classList.toggle('hidden', !this.appSettings.showCounter);
+if (this.dom.headerMicBtn) this.dom.headerMicBtn.classList.toggle('hidden', !this.appSettings.isVoiceInputEnabled);
+if (this.dom.headerToneCadenceBtn) this.dom.headerToneCadenceBtn.classList.toggle('hidden', !this.appSettings.isToneCadenceEnabled);
+if (this.dom.headerGestureBtn) this.dom.headerGestureBtn.classList.toggle('hidden', !this.appSettings.isGestureInputEnabled);
+if (this.dom.headerHandBtn) this.dom.headerHandBtn.classList.toggle('hidden', !this.appSettings.isHandGesturesEnabled);
+if (this.dom.headerCamBtn) this.dom.headerCamBtn.classList.toggle('hidden', !this.appSettings.isArModeEnabled);
+if (this.dom.headerBiggerBtn) this.dom.headerBiggerBtn.classList.toggle('hidden', !this.appSettings.isbiggerEnabled);
+if (this.dom.headerFullScreenBtn) this.dom.headerFullScreenBtn.classList.toggle('hidden', !this.appSettings.showFullscreenBtn);
+if (this.dom.headerUpsideDownBtn) this.dom.headerUpsideDownBtn.classList.toggle('hidden', !this.appSettings.showUpsideDownBtn);
 
 // Check if AT LEAST ONE header button is supposed to be visible
 const anyVisible = [
@@ -4743,7 +4743,7 @@ console.warn('Wake Lock reacquire failed during visibility shift:', e);
 }
 }
 }
-window.upsidedown-toggle = async function(enable) {
+window.upsideDownToggle = async function(enable) {
 try {
 if ('wakeLock' in navigator) {
 if (enable) {
@@ -5240,9 +5240,9 @@ numGrid.appendChild(span);
 }); 
 card.appendChild(numGrid); container.appendChild(card); 
 });
-const hMic = document.getElementById('header-mic-btn');
-const hCam = document.getElementById('header-cam-btn');
-const hGest = document.getElementById('header-gesture-btn'); 
+const hMic = document.getElementById('headerMicBtn');
+const hCam = document.getElementById('headerCamBtn');
+const hGest = document.getElementById('headerGestureBtn'); 
 // PATCH: Removed legacy sensor hooks for the mic icon
 if(hMic) {
 const isVoiceActive = voiceModule && voiceModule.isListening;
@@ -5358,7 +5358,7 @@ playNum();
 nextChunk();
 }
 function setupARLogic() {
-const headerCam = document.getElementById('header-cam-btn');
+const headerCam = document.getElementById('headerCamBtn');
 const inputFooter = document.getElementById('input-footer');
 const arRecordBtn = document.getElementById('ar-record-btn');
 const arBackgroundVideo = document.getElementById('ar-background-video');
@@ -5721,12 +5721,12 @@ if (val !== null) { addValue(val.toString()); if(navigator.vibrate) navigator.vi
 }, { passive: false });
 }
 // --- HEADER BUTTONS ---
-const headerTimer = document.getElementById('header-timer-btn');
-const headerCounter = document.getElementById('header-counter-btn');
-const headerMic = document.getElementById('header-mic-btn');
-const headerCam = document.getElementById('header-cam-btn');
-const headerGesture = document.getElementById('header-gesture-btn'); 
-const headerHand = document.getElementById('header-hand-btn');
+const headerTimer = document.getElementById('headerTimerBtn');
+const headerCounter = document.getElementById('headerCounterBtn');
+const headerMic = document.getElementById('headerMicBtn');
+const headerCam = document.getElementById('headerCamBtn');
+const headerGesture = document.getElementById('headerGestureBtn'); 
+const headerHand = document.getElementById('headerHandBtn');
 if(headerHand) {
 headerHand.onclick = () => {
 if(!modules.vision) return;            
@@ -5740,7 +5740,7 @@ headerHand.classList.remove('header-btn-active');
 }
 };
 }
-const headerbigger = document.getElementById('header-bigger-btn');
+const headerbigger = document.getElementById('headerBiggerBtn');
 if(headerbigger) {
 headerbigger.onclick = () => {
 document.body.classList.toggle('hide-controls');
@@ -5884,35 +5884,35 @@ return gestureID;
 const startApp = () => {
 loadState();
 if (appSettings.isEcoModeEnabled) document.body.classList.add('eco-mode');
-const header-fullscreen-btn = document.getElementById('header-fullscreen-btn');
-if (header-fullscreen-btn) {
-header-fullscreen-btn.onclick = () => {
+const headerFullScreenBtn = document.getElementById('headerFullScreenBtn');
+if (headerFullScreenBtn) {
+headerFullScreenBtn.onclick = () => {
 if (!document.fullscreenElement) {
 document.documentElement.requestFullscreen().catch(err => {
 console.warn(`Fullscreen error: ${err.message}`);
 });
-header-fullscreen-btn.classList.add('ring-2', 'ring-emerald-500');
+headerFullScreenBtn.classList.add('ring-2', 'ring-emerald-500');
 } else {
 document.exitFullscreen();
-header-fullscreen-btn.classList.remove('ring-2', 'ring-emerald-500');
+headerFullScreenBtn.classList.remove('ring-2', 'ring-emerald-500');
 }
 };
 }
-const header-upsidedown-btn = document.getElementById('header-upsidedown-btn');
-if (header-upsidedown-btn) {
-header-upsidedown-btn.onclick = () => {
+const headerUpsideDownBtn = document.getElementById('headerUpsideDownBtn');
+if (headerUpsideDownBtn) {
+headerUpsideDownBtn.onclick = () => {
 document.body.classList.toggle('rotate-180');
 if (document.body.classList.contains('rotate-180')) {
-header-upsidedown-btn.classList.add('ring-2', 'ring-emerald-500');
+headerUpsideDownBtn.classList.add('ring-2', 'ring-emerald-500');
 showToast("Upside Down Mode: ON 🙃");
 } else {
-header-upsidedown-btn.classList.remove('ring-2', 'ring-emerald-500');
+headerUpsideDownBtn.classList.remove('ring-2', 'ring-emerald-500');
 showToast("Upside Down Mode: OFF");
 }
 };
 }
-if (appSettings.isWakeLockEnabled && typeof window.wakelock-toggle === 'function') {
-window.wakelock-toggle(true);
+if (appSettings.isWakeLockEnabled && typeof window.wakeLockToggle === 'function') {
+window.wakeLockToggle(true);
 }
 modules.settings = new SettingsManager(
 appSettings, 
@@ -6034,7 +6034,7 @@ if(btn) {
 btn.classList.add('flash-active'); 
 setTimeout(() => btn.classList.remove('flash-active'), 200); 
 }          
-const hMic = document.getElementById('header-mic-btn');
+const hMic = document.getElementById('headerMicBtn');
 if(hMic) {
 hMic.classList.remove('header-btn-active');
 setTimeout(() => { if(voiceModule.isListening) hMic.classList.add('header-btn-active'); }, 300);
