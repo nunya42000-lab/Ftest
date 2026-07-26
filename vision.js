@@ -1,5 +1,176 @@
 // Import from YOUR local file (Offline Mode)
-import { FilesetResolver, GestureRecognizer } from "./wasm/vision_bundle.js";
+// NOTE: FilesetResolver/GestureRecognizer used to be a static import here. A static import that
+// fails (this WASM bundle is a real local dependency that may not always be present) fails this
+// entire module - which cascades to fail app.js too, since app.js imports VisionEngine from here.
+// It's now dynamically imported inside start() below, right where it's used, so a missing WASM
+// bundle only disables hand tracking instead of the whole app.
+
+// --- 1. EXHAUSTIVE 64-STATE ID MAP ---
+// Motion/transition gestures - one pose changing into another within ~900ms. IDs start at 400
+// to stay clear of the 0-63 static pose range. Chosen pairs read naturally as an action rather
+// than just two shapes: Fist->Open reads as "throwing something away", Open->Fist as "grabbing".
+const TRANSITION_GESTURES = {
+    '0->62':   { id: 400, label: '🗑️ Throw (Fist → Open)' },
+    '62->0':   { id: 401, label: '✊ Grab (Open → Fist)' },
+    '100->62': { id: 402, label: '👐 Release (Pinch → Open)' },
+    '62->100': { id: 403, label: '🤏 Snatch (Open → Pinch)' },
+    '0->16':   { id: 404, label: '☝️ Point Out (Fist → 1 Finger)' },
+};
+
+const GESTURE_DICTIONARY = {
+    0: 'FIST_KNUCKLES_FWD',           1: 'FIST_PALM_FWD',
+    2: 'PINKY_KNUCKLES_FWD',          3: 'PINKY_PALM_FWD',
+    4: 'RING_KNUCKLES_FWD',           5: 'RING_PALM_FWD',
+    6: 'RING_PINKY_KNUCKLES_FWD',     7: 'RING_PINKY_PALM_FWD',
+    8: 'MIDDLE_KNUCKLES_FWD',         9: 'MIDDLE_PALM_FWD',
+    10: 'MIDDLE_PINKY_KNUCKLES_FWD',  11: 'MIDDLE_PINKY_PALM_FWD',
+    12: 'CHOPSTICKS_KNUCKLES_FWD',    13: 'CHOPSTICKS_PALM_FWD',
+    14: 'THREE_FINGERS_NO_INDEX_K',   15: 'THREE_FINGERS_NO_INDEX_P',
+    16: 'INDEX_KNUCKLES_FWD',         17: 'INDEX_PALM_FWD',
+    18: 'ROCK_ON_KNUCKLES_FWD',       19: 'ROCK_ON_PALM_FWD',
+    20: 'INDEX_RING_KNUCKLES_FWD',    21: 'INDEX_RING_PALM_FWD',
+    22: 'INDEX_RING_PINKY_K',         23: 'INDEX_RING_PINKY_P',
+    24: 'PEACE_KNUCKLES_FWD',         25: 'PEACE_PALM_FWD',
+    26: 'PEACE_PINKY_KNUCKLES_FWD',   27: 'PEACE_PINKY_PALM_FWD',
+    28: 'THREE_FINGERS_KNUCKLES_FWD', 29: 'THREE_FINGERS_PALM_FWD',
+    30: 'FOUR_FINGERS_KNUCKLES_FWD',  31: 'FOUR_FINGERS_PALM_FWD',
+    32: 'THUMB_KNUCKLES_FWD',         33: 'THUMB_PALM_FWD',
+    34: 'SHAKA_KNUCKLES_FWD',         35: 'SHAKA_PALM_FWD',
+    36: 'THUMB_RING_KNUCKLES_FWD',    37: 'THUMB_RING_PALM_FWD',
+    38: 'THUMB_RING_PINKY_K',         39: 'THUMB_RING_PINKY_P',
+    40: 'THUMB_MIDDLE_KNUCKLES_FWD',  41: 'THUMB_MIDDLE_PALM_FWD',
+    42: 'THUMB_MIDDLE_PINKY_K',       43: 'THUMB_MIDDLE_PINKY_P',
+    44: 'THUMB_MIDDLE_RING_K',        45: 'THUMB_MIDDLE_RING_P',
+    46: 'FOUR_FINGERS_NO_INDEX_K',    47: 'FOUR_FINGERS_NO_INDEX_P',
+    48: 'GUN_KNUCKLES_FWD',           49: 'GUN_PALM_FWD',
+    50: 'SPIDERMAN_KNUCKLES_FWD',     51: 'SPIDERMAN_PALM_FWD',
+    52: 'THUMB_INDEX_RING_K',         53: 'THUMB_INDEX_RING_P',
+    54: 'FOUR_FINGERS_NO_MIDDLE_K',   55: 'FOUR_FINGERS_NO_MIDDLE_P',
+    56: 'SCOUT_KNUCKLES_FWD',         57: 'SCOUT_PALM_FWD',
+    58: 'FOUR_FINGERS_NO_RING_K',     59: 'FOUR_FINGERS_NO_RING_P',
+    60: 'FIVE_FINGERS_NO_PINKY_K',    61: 'FIVE_FINGERS_NO_PINKY_P',
+    62: 'FIVE_FINGERS_KNUCKLES_FWD',  63: 'FIVE_FINGERS_PALM_FWD',
+    
+    // --- PRECISION MICRO-GESTURE OVERLAYS ---
+    100: 'PINCH_INDEX',
+    101: 'PINCH_MIDDLE',
+    102: 'PINCH_RING',
+    103: 'PINCH_PINKY',
+    104: 'CHEF_KISS_ALL_PINCHED',
+    105: 'OK_SIGN',
+    600: 'THUMBS_UP',
+    601: 'THUMBS_DOWN'
+};
+
+// --- 2. TEMPORAL DEBOUNCE BUFFER ---
+class GestureBuffer {
+    constructor(bufferSize = 4) {
+        this.buffer = [];
+        this.maxSize = bufferSize;
+        this.currentLockedGesture = null;
+        this.lockTime = null;
+        this.lockTimeout = 2000; // 2 second timeout to prevent indefinite locks
+    }
+
+    pushAndEvaluate(gestureID) {
+        // Reads live so the Hold Frames slider takes effect immediately without restarting tracking
+        this.maxSize = (window.appSettings && window.appSettings.handHoldFrames) || 4;
+
+        if (gestureID === null) {
+            this.buffer = [];
+            this.currentLockedGesture = null;
+            this.lockTime = null;
+            return null;
+        }
+
+        this.buffer.push(gestureID);
+        if (this.buffer.length > this.maxSize) {
+            this.buffer.shift();
+        }
+
+        if (this.buffer.length === this.maxSize && this.buffer.every(val => val === this.buffer[0])) {
+            // Lock gesture only if we're not already locked to it, or if we've exceeded the timeout
+            const now = Date.now();
+            if (this.currentLockedGesture !== this.buffer[0]) {
+                this.currentLockedGesture = this.buffer[0];
+                this.lockTime = now;
+            } else if (now - this.lockTime > this.lockTimeout) {
+                // Gesture has been locked for too long; clear and re-lock to refresh
+                this.currentLockedGesture = null;
+                this.lockTime = null;
+            }
+            return this.currentLockedGesture;
+        }
+
+        return this.currentLockedGesture; 
+    }
+}
+
+// --- 3. CORE VOLUMETRIC MATH ---
+function processHandData(landmarks) {
+    const wrist = landmarks[0];
+    const n = landmarks.map(p => ({
+        x: p.x - wrist.x,
+        y: p.y - wrist.y,
+        z: p.z - wrist.z
+    }));
+
+    const dist3D = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
+    const nWrist = n[0];
+
+    const T = dist3D(nWrist, n[4]) > (dist3D(nWrist, n[2]) * 1.15) ? 1 : 0;
+    const I = dist3D(nWrist, n[8]) > (dist3D(nWrist, n[6]) * 1.25) ? 1 : 0;
+    const M = dist3D(nWrist, n[12]) > (dist3D(nWrist, n[10]) * 1.25) ? 1 : 0;
+    const R = dist3D(nWrist, n[16]) > (dist3D(nWrist, n[14]) * 1.25) ? 1 : 0;
+    const P = dist3D(nWrist, n[20]) > (dist3D(nWrist, n[18]) * 1.25) ? 1 : 0;
+
+    const baseMask = (T << 4) | (I << 3) | (M << 2) | (R << 1) | P;
+
+    const vec1x = n[17].x - n[5].x; 
+    const vec1y = n[17].y - n[5].y; 
+    const vec2x = n[9].x - nWrist.x; 
+    const vec2y = n[9].y - nWrist.y; 
+    const crossProduct = (vec1x * vec2y) - (vec1y * vec2x);
+    
+    const palmFacing = crossProduct > 0 ? 1 : 0; 
+    
+    let gestureID = (baseMask << 1) | palmFacing;
+
+    const pinchThreshold = 0.055; 
+    const dThumbIndex = dist3D(n[4], n[8]);
+    const dThumbMiddle = dist3D(n[4], n[12]);
+    const dThumbRing = dist3D(n[4], n[16]);
+    const dThumbPinky = dist3D(n[4], n[20]);
+
+    const cx = (n[4].x + n[8].x + n[12].x + n[16].x + n[20].x) / 5;
+    const cy = (n[4].y + n[8].y + n[12].y + n[16].y + n[20].y) / 5;
+    const cz = (n[4].z + n[8].z + n[12].z + n[16].z + n[20].z) / 5;
+    const centerTip = {x: cx, y: cy, z: cz};
+    
+    const isChefKiss = dist3D(n[4], centerTip) < 0.08 && 
+                       dist3D(n[8], centerTip) < 0.08 && 
+                       dist3D(n[12], centerTip) < 0.08;
+
+    if (isChefKiss) {
+        gestureID = 104;
+    } else if (dThumbIndex < pinchThreshold) {
+        gestureID = (M || R || P) ? 105 : 100;
+    } else if (dThumbMiddle < pinchThreshold) {
+        gestureID = 101;
+    } else if (dThumbRing < pinchThreshold) {
+        gestureID = 102;
+    } else if (dThumbPinky < pinchThreshold) {
+        gestureID = 103;
+    } else if (T === 1 && I === 0 && M === 0 && R === 0 && P === 0) {
+        // Thumb is the only finger extended - "thumb up" (id 32/33) can't tell up from down on
+        // its own, since that's about which side of the hand faces the camera, not which way the
+        // thumb points. Checking the thumb tip's position relative to its own base joint (not
+        // just the wrist) gives a genuine, independent up/down reading.
+        gestureID = (n[4].y < n[2].y) ? 600 : 601; // image y increases downward, so smaller y = higher up = thumbs up
+    }
+
+    return gestureID;
+}
 
 export class VisionEngine {
     constructor(onTrigger, onStatus) {
@@ -10,43 +181,41 @@ export class VisionEngine {
         this.isActive = false;
         this.loopId = null;
         this.lastVideoTime = -1;
-        
-        // Debounce: Require gesture to hold for 5 frames to prevent flickering
-        this.history = []; 
-        this.requiredFrames = 5;
-        this.cooldown = 0;
-        
-        // Debug Canvas Elements
-        this.debugCanvas = null;
-        this.debugCtx = null;
+        this.engineBuffer = new GestureBuffer(4); // Attach buffer directly to engine state
+        this.isInitialized = false; // Flag for initialization state
+        this.initError = null; // Store init error for debugging
     }
 
     async start() {
-        if (!this.recognizer) {
+        if (!this.recognizer && !this.isInitialized) {
             this.onStatus("Loading AI (Offline)... 🧠");
             try {
-                // 1. Load Wasm from LOCAL folder
+                const { FilesetResolver, GestureRecognizer } = await import("./wasm/vision_bundle.js");
                 const vision = await FilesetResolver.forVisionTasks("./wasm");
-                
-                // 2. Load Model from LOCAL folder
                 this.recognizer = await GestureRecognizer.createFromOptions(vision, {
                     baseOptions: {
                         modelAssetPath: "./wasm/gesture_recognizer.task",
-                        delegate: "GPU"
+                        delegate: "GPU" 
                     },
                     runningMode: "VIDEO",
-                    numHands: 1
+                    numHands: 2
                 });
+                this.isInitialized = true;
             } catch (e) {
-                console.error("Vision Init Error:", e);
-                this.onStatus("AI Failed ❌ (Check Files)");
+                console.error("Vision/WASM Init Error:", e.message || e);
+                this.initError = e;
+                this.isInitialized = false;
+                this.onStatus("Hand tracking unavailable ❌");
                 return;
             }
+        } else if (this.initError) {
+            // Previous initialization failed, don't retry
+            this.onStatus("Hand tracking unavailable ❌");
+            return;
         }
 
         if (this.isActive) return;
 
-        // Create hidden video element
         this.video = document.createElement("video");
         this.video.setAttribute("autoplay", "");
         this.video.setAttribute("playsinline", "");
@@ -54,13 +223,17 @@ export class VisionEngine {
         document.body.appendChild(this.video);
 
         try {
-            // Front Camera
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", width: 320, height: 240 } 
+                video: { 
+                    facingMode: "user",
+                    width: { ideal: 640 },
+                    height: { ideal: 480 } 
+                } 
             });
             this.video.srcObject = stream;
             this.video.onloadeddata = () => {
                 this.isActive = true;
+                this.engineBuffer.pushAndEvaluate(null); // Reset buffer on boot
                 this.predict();
                 this.onStatus("Hand Tracking ON 🖐️");
             };
@@ -73,7 +246,6 @@ export class VisionEngine {
     stop() {
         this.isActive = false;
         
-        // Cleanup Video
         if (this.video) {
             if (this.video.srcObject) {
                 this.video.srcObject.getTracks().forEach(t => t.stop());
@@ -82,27 +254,21 @@ export class VisionEngine {
             this.video = null;
         }
 
-        // Cleanup Debug Canvas
         if (this.debugCanvas) {
             this.debugCanvas.remove();
             this.debugCanvas = null;
             this.debugCtx = null;
         }
 
-        if (this.loopId) {
-            cancelAnimationFrame(this.loopId);
-            this.loopId = null;
-        }
-        
+        if (this.loopId) cancelAnimationFrame(this.loopId);
         this.onStatus("Vision Off 🌑");
     }
-
+    
     predict() {
         if (!this.isActive || !this.recognizer || !this.video) return;
 
         const startTimeMs = Date.now();
         
-        // Only process if the video frame has actually updated
         if (this.video.currentTime !== this.lastVideoTime) {
             this.lastVideoTime = this.video.currentTime;
             try {
@@ -113,59 +279,95 @@ export class VisionEngine {
             }
         }
 
-        if (this.isActive) {
-            this.loopId = requestAnimationFrame(() => this.predict());
-        }
+        this.loopId = requestAnimationFrame(() => this.predict());
     }
 
     process(results) {
-        // 1. Draw Skeleton 
-        if (window.appSettings?.isSkeletonDebugEnabled) {
+        const isDebug = window.appSettings && window.appSettings.isSkeletonDebugEnabled;
+
+        if (isDebug) {
             this._drawDebugSkeleton(results);
         } else if (this.debugCanvas && this.debugCtx) {
             this.debugCtx.clearRect(0, 0, this.debugCanvas.width, this.debugCanvas.height);
         }
 
-        // Handle Cooldown
-        if (this.cooldown > 0) { 
-            this.cooldown--; 
-            return; 
+        // FIX: "hand signals should be special 2 handed gestures" - Stop (both palms), Play
+        // (both thumbs up), Delete (both thumbs down), Clear (both fists). Checked first, ahead
+        // of normal single-hand processing, and only fires when both hands simultaneously show
+        // the matching pose. Purely additive - doesn't touch or reinterpret any existing
+        // single-hand pose id, so every preset and mapping built around those keeps working.
+        if (results.landmarks && results.landmarks.length === 2) {
+            const rawID0 = processHandData(results.landmarks[0]);
+            const rawID1 = processHandData(results.landmarks[1]);
+            const TWO_HAND_SIGNALS = {
+                '62': { id: 'TWO_HAND_STOP', label: '✋✋ Both Palms - Stop' },
+                '600': { id: 'TWO_HAND_PLAY', label: '👍👍 Both Thumbs Up - Play' },
+                '601': { id: 'TWO_HAND_DELETE', label: '👎👎 Both Thumbs Down - Delete' },
+                '0': { id: 'TWO_HAND_CLEAR', label: '✊✊ Both Fists - Clear' },
+            };
+            if (rawID0 === rawID1 && TWO_HAND_SIGNALS[rawID0]) {
+                const signal = TWO_HAND_SIGNALS[rawID0];
+                this.onTrigger({ id: signal.id, label: signal.label });
+                this._prevStableID = null;
+                return;
+            }
         }
-
-        let gesture = "none";
 
         if (results.landmarks && results.landmarks.length > 0) {
-            const lm = results.landmarks[0]; 
-            const fingers = this.countFingers(lm);
-            
-            // Direction Logic
-            const dx = lm[9].x - lm[0].x;
-            const dy = lm[9].y - lm[0].y;
-            let dir = "";
-            
-            if (Math.abs(dx) > Math.abs(dy)) {
-                dir = dx < 0 ? "right" : "left"; 
-            } else {
-                dir = dy < 0 ? "up" : "down"; 
+            const rawID = processHandData(results.landmarks[0]);
+            const stableID = this.engineBuffer.pushAndEvaluate(rawID);
+
+            // Handedness: MediaPipe reports Left/Right per hand. NOTE: with a front camera the
+            // label can be mirror-flipped depending on the pipeline, so which physical hand maps
+            // to "Left" vs "Right" must be confirmed on a real device - that's why this is surfaced
+            // in the Hand test readout first. `handednessFlip` in appSettings lets that be corrected
+            // without a code change once verified. The numeric pose id is untouched, so this is
+            // purely additive and never affects existing mappings.
+            let handSide = null;
+            const hArr = results.handednesses || results.handedness;
+            if (hArr && hArr[0] && hArr[0][0] && hArr[0][0].categoryName) {
+                let name = hArr[0][0].categoryName; // 'Left' or 'Right'
+                if (window.appSettings && window.appSettings.handednessFlip) {
+                    name = name === 'Left' ? 'Right' : 'Left';
+                }
+                handSide = name === 'Left' ? 'L' : 'R';
             }
+            this._lastHandSide = handSide;
 
-            if (fingers === 0) gesture = "hand_fist";
-            else gesture = `hand_${fingers}_${dir}`;
+            if (stableID !== null && GESTURE_DICTIONARY[stableID]) {
+                // FIX: "frozen gestures... adding motion would make them better" - poses were
+                // purely static (hold one shape, done). This adds a small set of TRANSITION
+                // gestures - one pose changing into another within a short window reads as an
+                // actual motion (e.g. a fist opening into a throw), not just another static shape.
+                if (this._prevStableID !== null && this._prevStableID !== stableID) {
+                    const elapsed = Date.now() - (this._prevStableTime || 0);
+                    const transition = TRANSITION_GESTURES[`${this._prevStableID}->${stableID}`];
+                    if (transition && elapsed < 900) {
+                        this.onTrigger({ id: transition.id, label: transition.label });
+                        this._prevStableID = stableID;
+                        this._prevStableTime = Date.now();
+                        return;
+                    }
+                }
+                this._prevStableID = stableID;
+                this._prevStableTime = Date.now();
+
+                // Sends a structured object downstream so app.js can use `gesture.id` or `gesture.label`
+                this.onTrigger({
+                    id: stableID,
+                    label: GESTURE_DICTIONARY[stableID],
+                    hand: handSide
+                });
+                return;
+            }
+        } else {
+            // Hand lost from frame, dump the buffer
+            this.engineBuffer.pushAndEvaluate(null);
+            this._prevStableID = null;
         }
 
-        // Debounce Logic
-        this.history.push(gesture);
-        if (this.history.length > this.requiredFrames) {
-            this.history.shift();
-        }
-        
-        const candidate = this.history[0];
-        if (candidate !== "none" && this.history.length === this.requiredFrames && this.history.every(g => g === candidate)) {
-            this.onTrigger(candidate, 'vision');
-            this.cooldown = 25; // Prevent rapid re-firing
-            this.history = [];
-        }
-    }
+        this.onTrigger("none");
+    } 
 
     _drawDebugSkeleton(results) {
         if (!this.debugCanvas) {
@@ -173,11 +375,17 @@ export class VisionEngine {
             this.debugCanvas.style.position = 'fixed';
             this.debugCanvas.style.top = '0';
             this.debugCanvas.style.left = '0';
+            this.debugCanvas.style.margin = '0';
             this.debugCanvas.style.width = '100vw';
             this.debugCanvas.style.height = '100vh';
-            this.debugCanvas.style.zIndex = '9999';
+            this.debugCanvas.style.zIndex = '10';
             this.debugCanvas.style.pointerEvents = 'none';
-            document.body.appendChild(this.debugCanvas);
+            // FIX: appended to <html> instead of <body> - if a settings/help/etc modal is open,
+            // the scroll-lock sets body.style.position = 'fixed' to anchor the page, which makes
+            // body the containing block for its own position:fixed children and throws off their
+            // top/left (a well-known CSS quirk). <html> is never given position:fixed, so this
+            // stays correctly viewport-anchored no matter what else is open.
+            document.documentElement.appendChild(this.debugCanvas);
             this.debugCtx = this.debugCanvas.getContext('2d');
         }
 
@@ -194,6 +402,23 @@ export class VisionEngine {
         if (results.landmarks) {
             for (const landmarks of results.landmarks) {
                 this._drawHand(ctx, landmarks, canvas.width, canvas.height);
+            }
+        }
+
+        // Also draw onto the small Developer Mode practice preview canvas, if it's open
+        const miniCanvas = document.getElementById('practice-preview-canvas');
+        if (miniCanvas) {
+            const miniCtx = miniCanvas.getContext('2d');
+            const rect = miniCanvas.getBoundingClientRect();
+            if (miniCanvas.width !== rect.width || miniCanvas.height !== rect.height) {
+                miniCanvas.width = rect.width;
+                miniCanvas.height = rect.height;
+            }
+            miniCtx.clearRect(0, 0, miniCanvas.width, miniCanvas.height);
+            if (results.landmarks) {
+                for (const landmarks of results.landmarks) {
+                    this._drawHand(miniCtx, landmarks, miniCanvas.width, miniCanvas.height);
+                }
             }
         }
     }
@@ -226,21 +451,5 @@ export class VisionEngine {
             ctx.arc((1.0 - point.x) * w, point.y * h, 4, 0, 2 * Math.PI);
             ctx.fill();
         }
-    }
-
-    countFingers(lm) {
-        let count = 0;
-        if (lm[4].x < lm[3].x && lm[4].x < lm[2].x) count++;
-        const w = lm[0]; 
-        const isExtended = (tip, pip) => {
-            const dTip = Math.hypot(tip.x - w.x, tip.y - w.y);
-            const dPip = Math.hypot(pip.x - w.x, pip.y - w.y);
-            return dTip > (dPip * 1.15); 
-        };
-        if (isExtended(lm[8], lm[6])) count++;   
-        if (isExtended(lm[12], lm[10])) count++; 
-        if (isExtended(lm[16], lm[14])) count++; 
-        if (isExtended(lm[20], lm[18])) count++; 
-        return Math.min(5, count);
-    }       
+    }     
 }
