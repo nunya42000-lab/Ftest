@@ -395,6 +395,18 @@ export class SettingsManager {
 			wakelockToggle: document.getElementById('wakelockToggle'),
 			newToggle: document.getElementById('newToggle'),
 			headerswapbtn: document.getElementById('headerswapbtn'),
+			headerPlayToggle: document.getElementById('headerPlayToggle'), headerplaybtn: document.getElementById('headerplaybtn'),
+			headerDeleteToggle: document.getElementById('headerDeleteToggle'), headerdeletebtn: document.getElementById('headerdeletebtn'),
+			headerSettingsToggle: document.getElementById('headerSettingsToggle'), headersettingsbtn: document.getElementById('headersettingsbtn'),
+			headerRedeemToggle: document.getElementById('headerRedeemToggle'), headerredeembtn: document.getElementById('headerredeembtn'),
+			headerShareToggle: document.getElementById('headerShareToggle'), headersharebtn: document.getElementById('headersharebtn'),
+			headerThemeCycleToggle: document.getElementById('headerThemeCycleToggle'), headerthemecyclebtn: document.getElementById('headerthemecyclebtn'),
+			headerAddMachineToggle: document.getElementById('headerAddMachineToggle'), headeraddmachinebtn: document.getElementById('headeraddmachinebtn'),
+			headerUiUpToggle: document.getElementById('headerUiUpToggle'), headeruiupbtn: document.getElementById('headeruiupbtn'),
+			headerUiDownToggle: document.getElementById('headerUiDownToggle'), headeruidownbtn: document.getElementById('headeruidownbtn'),
+			headerSeqUpToggle: document.getElementById('headerSeqUpToggle'), headersequpbtn: document.getElementById('headersequpbtn'),
+			headerSeqDownToggle: document.getElementById('headerSeqDownToggle'), headerseqdownbtn: document.getElementById('headerseqdownbtn'),
+			headerCycleInputToggle: document.getElementById('headerCycleInputToggle'), headercycleinputbtn: document.getElementById('headercycleinputbtn'),
 			uiScale: document.getElementById('ui-scale-select'),
 			seqSize: document.getElementById('seq-size-select'),
 			seqFontSize: document.getElementById('seq-font-size-select'),
@@ -582,6 +594,34 @@ export class SettingsManager {
 		return validation;
 	}
 
+	// Touch-gesture equivalent of _restoreFactoryHandMappings above. Reuses the exact same
+	// default data as applyDefaultGestureMappings(), but forcefully overwrites each key
+	// (matching the hand version's behavior) rather than that function's "fill gaps only"
+	// merge, since a "Restore Defaults" button should actually restore, not just backfill.
+	_restoreFactoryTouchMappings() {
+		const defaults = {
+			'k9_1': { gesture: 'tap' }, 'k9_2': { gesture: 'double_tap' }, 'k9_3': { gesture: 'triple_tap' },
+			'k9_4': { gesture: 'tap_2f' }, 'k9_5': { gesture: 'double_tap_2f' }, 'k9_6': { gesture: 'triple_tap_2f' },
+			'k9_7': { gesture: 'tap_3f' }, 'k9_8': { gesture: 'double_tap_3f' }, 'k9_9': { gesture: 'triple_tap_3f' },
+			'k12_1': { gesture: 'tap' }, 'k12_2': { gesture: 'double_tap' }, 'k12_3': { gesture: 'triple_tap' },
+			'k12_4': { gesture: 'long_tap' }, 'k12_5': { gesture: 'tap_2f' }, 'k12_6': { gesture: 'double_tap_2f' },
+			'k12_7': { gesture: 'triple_tap_2f' }, 'k12_8': { gesture: 'long_tap_2f' }, 'k12_9': { gesture: 'tap_3f' },
+			'k12_10': { gesture: 'double_tap_3f' }, 'k12_11': { gesture: 'triple_tap_3f' }, 'k12_12': { gesture: 'long_tap_3f' },
+			'piano_C': { gesture: 'swipe_nw' }, 'piano_D': { gesture: 'swipe_left' }, 'piano_E': { gesture: 'swipe_sw' },
+			'piano_F': { gesture: 'swipe_down' }, 'piano_G': { gesture: 'swipe_se' }, 'piano_A': { gesture: 'swipe_right' },
+			'piano_B': { gesture: 'swipe_ne' }, 'piano_1': { gesture: 'swipe_left_2f' }, 'piano_2': { gesture: 'swipe_nw_2f' },
+			'piano_3': { gesture: 'swipe_up_2f' }, 'piano_4': { gesture: 'swipe_ne_2f' }, 'piano_5': { gesture: 'swipe_right_2f' }
+		};
+
+		if (!this.appSettings.gestureMappings) this.appSettings.gestureMappings = {};
+		Object.entries(defaults).forEach(([key, val]) => {
+			if (!this.appSettings.gestureMappings[key]) this.appSettings.gestureMappings[key] = {};
+			this.appSettings.gestureMappings[key].gesture = val.gesture;
+		});
+
+		this.callbacks.onSave();
+	}
+
 	bindMappingEvents() {
 		const btnMapTouch = document.getElementById('btn-map-touch');
 		const btnMapHand = document.getElementById('btn-map-hand');
@@ -710,6 +750,18 @@ export class SettingsManager {
 						this.callbacks.onUpdate();
 					}
 					if (typeof showToast === 'function') showToast('Hand mappings restored to defaults 🔄');
+				}
+			};
+		}
+		const restoreTouchBtn = document.getElementById('restore-factory-touch-mappings');
+		if (restoreTouchBtn) {
+			restoreTouchBtn.onclick = () => {
+				if (confirm('Restore touch gesture mappings to factory defaults? This will overwrite current mappings.')) {
+					this._restoreFactoryTouchMappings();
+					if (this.callbacks.onUpdate) {
+						this.callbacks.onUpdate();
+					}
+					if (typeof showToast === 'function') showToast('Touch mappings restored to defaults 🔄');
 				}
 			};
 		}
@@ -914,6 +966,9 @@ export class SettingsManager {
 		let startX = 0;
 		let startY = 0;
 		let isSwipeIgnored = false;
+		let sectionIdx = 0; // tracked explicitly for the section-cycling case (Settings modal) -
+		                    // Theme/Profiles (plain divs) and the accordions (details elements)
+		                    // don't share a common "is active" state to infer from
 		content.addEventListener('touchstart', (e) => {
 				if (e.target.closest('.no-swipe-zone') || e.target.closest('button')) {
 					isSwipeIgnored = true;
@@ -929,15 +984,30 @@ export class SettingsManager {
 				const endY = e.changedTouches[0].screenY;
 				const diffX = endX - startX;
 				const diffY = endY - startY;
-				if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 2) {
-					const tabs = Array.from(modal.querySelectorAll('.tab-btn'));
-					const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
-					if (activeIdx === -1) return;
-					if (diffX < 0) {
-						if (activeIdx < tabs.length - 1) tabs[activeIdx + 1].click();
-					} else {
-						if (activeIdx > 0) tabs[activeIdx - 1].click();
-					}
+				if (Math.abs(diffX) <= 50 || Math.abs(diffX) <= Math.abs(diffY) * 2) return;
+
+				// Settings modal: cycle through the accordion/plain-div sections (this redesign).
+				const sections = Array.from(modal.querySelectorAll('.settings-section, #settings-section-theme, #settings-section-profiles'));
+				if (sections.length > 0) {
+					sectionIdx = diffX < 0
+						? (sectionIdx + 1) % sections.length
+						: (sectionIdx - 1 + sections.length) % sections.length;
+					const target = sections[sectionIdx];
+					sections.forEach(s => { if (s.tagName === 'DETAILS' && s !== target) s.open = false; });
+					if (target.tagName === 'DETAILS') target.open = true;
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					return;
+				}
+
+				// Any other modal using the older tab-btn system (e.g. the Help modal's Basics /
+				// Master Settings / Hand Tracking / etc. tabs) - untouched by this redesign.
+				const tabs = Array.from(modal.querySelectorAll('.tab-btn'));
+				const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
+				if (activeIdx === -1) return;
+				if (diffX < 0) {
+					if (activeIdx < tabs.length - 1) tabs[activeIdx + 1].click();
+				} else {
+					if (activeIdx > 0) tabs[activeIdx - 1].click();
 				}
 			}, { passive: true });
 	}
@@ -947,7 +1017,7 @@ export class SettingsManager {
 			const closeDevBtn = document.getElementById('close-developer-mode-btn');
 			const devModal = document.getElementById('developer-mode-modal');
 			const settingsModalEl = document.getElementById('settings-modal');
-			if (openDevBtn && devModal) {
+			if (openDevBtn) {
 				openDevBtn.onclick = () => {
 					if (!window.__testAreaSetup) {
 						window.__testAreaSetup = true;
@@ -1256,8 +1326,16 @@ if (!window.__testChecklists) {
 }
 
 					}
-					devModal.classList.remove('opacity-0', 'pointer-events-none');
-					if (settingsModalEl) settingsModalEl.classList.add('opacity-0', 'pointer-events-none');
+					// Developer Mode is now a section inside Settings rather than a separate
+					// modal. Open Settings if it isn't already, then expand and scroll to it.
+					if (settingsModalEl && settingsModalEl.classList.contains('opacity-0')) {
+						if (modules.settings) modules.settings.openSettings();
+					}
+					const devSection = document.getElementById('settings-section-devmode');
+					if (devSection) {
+						devSection.open = true;
+						setTimeout(() => devSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+					}
 					if (window.lockBodyScroll) window.lockBodyScroll();
 				};
 			}
@@ -1360,6 +1438,18 @@ if (!window.__testChecklists) {
 		bindToggle(this.dom.fullscreenToggle, 'showFullscreenBtn', true);
 		bindToggle(this.dom.upsidedownToggle, 'showUpsideDownBtn', true);
 		bindToggle(this.dom.newToggle, 'isPositionSwapEnabled', true);
+		bindToggle(this.dom.headerPlayToggle, 'showPlayBtn', true);
+		bindToggle(this.dom.headerDeleteToggle, 'showDeleteBtn', true);
+		bindToggle(this.dom.headerSettingsToggle, 'showSettingsBtn', true);
+		bindToggle(this.dom.headerRedeemToggle, 'showRedeemBtn', true);
+		bindToggle(this.dom.headerShareToggle, 'showShareBtn', true);
+		bindToggle(this.dom.headerThemeCycleToggle, 'showThemeCycleBtn', true);
+		bindToggle(this.dom.headerAddMachineToggle, 'showAddMachineBtn', true);
+		bindToggle(this.dom.headerUiUpToggle, 'showUiUpBtn', true);
+		bindToggle(this.dom.headerUiDownToggle, 'showUiDownBtn', true);
+		bindToggle(this.dom.headerSeqUpToggle, 'showSeqUpBtn', true);
+		bindToggle(this.dom.headerSeqDownToggle, 'showSeqDownBtn', true);
+		bindToggle(this.dom.headerCycleInputToggle, 'showCycleInputBtn', true);
 		bindToggle(this.dom.autoTimerToggle, 'isAutoTimerEnabled');
 		bindToggle(this.dom.autoCounterToggle, 'isAutoCounterEnabled');
 		bindToggle(this.dom.haptics, 'isHapticsEnabled');
@@ -1841,6 +1931,18 @@ if (!window.__testChecklists) {
 		if (this.dom.voiceToggle) this.dom.voiceToggle.checked = !!this.appSettings.isVoiceInputEnabled;
 		if (this.dom.longPressToggle) this.dom.longPressToggle.checked = (typeof this.appSettings.isLongPressAutoplayEnabled === 'undefined') ? true : this.appSettings.isLongPressAutoplayEnabled;
 		if (this.dom.timerToggle) this.dom.timerToggle.checked = !!this.appSettings.showTimer;
+		if (this.dom.headerPlayToggle) this.dom.headerPlayToggle.checked = !!this.appSettings.showPlayBtn;
+		if (this.dom.headerDeleteToggle) this.dom.headerDeleteToggle.checked = !!this.appSettings.showDeleteBtn;
+		if (this.dom.headerSettingsToggle) this.dom.headerSettingsToggle.checked = !!this.appSettings.showSettingsBtn;
+		if (this.dom.headerRedeemToggle) this.dom.headerRedeemToggle.checked = !!this.appSettings.showRedeemBtn;
+		if (this.dom.headerShareToggle) this.dom.headerShareToggle.checked = !!this.appSettings.showShareBtn;
+		if (this.dom.headerThemeCycleToggle) this.dom.headerThemeCycleToggle.checked = !!this.appSettings.showThemeCycleBtn;
+		if (this.dom.headerAddMachineToggle) this.dom.headerAddMachineToggle.checked = !!this.appSettings.showAddMachineBtn;
+		if (this.dom.headerUiUpToggle) this.dom.headerUiUpToggle.checked = !!this.appSettings.showUiUpBtn;
+		if (this.dom.headerUiDownToggle) this.dom.headerUiDownToggle.checked = !!this.appSettings.showUiDownBtn;
+		if (this.dom.headerSeqUpToggle) this.dom.headerSeqUpToggle.checked = !!this.appSettings.showSeqUpBtn;
+		if (this.dom.headerSeqDownToggle) this.dom.headerSeqDownToggle.checked = !!this.appSettings.showSeqDownBtn;
+		if (this.dom.headerCycleInputToggle) this.dom.headerCycleInputToggle.checked = !!this.appSettings.showCycleInputBtn;
 		if (this.dom.counterToggle) this.dom.counterToggle.checked = !!this.appSettings.showCounter;
 		if (this.dom.calibAudioSlider) this.dom.calibAudioSlider.value = this.appSettings.sensorAudioThresh || -85;
 		if (this.dom.calibCamSlider) this.dom.calibCamSlider.value = this.appSettings.sensorCamThresh || 30;
@@ -1932,7 +2034,23 @@ if (!window.__testChecklists) {
 		if (this.dom.headertonebtn) {
 			this.dom.headertonebtn.classList.toggle('hidden', !this.appSettings.isToneCadenceEnabled);
 		}
-		if (!showTimer && !showCounter && !showMic && !showCam && !showGesture && !showStealth && !showHand && !showSwap && !this.appSettings.isToneCadenceEnabled) {
+		if (this.dom.headerplaybtn) this.dom.headerplaybtn.classList.toggle('hidden', !this.appSettings.showPlayBtn);
+		if (this.dom.headerdeletebtn) this.dom.headerdeletebtn.classList.toggle('hidden', !this.appSettings.showDeleteBtn);
+		if (this.dom.headersettingsbtn) this.dom.headersettingsbtn.classList.toggle('hidden', !this.appSettings.showSettingsBtn);
+		if (this.dom.headerredeembtn) this.dom.headerredeembtn.classList.toggle('hidden', !this.appSettings.showRedeemBtn);
+		if (this.dom.headersharebtn) this.dom.headersharebtn.classList.toggle('hidden', !this.appSettings.showShareBtn);
+		if (this.dom.headerthemecyclebtn) this.dom.headerthemecyclebtn.classList.toggle('hidden', !this.appSettings.showThemeCycleBtn);
+		if (this.dom.headeraddmachinebtn) this.dom.headeraddmachinebtn.classList.toggle('hidden', !this.appSettings.showAddMachineBtn);
+		if (this.dom.headeruiupbtn) this.dom.headeruiupbtn.classList.toggle('hidden', !this.appSettings.showUiUpBtn);
+		if (this.dom.headeruidownbtn) this.dom.headeruidownbtn.classList.toggle('hidden', !this.appSettings.showUiDownBtn);
+		if (this.dom.headersequpbtn) this.dom.headersequpbtn.classList.toggle('hidden', !this.appSettings.showSeqUpBtn);
+		if (this.dom.headerseqdownbtn) this.dom.headerseqdownbtn.classList.toggle('hidden', !this.appSettings.showSeqDownBtn);
+		if (this.dom.headercycleinputbtn) this.dom.headercycleinputbtn.classList.toggle('hidden', !this.appSettings.showCycleInputBtn);
+		const anyNewHeaderBtnShown = this.appSettings.showPlayBtn || this.appSettings.showDeleteBtn || this.appSettings.showSettingsBtn ||
+			this.appSettings.showRedeemBtn || this.appSettings.showShareBtn || this.appSettings.showThemeCycleBtn ||
+			this.appSettings.showAddMachineBtn || this.appSettings.showUiUpBtn || this.appSettings.showUiDownBtn ||
+			this.appSettings.showSeqUpBtn || this.appSettings.showSeqDownBtn || this.appSettings.showCycleInputBtn;
+		if (!showTimer && !showCounter && !showMic && !showCam && !showGesture && !showStealth && !showHand && !showSwap && !this.appSettings.isToneCadenceEnabled && !anyNewHeaderBtnShown) {
 			header.classList.add('header-hidden');
 		} else {
 			header.classList.remove('header-hidden');

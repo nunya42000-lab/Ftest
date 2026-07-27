@@ -143,6 +143,19 @@ const DEFAULT_APP = {
     isVoiceCommandsEnabled: false,
     isToneCadenceEnabled: false,
     isPositionSwapEnabled: false,
+    // New header buttons (added alongside the Header accordion in Settings)
+    showPlayBtn: false,
+    showDeleteBtn: false,
+    showSettingsBtn: false,
+    showRedeemBtn: false,
+    showShareBtn: false,
+    showThemeCycleBtn: false,
+    showAddMachineBtn: false,
+    showUiUpBtn: false,
+    showUiDownBtn: false,
+    showSeqUpBtn: false,
+    showSeqDownBtn: false,
+    showCycleInputBtn: false,
     isSkeletonDebugEnabled: false,
     activeFontFamily: "'Inter', sans-serif",
     handGestureCooldown: 600,
@@ -2463,6 +2476,91 @@ function initGlobalListeners() {
                     modules.vision.stop();
                     headerHand.classList.remove('header-btn-active');
                 }
+            };
+        }
+
+        // ===== New header buttons (Header accordion in Settings) =====
+        // Shared helper: cycle a <select>'s value to the next option (wrapping), then dispatch
+        // a real change event so whatever onchange handler already exists for that select does
+        // the actual work - avoids duplicating storage-model nuances (e.g. runtimeSettings vs
+        // appSettings) that are easy to get wrong by reimplementing from scratch.
+        function _cycleSelect(selectEl, delta = 1) {
+            if (!selectEl || selectEl.options.length === 0) return;
+            const next = (selectEl.selectedIndex + delta + selectEl.options.length) % selectEl.options.length;
+            selectEl.selectedIndex = next;
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        // Shared helper: step a <select>'s value up/down by a fixed increment, clamped to its
+        // min/max option values, then dispatch change. Used for the +/- style buttons where
+        // "next option" isn't quite right if the user could be anywhere in a long numeric range.
+        function _stepSelect(selectEl, direction) {
+            if (!selectEl || selectEl.options.length === 0) return;
+            const values = Array.from(selectEl.options).map(o => parseFloat(o.value));
+            const current = parseFloat(selectEl.value);
+            let idx = values.indexOf(current);
+            if (idx === -1) idx = 0;
+            idx = Math.max(0, Math.min(values.length - 1, idx + direction));
+            selectEl.selectedIndex = idx;
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        const headerPlay = document.getElementById('headerplaybtn'); // wired via data-action="play-demo" reuse
+        const headerDelete = document.getElementById('headerdeletebtn'); // wired via data-action="backspace" reuse
+        const headerSettingsBtn = document.getElementById('headersettingsbtn'); // wired via data-action="open-settings" reuse
+
+        const headerRedeem = document.getElementById('headerredeembtn');
+        if (headerRedeem) {
+            headerRedeem.onclick = () => { if (modules.settings) modules.settings.toggleRedeem(true); };
+        }
+        const headerShare = document.getElementById('headersharebtn');
+        if (headerShare) {
+            headerShare.onclick = () => { if (modules.settings) modules.settings.openShare(); };
+        }
+        const headerThemeCycle = document.getElementById('headerthemecyclebtn');
+        if (headerThemeCycle) {
+            headerThemeCycle.onclick = () => {
+                const sel = document.getElementById('theme-select');
+                _cycleSelect(sel, 1);
+                showToast('Theme changed 🎨');
+            };
+        }
+        const headerAddMachine = document.getElementById('headeraddmachinebtn');
+        if (headerAddMachine) {
+            headerAddMachine.onclick = () => {
+                const sel = document.getElementById('machines-select');
+                if (!sel) return;
+                const maxIdx = sel.options.length - 1;
+                if (sel.selectedIndex >= maxIdx) {
+                    showToast('Already at max machines');
+                    return;
+                }
+                sel.selectedIndex += 1;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                showToast(`Machines: ${sel.value}`);
+            };
+        }
+        const headerUiUp = document.getElementById('headeruiupbtn');
+        if (headerUiUp) {
+            headerUiUp.onclick = () => { _stepSelect(document.getElementById('ui-scale-select'), 1); };
+        }
+        const headerUiDown = document.getElementById('headeruidownbtn');
+        if (headerUiDown) {
+            headerUiDown.onclick = () => { _stepSelect(document.getElementById('ui-scale-select'), -1); };
+        }
+        const headerSeqUp = document.getElementById('headersequpbtn');
+        if (headerSeqUp) {
+            headerSeqUp.onclick = () => { _stepSelect(document.getElementById('seq-size-select'), 1); };
+        }
+        const headerSeqDown = document.getElementById('headerseqdownbtn');
+        if (headerSeqDown) {
+            headerSeqDown.onclick = () => { _stepSelect(document.getElementById('seq-size-select'), -1); };
+        }
+        const headerCycleInput = document.getElementById('headercycleinputbtn');
+        if (headerCycleInput) {
+            headerCycleInput.onclick = () => {
+                const sel = document.getElementById('input-select');
+                _cycleSelect(sel, 1);
+                if (sel) showToast(`Input: ${sel.options[sel.selectedIndex].textContent}`);
             };
         }
         const headerStealth = document.getElementById('headerbiggerbtn');

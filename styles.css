@@ -6,6 +6,7 @@
 .pointer-events-none { pointer-events: none !important; }
 .hidden { display: none !important; }
 :root { --bg-main: #000000; --card-bg: #121212; --seq-bubble: #4f46e5; --btn-bg: #1a1a1a; --text-main: #e5e5e5; --border: rgba(255, 255, 255, 0.15); }
+.border-custom { border-color: var(--border); }
 body { background-color: var(--bg-main); color: var(--text-main); transition: background-color .3s, color .3s; min-height: 100vh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 input, textarea, .selectable-text { -webkit-user-select: text !important; user-select: text !important; -webkit-touch-callout: default !important; cursor: auto; touch-action: auto; }
 .settings-modal-bg { background-color: var(--card-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border); }
@@ -20,7 +21,7 @@ input, textarea, .selectable-text { -webkit-user-select: text !important; user-s
 #app { padding-top: 1rem; display: flex; flex-direction: column; }
 @media (orientation:landscape) { #app {padding-top: 0;} #sequence-container { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: .5rem !important; } #sequence-container>div { margin: 0 !important; } }
 #sequence-container { justify-content: flex-start !important; padding-top: 1rem; width: 100%; }
-#input-footer { background-color: var(--card-bg); border-top: 4px solid var(--seq-bubble); padding-bottom: max(.5rem, env(safe-area-inset-bottom)); max-height: 70vh; overflow-y: auto; }
+#input-footer { background-color: var(--card-bg); border-top: 4px solid var(--seq-bubble); padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); max-height: 70vh; overflow-y: auto; }
 /* Position Swap: #input-footer's top/bottom placement and paddingTop/paddingBottom on #app
    are set inline by applyPositionSwapOffsets() in app.js, since they depend on measured
    element heights. This just flips the border + padding so it still looks correct at the top. */
@@ -117,6 +118,10 @@ body.eco-mode * { animation-duration: 0.01ms !important; transition-duration: 0.
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 2px; /* keeps any scrollbar-adjacent shadow from clipping button edges */
+  min-width: 0; /* flex items default to min-width:auto, which refuses to shrink below content's
+                   natural width - without this override the row never gets properly bounded by
+                   the viewport, making the scroll range feel unbounded/inconsistent */
+  max-width: 100%;
 }
 .header-btn-row::-webkit-scrollbar { display: none; }
 .header-btn-row > button { flex-shrink: 0; }
@@ -493,7 +498,7 @@ details[open] > summary .group-open\:rotate-180 { transform: rotate(180deg); }
 .pt-safe-top { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
 /* safe-area-bottom: same category, for the fixed-position input footer (home-indicator zone) */
-.safe-area-bottom { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+.safe-area-bottom { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
 
 /* no-scrollbar: intent is clearly to hide the scrollbar on the horizontally-scrolling settings
    tab bar while keeping it scrollable - was completely undefined, so the scrollbar has been
