@@ -1,37 +1,22 @@
-// sw.js
-// Version: v66 - Removed Tailwind CDN dependency (all styling is now local, in styles.css).
-// Side benefit: cache.addAll() for CRITICAL_ASSETS is all-or-nothing - having an external CDN
-// in that list meant a slow/blocked CDN during install could have failed the ENTIRE critical
-// precache, including 100%-local files like index.html and app.js. That fragility is gone now.
-const CACHE_NAME = 'follow-me-v67-robust';
+const CACHE_NAME = 'follow-me-v118';
 
-// 1. CRITICAL: These MUST exist for the app to run.
-// If any of these are missing, the offline mode will fail.
 const CRITICAL_ASSETS = [
     './',
     './index.html',
     './styles.css',
     './app.js',
-    './settings.js',
-    './gestures.js',
-    './manifest.json',
-    './vision.js',
-    './wasm/vision_bundle.js',
-    './wasm/vision_wasm_internal.js',
-    './wasm/vision_wasm_internal.wasm',
-    './wasm/gesture_recognizer.task',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap'
+    './manifest.json'
 ];
 
-
-// 2. OPTIONAL: Images & External Links.
-// We will TRY to cache these. If they fail (404 missing, network error), 
-// we simply skip them so the app still installs successfully.
 const OPTIONAL_ASSETS = [
     './icon192.png',
     './icon512.png',
     './qr.jpg',
-    './redeem.jpg',
+    './redeem.png',
+    './wasm/vision_bundle.js',
+    './wasm/vision_wasm_internal.js',
+    './wasm/vision_wasm_internal.wasm',
+    './wasm/gesture_recognizer.task',
     'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap',
     'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js',
     'https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js'
@@ -43,7 +28,7 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME).then(async cache => {
             console.log('[SW] Installing...');
             
-            // A. Cache Critical Files (Fail if missing)
+            // A. Cache Critical Files (Fail if missing)[span_1](start_span)[span_1](end_span)
             try {
                 await cache.addAll(CRITICAL_ASSETS);
                 console.log('[SW] Critical assets cached');
@@ -51,7 +36,7 @@ self.addEventListener('install', event => {
                 console.error('[SW] Critical install failed. Check file paths:', err);
             }
 
-            // B. Cache Optional Files (Ignore errors)
+            // B. Cache Optional Files (Ignore errors)[span_2](start_span)[span_2](end_span)
             await Promise.all(OPTIONAL_ASSETS.map(async url => {
                 try {
                     const res = await fetch(url);
@@ -80,13 +65,39 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
-    
+
+    if (event.request.mode === 'navigate') {
+        const url = new URL(event.request.url);
+        if (url.searchParams.has('forceRefresh')) {
+            event.respondWith(
+                (async () => {
+                    try {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(cacheNames.map(name => caches.delete(name)));
+                        console.log('[SW] Force-refresh: all caches cleared');
+                    } catch (e) {
+                        console.warn('[SW] Force-refresh cache clear failed:', e);
+                    }
+                    try {
+                        self.registration.update();
+                    } catch (e) {}
+                    try {
+                        return await fetch(event.request, { cache: 'no-store' });
+                    } catch (e) {
+                        return fetch(event.request);
+                    }
+                })()
+            );
+            return;
+        }
+    }
+
     event.respondWith(
         caches.match(event.request).then(cached => {
-            // Return cached content if available
+            // 1. Return cached content instantly if available
             if (cached) return cached;
 
-            // Otherwise fetch from network and cache it for next time
+            // 2. Fetch from network and lazily cache it for next time
             return fetch(event.request).then(networkResponse => {
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
                     return networkResponse;
@@ -95,6 +106,10 @@ self.addEventListener('fetch', event => {
                 caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
                 return networkResponse;
             }).catch(() => {
+                // 3. ONLY if the network fails (offline), fallback to the cached root
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./index.html').then(indexCached => indexCached || caches.match('./'));
+                }
                 console.log('[SW] Offline & not found:', event.request.url);
             });
         })
