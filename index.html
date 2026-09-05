@@ -139,6 +139,12 @@ const TONE_TABLE=[
      - a tone counts only if it lasts 100-350ms
      - it counts only if the silence before it is 600-1100ms (or it is the first tone) */
 const F_MIN=180, F_MAX=950, MATCH_TOL=0.04;
+/* The MEASURING range is deliberately wider than the app's. If the machine's tones run past
+   the app's 950Hz ceiling, searching only the app's band cannot reveal that - the algorithm
+   simply pegs at sampleRate/floor(sampleRate/950), which at 48kHz is exactly 960.00Hz, and
+   reports that same fake value over and over. Measuring wide is the only way to find out what
+   the tones actually are; each one is still checked against the app's band afterwards. */
+const SCAN_MIN=110, SCAN_MAX=2400;
 const TONE_MS=[100,350], GAP_MS=[600,1100];
 
 let audioCtx=null,analyser=null,micSrc=null,live=false,recording=false;
@@ -171,12 +177,13 @@ const median=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)
 
 /* Verbatim port of ToneEngine._detectPitch. Deliberately identical: a number produced
    by any other algorithm would not predict what the app is going to do with the sound. */
-function detectPitch(buffer,sampleRate){
+function detectPitch(buffer,sampleRate,fLo,fHi){
+  const lo = fLo || 180, hi = fHi || 950;
   const SIZE=buffer.length;
   let rms=0; for(let i=0;i<SIZE;i++) rms+=buffer[i]*buffer[i];
   rms=Math.sqrt(rms/SIZE);
   if(rms<0.01) return -1;
-  const minLag=Math.floor(sampleRate/950), maxLag=Math.ceil(sampleRate/180);
+  const minLag=Math.floor(sampleRate/hi), maxLag=Math.ceil(sampleRate/lo);
   const usableSize=SIZE-maxLag; if(usableSize<=0) return -1;
   const corr=new Float32Array(maxLag+1);
   for(let lag=minLag;lag<=maxLag;lag++){
@@ -193,7 +200,12 @@ function detectPitch(buffer,sampleRate){
     const c0=corr[bestLag-1],c1=bestCorr,c2=corr[bestLag+1],d=c0-2*c1+c2;
     if(d!==0) refined=bestLag+0.5*(c0-c2)/d;
   }
-  return refined>0?sampleRate/refined:-1;
+  if(refined<=0) return -1;
+  /* Reject anything sitting on the very edge of the search range. When no real periodicity is
+     present the best lag lands on the boundary, and sampleRate/thatLag is a constant that looks
+     like a confident reading but is pure artifact - it was 2/3 of one real recording. */
+  if(bestLag<=minLag || bestLag>=maxLag) return -1;
+  return sampleRate/refined;
 }
 
 /* ------------------------------ axis ------------------------------ */
@@ -265,8 +277,11 @@ function loop(){
   liveDb=maxVal;
   const thr=+$('thr').value, now=performance.now();
 
-  if(maxVal>thr){
-    const f=detectPitch(time,audioCtx.sampleRate);
+  /* The gate must clear the room, whatever the slider says. Below the noise floor it never
+     closes, so a tone can never end and the recording shatters into fragments. */
+  const effThr = (noiseFloor!==null) ? Math.max(thr, noiseFloor+3) : thr;
+  if(maxVal>effThr){
+    const f=detectPitch(time,audioCtx.sampleRate,SCAN_MIN,SCAN_MAX);
     liveHz=f>0?f:-1;
     if(recording&&f>0){
       /* Close the current tone when the pitch jumps, not only when the level drops. In a
@@ -288,7 +303,7 @@ function loop(){
   /* Colour carries open/closed so the readout stays on one line: blue means the level is
      over the gate and a tone is being captured, grey means it has fallen back below. */
   $('db').textContent = isFinite(maxVal) ? Math.round(maxVal)+'dB' : '';
-  $('db').style.color = maxVal>thr ? 'var(--signal)' : 'var(--ink-soft)';
+  $('db').style.color = maxVal>effThr ? 'var(--signal)' : 'var(--ink-soft)';
   if(recording) setState(`Recording — ${events.length} tone${events.length===1?'':'s'} heard`);
   drawAxis();
   requestAnimationFrame(loop);
@@ -301,12 +316,16 @@ function loop(){
 function closeTone(now){
   if(!cur) return;
   const dur=now-cur.start;
-  if(cur.freqs.length>=3){
+  const spread=cur.freqs.length>1?(Math.max(...cur.freqs)-Math.min(...cur.freqs))/median(cur.freqs):0;
+  /* A tone has to last long enough to be a tone, hold still enough to be one pitch, and be
+     built from enough samples to mean anything. Without this, room noise fragmented into a
+     thousand 30ms slivers. */
+  if(cur.freqs.length>=5 && dur>=45 && spread<=0.08){
     events.push({
       f:+median(cur.freqs).toFixed(2), dur:Math.round(dur),
       gap: lastEnd? Math.round(cur.start-lastEnd) : null,
       db:Math.round(Math.max(...cur.db)),
-      spread:+((Math.max(...cur.freqs)-Math.min(...cur.freqs))/median(cur.freqs)).toFixed(4)
+      spread:+spread.toFixed(4)
     });
     lastEnd=now; renderRows();
   }
@@ -398,12 +417,19 @@ function buildOutput(){
 
   if(cl.length!==9)
     addNote(`${cl.length} distinct tones came through, not 9. Either some buttons were not pressed, or two of them are too close in pitch to separate. Record more rounds and make sure every button gets used.`,'warn');
-  if(outBand.length)
-    addNote(`${outBand.map(f=>f.toFixed(0)+'Hz').join(', ')} fell outside <span class="num">${F_MIN}–${F_MAX}Hz</span>. The app's pitch detector only searches that band, so these cannot be recognised as they stand.`,'warn');
+  const above=cl.filter(c=>c.f>F_MAX).map(c=>c.f);
+  const below=cl.filter(c=>c.f<F_MIN).map(c=>c.f);
+  if(above.length)
+    addNote(`${above.map(f=>f.toFixed(0)+'Hz').join(', ')} sit ABOVE the app's <span class="num">${F_MAX}Hz</span> search ceiling. They were measured here because this tool scans up to <span class="num">${SCAN_MAX}Hz</span>, but the app would never find them - its ceiling needs raising past the highest figure above.`,'warn');
+  if(below.length)
+    addNote(`${below.map(f=>f.toFixed(0)+'Hz').join(', ')} sit BELOW the app's <span class="num">${F_MIN}Hz</span> floor and could not be recognised as things stand.`,'warn');
   if(durBad)
     addNote(`${durBad} of ${allDur.length} tones fell outside the <span class="num">${TONE_MS[0]}–${TONE_MS[1]}ms</span> length the app accepts (yours run about <span class="num">${Math.round(medDur)}ms</span>). Frequencies alone will not fix that — the app's window needs widening.`,'warn');
   if(medGap!==null&&gapBad)
     addNote(`${gapBad} of ${allGap.length} gaps fell outside the <span class="num">${GAP_MS[0]}–${GAP_MS[1]}ms</span> spacing the app accepts (yours run about <span class="num">${Math.round(medGap)}ms</span>). Same story: this is a timing window, not a pitch.`,'warn');
+  const gateNow=+$('thr').value;
+  if(noiseFloor!==null && gateNow<=noiseFloor)
+    addNote(`The gate is at <span class="num">${gateNow}dB</span> but the room measures <span class="num">${Math.round(noiseFloor)}dB</span>. A gate under the room's own noise never closes, so tones run together and fragment - it was raised to <span class="num">${Math.round(noiseFloor)+3}dB</span> automatically for this recording. Drag it up to at least that.`,'warn');
   if(quiet<-85)
     addNote(`The quietest tone peaked at <span class="num">${quiet}dB</span>, below the default <span class="num">−85dB</span> gate. The gate needs lowering or the phone needs to sit closer.`,'warn');
   if(collide.length)
@@ -428,7 +454,9 @@ function buildOutput(){
       quietestDb:quiet,
       clusters:cl.map(c=>({hz:c.f,heard:c.count,ms:c.dur,msRange:c.durRange,db:c.db,button:assign[c.id]||null}))
     },
+    scanRange:[SCAN_MIN,SCAN_MAX],
     appWindows:{band:[F_MIN,F_MAX],toneMs:TONE_MS,gapMs:GAP_MS,matchTolerance:MATCH_TOL},
+    tonesAboveAppCeiling:cl.filter(c=>c.f>F_MAX).map(c=>c.f),
     fits:{ band:!outBand.length, toneLength:!durBad, gap:!gapBad,
            level:quiet>=-85, separation:!collide.length }
   },null,2);
