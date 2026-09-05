@@ -60,6 +60,16 @@
   .note.good{border-left-color:var(--good)}
   textarea{width:100%;min-height:130px;font-family:ui-monospace,Menlo,monospace;font-size:.78rem;
     padding:10px;border:1px solid var(--rule);border-radius:3px;background:#fff;color:var(--ink);resize:vertical}
+  .pad{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px}
+  .tapgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px}
+  .tapgrid div{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--rule);border-radius:2px;background:#fff;
+    font-family:ui-monospace,Menlo,monospace;font-size:1rem;font-weight:600;color:var(--ink-soft)}
+  .tapgrid div.filled{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .tapgrid div.unpaired{background:#fff;color:var(--warn);border-color:var(--warn)}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .key{font-family:ui-monospace,Menlo,monospace;font-size:1.15rem;padding:14px 0}
+  .key:active{background:var(--signal);border-color:var(--signal)}
   .hidden{display:none!important}
   ol{padding-left:1.2em;margin:0 0 12px;color:var(--ink-soft);font-size:.92rem}
   li{margin-bottom:5px}
@@ -73,10 +83,10 @@
   <p class="sub">Records the tones your machine plays, so Follow&nbsp;Me can recognise them without every user calibrating first.</p>
 
   <ol>
-    <li>Put the phone where it normally sits while you play.</li>
-    <li>Turn on the microphone, then start recording.</li>
-    <li>Let the machine play several rounds — the longer the better.</li>
-    <li>Stop, label which tone is which button, and send the result back.</li>
+    <li>Put the phone close to the machine's speaker — closer than feels necessary. Tones need to be clearly louder than the room or the quiet ones are never heard at all.</li>
+    <li>Turn on the microphone and let it measure the room. Don't drag the gate below the figure it reports.</li>
+    <li>Start recording, then tap the matching number on the keypad as each tone plays — including the tones you play back yourself.</li>
+    <li>Several full rounds is ideal. Stop, then send the result back.</li>
   </ol>
 
   <div class="meter">
@@ -101,6 +111,22 @@
   <div class="row">
     <label for="who">Machine</label>
     <input type="text" id="who" placeholder="e.g. the machine's make and model" autocomplete="off">
+  </div>
+
+  <h2>Label as you go</h2>
+  <p class="sub" style="margin-bottom:10px">Tap the matching button as each tone plays. Every tap is paired with the tone just heard, which is what turns a list of frequencies into a list of buttons.</p>
+  <div class="pad">
+    <div id="tapGrid" class="tapgrid" aria-label="Labelled sequence"></div>
+    <div class="keys">
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+    </div>
+    <div class="row" style="margin:8px 0 0">
+      <button id="undoTap" class="ghost">Undo</button>
+      <button id="clearTaps" class="ghost">Clear labels</button>
+      <span id="tapInfo" class="sub num" style="margin:0 0 0 auto"></span>
+    </div>
   </div>
 
   <h2>Tones heard <span id="evCount" class="num" style="font-weight:400;color:var(--ink-soft)"></span></h2>
@@ -150,6 +176,54 @@ const TONE_MS=[100,350], GAP_MS=[600,1100];
 let audioCtx=null,analyser=null,micSrc=null,live=false,recording=false;
 let liveHz=-1,liveDb=-Infinity;
 let events=[],cur=null,lastEnd=0,assign={};
+let taps=[];   // {n, t} - which button was pressed, and when
+
+/* Pairs each tap with the tone it was answering. A person hears a tone and then presses, so the
+   tone always comes FIRST - only tones starting before the tap are candidates, and the nearest
+   one wins. Each tone can only claim one tap. Anything further back than PAIR_WINDOW is left
+   unpaired rather than guessed at, because a wrong label is worse than a missing one. */
+const PAIR_WINDOW = 2500;
+function pairTapsToTones(){
+  const used=new Set();
+  return taps.map(tap=>{
+    let best=null,bestDt=Infinity;
+    events.forEach((ev,i)=>{
+      if(used.has(i)) return;
+      const dt=tap.t-ev.t;
+      if(dt<0 || dt>PAIR_WINDOW) return;
+      if(dt<bestDt){bestDt=dt;best=i;}
+    });
+    if(best!==null) used.add(best);
+    return {n:tap.n, t:tap.t, ev:best===null?null:events[best], dtMs:best===null?null:Math.round(bestDt)};
+  });
+}
+/* Collapses the pairs into one frequency per button - this is the actual calibration. */
+function buttonFrequencies(){
+  const byBtn={};
+  pairTapsToTones().forEach(pr=>{ if(!pr.ev) return; (byBtn[pr.n]=byBtn[pr.n]||[]).push(pr.ev); });
+  const out={};
+  Object.keys(byBtn).sort((a,b)=>a-b).forEach(k=>{
+    const fs=byBtn[k].map(e=>e.f), ds=byBtn[k].map(e=>e.dur);
+    out[k]={hz:+median(fs).toFixed(2), samples:fs.length,
+            spread:+((Math.max(...fs)-Math.min(...fs))/median(fs)).toFixed(4),
+            ms:Math.round(median(ds))};
+  });
+  return out;
+}
+function renderTaps(){
+  const g=$('tapGrid'); if(!g) return;
+  const paired=pairTapsToTones();
+  const shown=paired.slice(-20);
+  let html='';
+  for(let i=0;i<20;i++){
+    const pr=shown[i];
+    if(!pr) html+='<div></div>';
+    else html+=`<div class="${pr.ev?'filled':'unpaired'}" title="${pr.ev?pr.ev.f+'Hz':'no tone matched'}">${pr.n}</div>`;
+  }
+  g.innerHTML=html;
+  const ok=paired.filter(pr=>pr.ev).length;
+  $('tapInfo').textContent = taps.length ? `${ok}/${taps.length} paired` : '';
+}
 let noiseFloor=null;
 
 /* Samples the peak bin for a moment with nothing playing, and takes a high percentile
@@ -193,6 +267,11 @@ function detectPitch(buffer,sampleRate,fLo,fHi){
   let bestLag=-1,bestCorr=-1;
   for(let lag=minLag;lag<=maxLag;lag++) if(corr[lag]>bestCorr){bestCorr=corr[lag];bestLag=lag;}
   if(bestLag<=0) return -1;
+  /* The shortest strongly-correlating lag, exactly as the app does it. Preferring LONGER lags
+     to chase the fundamental cannot work: a signal with period T also has period 2T, so
+     correlation at double the lag is always high and the search just walks down octave after
+     octave. Octave ambiguity is instead resolved where it is actually decidable - folding
+     within a tone, and merging octave-paired clusters afterwards. */
   const strong=bestCorr*0.85;
   for(let lag=minLag;lag<bestLag;lag++) if(corr[lag]>=strong){bestLag=lag;bestCorr=corr[lag];break;}
   let refined=bestLag;
@@ -287,12 +366,19 @@ function loop(){
       /* Close the current tone when the pitch jumps, not only when the level drops. In a
          room whose noise never falls under the gate, consecutive tones would otherwise be
          swallowed into one endless event. */
+      let v=f;
       if(cur&&cur.freqs.length){
         const ref=median(cur.freqs);
-        if(Math.abs(f-ref)>ref*0.03){ closeTone(now); }
+        /* Fold an octave flip back onto the tone in progress rather than treating it as a new
+           tone. A single note that wobbles between its fundamental and its harmonic would
+           otherwise be chopped into fragments, and the fragments then fail the steadiness test
+           below and vanish - which is how half a recording went missing. */
+        while(v>ref*1.5) v/=2;
+        while(v<ref/1.5) v*=2;
+        if(Math.abs(v-ref)>ref*0.03){ closeTone(now); v=f; }
       }
       if(!cur) cur={start:now,freqs:[],db:[]};
-      cur.freqs.push(f); cur.db.push(maxVal);
+      cur.freqs.push(v); cur.db.push(maxVal);
     }
   }else{
     liveHz=-1;
@@ -322,12 +408,13 @@ function closeTone(now){
      thousand 30ms slivers. */
   if(cur.freqs.length>=5 && dur>=45 && spread<=0.08){
     events.push({
+      t:Math.round(cur.start),
       f:+median(cur.freqs).toFixed(2), dur:Math.round(dur),
       gap: lastEnd? Math.round(cur.start-lastEnd) : null,
       db:Math.round(Math.max(...cur.db)),
       spread:+spread.toFixed(4)
     });
-    lastEnd=now; renderRows();
+    lastEnd=now; renderRows(); renderTaps();
   }
   cur=null;
 }
@@ -341,6 +428,10 @@ function clusters(){
     else {out.push(g); g=[sorted[i]];}
   }
   out.push(g);
+  /* Octave pairs are deliberately NOT merged automatically. A cluster at double another's pitch
+     might be that tone's harmonic - or it might be a real button an octave up, which is common
+     on a machine that plays a scale. Only the person who knows how many buttons the machine has
+     can tell, and guessing wrong silently deletes a real tone. They are reported instead. */
   return out.map((grp,i)=>({
     id:i, f:+median(grp.map(e=>e.f)).toFixed(2), count:grp.length,
     dur:Math.round(median(grp.map(e=>e.dur))),
@@ -397,8 +488,13 @@ function buildOutput(){
       addNote(`${events.length} sound(s) were heard but none repeated, so there is nothing to treat as a button yet. Let the machine play more rounds.`,'warn');
     return; }
 
+  /* Labels typed on the keypad are the authority - they say which button actually made each
+     tone, rather than inferring it from pitch order. The dropdowns stay as a fallback for any
+     button that never got labelled. */
+  const byBtn=buttonFrequencies();
   const notes={}, unassigned=[];
-  cl.forEach(c=>{ const n=assign[c.id]; if(n) notes[n]=c.f; else unassigned.push(c.f); });
+  Object.keys(byBtn).forEach(k=>{ notes[k]=byBtn[k].hz; });
+  cl.forEach(c=>{ const n=assign[c.id]; if(n && !notes[n]) notes[n]=c.f; else if(!n && !Object.keys(byBtn).length) unassigned.push(c.f); });
 
   const allDur=events.map(e=>e.dur), allGap=events.map(e=>e.gap).filter(x=>x!==null);
   const medDur=median(allDur), medGap=allGap.length?median(allGap):null;
@@ -415,6 +511,29 @@ function buildOutput(){
     if(Math.abs(a-b)<Math.max(a,b)*MATCH_TOL) collide.push([ent[i][0],ent[j][0]]);
   }
 
+  const octavePairs=[];
+  cl.forEach(a=>cl.forEach(bb=>{
+    if(bb.f<=a.f) return;
+    const r=bb.f/a.f;
+    if(Math.abs(r-2)<0.05) octavePairs.push({lo:a,hi:bb});
+  }));
+  if(octavePairs.length)
+    addNote('Octave pairs: ' + octavePairs.map(pr=>
+      `<span class="num">${pr.lo.f.toFixed(0)}</span>/<span class="num">${pr.hi.f.toFixed(0)}Hz</span> (heard ${pr.lo.count} and ${pr.hi.count})`).join(', ') +
+      `. Each could be one tone heard through its own harmonic, or two real buttons an octave apart. The counts usually tell you which: a harmonic shows up LESS often than the tone it comes from, so a higher count on the upper one means it is a real button. Label them accordingly - they are not merged automatically, because guessing wrong would delete a real tone.`,'');
+  const paired=pairTapsToTones();
+  const unpairedTaps=paired.filter(p=>!p.ev).length;
+  const nBtn=Object.keys(byBtn).length;
+  if(taps.length){
+    const thin=Object.keys(byBtn).filter(k=>byBtn[k].samples<3);
+    addNote(`${paired.length-unpairedTaps} of ${taps.length} labels paired with a tone, covering ${nBtn} button${nBtn===1?'':'s'}.` +
+      (unpairedTaps?` ${unpairedTaps} tap${unpairedTaps===1?'':'s'} had no tone within ${PAIR_WINDOW}ms and were left unlabelled rather than guessed at.`:'') +
+      (thin.length?` Buttons ${thin.join(', ')} have fewer than 3 samples - press those a few more times.`:''), thin.length||unpairedTaps?'':'good');
+    const wide=Object.keys(byBtn).filter(k=>byBtn[k].spread>0.06);
+    if(wide.length) addNote(`Buttons ${wide.join(', ')} varied more than 6% between presses, which usually means two different tones got the same label.`,'warn');
+  } else {
+    addNote('No labels yet. Tap the matching number as each tone plays and the buttons identify themselves - without that, which tone belongs to which button has to be guessed from pitch order.','');
+  }
   if(cl.length!==9)
     addNote(`${cl.length} distinct tones came through, not 9. Either some buttons were not pressed, or two of them are too close in pitch to separate. Record more rounds and make sure every button gets used.`,'warn');
   const above=cl.filter(c=>c.f>F_MAX).map(c=>c.f);
@@ -428,6 +547,9 @@ function buildOutput(){
   if(medGap!==null&&gapBad)
     addNote(`${gapBad} of ${allGap.length} gaps fell outside the <span class="num">${GAP_MS[0]}–${GAP_MS[1]}ms</span> spacing the app accepts (yours run about <span class="num">${Math.round(medGap)}ms</span>). Same story: this is a timing window, not a pitch.`,'warn');
   const gateNow=+$('thr').value;
+  const headroom = (noiseFloor!==null) ? (quiet - noiseFloor) : null;
+  if(headroom!==null && headroom < 10)
+    addNote(`The quietest tone is only <span class="num">${Math.round(headroom)}dB</span> above the room (<span class="num">${quiet}dB</span> against <span class="num">${Math.round(noiseFloor)}dB</span>). Below about 10dB the gate cannot separate every tone from the background, and the quieter ones simply never register - if far fewer tones were recorded than were actually played, this is almost always why. Move the phone closer to the speaker, or record somewhere quieter.`,'warn');
   if(noiseFloor!==null && gateNow<=noiseFloor)
     addNote(`The gate is at <span class="num">${gateNow}dB</span> but the room measures <span class="num">${Math.round(noiseFloor)}dB</span>. A gate under the room's own noise never closes, so tones run together and fragment - it was raised to <span class="num">${Math.round(noiseFloor)+3}dB</span> automatically for this recording. Drag it up to at least that.`,'warn');
   if(quiet<-85)
@@ -447,6 +569,13 @@ function buildOutput(){
     levelGate:+$('thr').value,
     roomNoiseFloorDb: noiseFloor===null?null:Math.round(noiseFloor),
     notes,
+    labelled:{
+      taps:taps.length,
+      paired:pairTapsToTones().filter(p=>p.ev).length,
+      pairWindowMs:PAIR_WINDOW,
+      byButton:byBtn,
+      pairs:pairTapsToTones().map(p=>({button:p.n, hz:p.ev?p.ev.f:null, ms:p.ev?p.ev.dur:null, dtMs:p.dtMs}))
+    },
     observed:{
       distinctTones:cl.length, totalTones:events.length,
       toneMs:{median:Math.round(medDur),min:Math.min(...allDur),max:Math.max(...allDur)},
@@ -467,7 +596,7 @@ function buildOutput(){
 $('thr').oninput=e=>{$('thrV').textContent='−'+Math.abs(e.target.value);};
 $('mic').onclick=startMic;
 $('rec').onclick=()=>{
-  recording=true; events=[]; cur=null; lastEnd=0; assign={};
+  recording=true; events=[]; cur=null; lastEnd=0; assign={}; taps=[]; renderTaps();
   $('rec').classList.add('hidden'); $('stop').classList.remove('hidden');
   $('diag').innerHTML=''; $('out').value=''; renderRows();
   setState('Recording — let the machine play');
@@ -483,7 +612,7 @@ $('stop').onclick=()=>{
   renderRows(); buildOutput();
 };
 $('reset').onclick=()=>{
-  events=[];cur=null;lastEnd=0;assign={};recording=false;
+  events=[];cur=null;lastEnd=0;assign={};taps=[];recording=false;renderTaps();
   $('diag').innerHTML='';$('out').value='';$('copy').disabled=true;$('dl').disabled=true;
   $('rec').textContent='Start recording';$('stop').classList.add('hidden');$('rec').classList.remove('hidden');
   renderRows(); setState(live?'Listening':'Microphone off');
@@ -499,7 +628,12 @@ $('dl').onclick=()=>{
   a.download='machine-tones-'+(($('who').value||'machine').trim().replace(/\W+/g,'-').toLowerCase())+'.json';
   a.click();URL.revokeObjectURL(a.href);
 };
-drawAxis(); renderRows();
+document.querySelectorAll('.key').forEach(k=>{
+  k.onclick=()=>{ taps.push({n:+k.dataset.k, t:Math.round(performance.now())}); renderTaps(); buildOutput(); };
+});
+$('undoTap').onclick=()=>{ taps.pop(); renderTaps(); buildOutput(); };
+$('clearTaps').onclick=()=>{ taps=[]; renderTaps(); buildOutput(); };
+drawAxis(); renderTaps(); renderRows();
 </script>
 </body>
 </html>
