@@ -82,7 +82,7 @@
   <div class="meter">
     <svg id="axis" viewBox="0 0 640 96" preserveAspectRatio="none" height="96" aria-hidden="true"></svg>
     <div class="readout">
-      <div class="hz"><span id="hz" class="num">—</span></div>
+      <div class="hz"><span id="hz" class="num">—</span> <span id="db" class="num" style="font-size:.85rem;font-weight:400;color:var(--ink-soft)"></span></div>
       <div class="state" id="state">Microphone off</div>
     </div>
   </div>
@@ -97,6 +97,7 @@
     <label for="thr">Level gate <span id="thrV" class="num">−85</span> dB</label>
     <input type="range" id="thr" min="-110" max="-20" value="-85" step="1">
   </div>
+  <p class="sub" id="floor" style="margin:-6px 0 0;font-size:.86rem"></p>
   <div class="row">
     <label for="who">Machine</label>
     <input type="text" id="who" placeholder="e.g. the machine's make and model" autocomplete="off">
@@ -143,6 +144,27 @@ const TONE_MS=[100,350], GAP_MS=[600,1100];
 let audioCtx=null,analyser=null,micSrc=null,live=false,recording=false;
 let liveHz=-1,liveDb=-Infinity;
 let events=[],cur=null,lastEnd=0,assign={};
+let noiseFloor=null;
+
+/* Samples the peak bin for a moment with nothing playing, and takes a high percentile
+   rather than the maximum so one cough does not define the room. */
+function measureFloor(ms){
+  return new Promise(res=>{
+    const seen=[], t0=performance.now(), buf=new Float32Array(analyser.frequencyBinCount);
+    const tick=()=>{
+      analyser.getFloatFrequencyData(buf);
+      let m=-Infinity; for(let i=0;i<buf.length;i++) if(buf[i]>m) m=buf[i];
+      if(isFinite(m)) seen.push(m);
+      if(performance.now()-t0<ms) requestAnimationFrame(tick);
+      else{
+        if(!seen.length) return res(-85);
+        seen.sort((a,b)=>a-b);
+        res(seen[Math.floor(seen.length*0.95)]);
+      }
+    };
+    tick();
+  });
+}
 
 const $=id=>document.getElementById(id);
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)];};
@@ -208,9 +230,20 @@ async function startMic(){
     }});
     micSrc=audioCtx.createMediaStreamSource(stream);
     micSrc.connect(analyser);
-    live=true; $('mic').textContent='Microphone on'; $('mic').disabled=true; $('rec').disabled=false;
-    setState('Listening — play a tone to check the meter');
+    live=true; $('mic').textContent='Microphone on'; $('mic').disabled=true;
     loop();
+    /* The gate has to sit above the room, not at some fixed number. A tone is only
+       recognised when the level RISES above the gate and later FALLS back below it, so a
+       gate under the noise floor never closes a tone and nothing is ever recorded - which
+       is exactly what -85dB does in an ordinary room. Measure the room first. */
+    setState('Measuring the room — stay quiet for a moment');
+    const floor = await measureFloor(1500);
+    noiseFloor = floor;
+    const suggested = Math.min(-20, Math.round(floor + 8));
+    $('thr').value = suggested; $('thrV').textContent = '−'+Math.abs(suggested);
+    $('floor').innerHTML = `Room noise peaks at <span class="num">${Math.round(floor)}dB</span>, so the gate was set to <span class="num">${suggested}dB</span>. If tones are missed, drag it down; if silence registers as a tone, drag it up.`;
+    $('rec').disabled=false;
+    setState('Ready — play a tone to check the meter');
   }catch(e){
     setState('Microphone blocked');
     addNote('The browser refused microphone access ('+(e.name||'error')+'). Allow the mic for this page and reload. On iPhone the page must be opened over https or from localhost.',
@@ -236,27 +269,27 @@ function loop(){
     const f=detectPitch(time,audioCtx.sampleRate);
     liveHz=f>0?f:-1;
     if(recording&&f>0){
+      /* Close the current tone when the pitch jumps, not only when the level drops. In a
+         room whose noise never falls under the gate, consecutive tones would otherwise be
+         swallowed into one endless event. */
+      if(cur&&cur.freqs.length){
+        const ref=median(cur.freqs);
+        if(Math.abs(f-ref)>ref*0.03){ closeTone(now); }
+      }
       if(!cur) cur={start:now,freqs:[],db:[]};
       cur.freqs.push(f); cur.db.push(maxVal);
     }
   }else{
     liveHz=-1;
-    if(recording&&cur){
-      const dur=now-cur.start;
-      if(cur.freqs.length>=3){
-        events.push({
-          f:+median(cur.freqs).toFixed(2), dur:Math.round(dur),
-          gap: lastEnd? Math.round(cur.start-lastEnd) : null,
-          db:Math.round(Math.max(...cur.db)),
-          spread:+((Math.max(...cur.freqs)-Math.min(...cur.freqs))/median(cur.freqs)).toFixed(4)
-        });
-        lastEnd=now; renderRows();
-      }
-      cur=null;
-    }
+    if(recording&&cur) closeTone(now);
   }
   $('hz').textContent = liveHz>0? liveHz.toFixed(1)+' Hz'
                       : (maxVal>thr? 'no pitch' : '—');
+  /* Colour carries open/closed so the readout stays on one line: blue means the level is
+     over the gate and a tone is being captured, grey means it has fallen back below. */
+  $('db').textContent = isFinite(maxVal) ? Math.round(maxVal)+'dB' : '';
+  $('db').style.color = maxVal>thr ? 'var(--signal)' : 'var(--ink-soft)';
+  if(recording) setState(`Recording — ${events.length} tone${events.length===1?'':'s'} heard`);
   drawAxis();
   requestAnimationFrame(loop);
 }
@@ -264,6 +297,22 @@ function loop(){
 /* Groups the heard tones into distinct pitches. Anything within 3% is the same tone;
    that is tighter than nothing but looser than the app's 4% match, so a cluster that
    survives here is one the app could still tell apart. */
+/* Files the tone currently being heard as a finished event. */
+function closeTone(now){
+  if(!cur) return;
+  const dur=now-cur.start;
+  if(cur.freqs.length>=3){
+    events.push({
+      f:+median(cur.freqs).toFixed(2), dur:Math.round(dur),
+      gap: lastEnd? Math.round(cur.start-lastEnd) : null,
+      db:Math.round(Math.max(...cur.db)),
+      spread:+((Math.max(...cur.freqs)-Math.min(...cur.freqs))/median(cur.freqs)).toFixed(4)
+    });
+    lastEnd=now; renderRows();
+  }
+  cur=null;
+}
+
 function clusters(){
   if(!events.length) return [];
   const sorted=[...events].sort((a,b)=>a.f-b.f);
@@ -318,7 +367,16 @@ function addNote(html,kind){
 function buildOutput(){
   const cl=clusters();
   $('diag').innerHTML='';
-  if(!cl.length){ $('out').value=''; $('copy').disabled=true; $('dl').disabled=true; return; }
+  if(!cl.length){
+    $('out').value=''; $('copy').disabled=true; $('dl').disabled=true;
+    const gate=+$('thr').value;
+    if(!events.length && noiseFloor!==null && gate<=noiseFloor)
+      addNote(`Nothing was recorded because the gate (<span class="num">${gate}dB</span>) sits at or below the room's own noise (<span class="num">${Math.round(noiseFloor)}dB</span>). With the gate never closing, a tone can never end. Drag the gate up to about <span class="num">${Math.round(noiseFloor+8)}dB</span> and record again.`,'warn');
+    else if(!events.length)
+      addNote(`Nothing was recorded. The meter shows the live level next to the pitch — a tone needs to push it above the gate and then fall back below it. If the level never reaches the gate, drag the gate down; if it never drops back, drag it up.`,'warn');
+    else
+      addNote(`${events.length} sound(s) were heard but none repeated, so there is nothing to treat as a button yet. Let the machine play more rounds.`,'warn');
+    return; }
 
   const notes={}, unassigned=[];
   cl.forEach(c=>{ const n=assign[c.id]; if(n) notes[n]=c.f; else unassigned.push(c.f); });
@@ -361,6 +419,7 @@ function buildOutput(){
     recordedAt:new Date().toISOString(),
     device:{ua:navigator.userAgent,sampleRate:audioCtx?audioCtx.sampleRate:null},
     levelGate:+$('thr').value,
+    roomNoiseFloorDb: noiseFloor===null?null:Math.round(noiseFloor),
     notes,
     observed:{
       distinctTones:cl.length, totalTones:events.length,
@@ -386,6 +445,7 @@ $('rec').onclick=()=>{
   setState('Recording — let the machine play');
 };
 $('stop').onclick=()=>{
+  closeTone(performance.now());   // flush the tone in progress instead of binning it
   recording=false; cur=null;
   $('stop').classList.add('hidden'); $('rec').classList.remove('hidden');
   $('rec').textContent='Record more';
