@@ -170,7 +170,7 @@ const F_MIN=180, F_MAX=950, MATCH_TOL=0.04;
    simply pegs at sampleRate/floor(sampleRate/950), which at 48kHz is exactly 960.00Hz, and
    reports that same fake value over and over. Measuring wide is the only way to find out what
    the tones actually are; each one is still checked against the app's band afterwards. */
-const SCAN_MIN=110, SCAN_MAX=2400;
+const SCAN_MIN=60, SCAN_MAX=5000;
 const TONE_MS=[100,350], GAP_MS=[600,1100];
 
 let audioCtx=null,analyser=null,micSrc=null,live=false,recording=false;
@@ -272,8 +272,16 @@ function detectPitch(buffer,sampleRate,fLo,fHi){
      correlation at double the lag is always high and the search just walks down octave after
      octave. Octave ambiguity is instead resolved where it is actually decidable - folding
      within a tone, and merging octave-paired clusters afterwards. */
+  /* Step down to a shorter period only at a genuine local maximum. Taking the first lag that
+     merely clears the threshold breaks as soon as the search range is wide: a slow tone is still
+     strongly self-similar a handful of samples along, so a 65Hz note would be "found" at the
+     shortest lag in the range and thrown away as an edge reading. A real period is a peak. */
   const strong=bestCorr*0.85;
-  for(let lag=minLag;lag<bestLag;lag++) if(corr[lag]>=strong){bestLag=lag;bestCorr=corr[lag];break;}
+  for(let lag=minLag+1;lag<bestLag;lag++){
+    if(corr[lag]>=strong && corr[lag]>=corr[lag-1] && corr[lag]>=corr[lag+1]){
+      bestLag=lag; bestCorr=corr[lag]; break;
+    }
+  }
   let refined=bestLag;
   if(bestLag>minLag&&bestLag<maxLag){
     const c0=corr[bestLag-1],c1=bestCorr,c2=corr[bestLag+1],d=c0-2*c1+c2;
@@ -287,8 +295,36 @@ function detectPitch(buffer,sampleRate,fLo,fHi){
   return sampleRate/refined;
 }
 
+/* Autocorrelation is good at deciding WHICH tone is sounding (it resists being fooled by
+   harmonics) but poor at saying exactly where it sits: the lags are whole samples, so at 2kHz
+   consecutive lags are already 167Hz apart and at 4kHz they are 671Hz apart. The FFT has the
+   opposite character - a constant 11.7Hz bin at this size, but it happily locks onto the
+   loudest harmonic instead of the tone. So autocorrelation picks the neighbourhood and the FFT
+   pins down the exact frequency within it, using parabolic interpolation across the peak bin
+   and its neighbours to get below even the bin width. */
+function refineWithFFT(approxHz, freqData, sampleRate, fftSize){
+  // Below a few hundred Hz autocorrelation already resolves to a fraction of a Hz and the FFT's
+  // fixed bin width is the coarser of the two, so refining there would make things worse.
+  if(!freqData || !approxHz || approxHz<400) return approxHz;
+  const binHz = sampleRate / fftSize;
+  const lo = Math.max(1, Math.floor(approxHz*0.88/binHz));
+  const hi = Math.min(freqData.length-2, Math.ceil(approxHz*1.12/binHz));
+  if(hi<=lo) return approxHz;
+  let best=-1, bestV=-Infinity;
+  for(let i=lo;i<=hi;i++) if(freqData[i]>bestV){ bestV=freqData[i]; best=i; }
+  if(best<1) return approxHz;
+  const a=freqData[best-1], b=freqData[best], c=freqData[best+1];
+  const d=a-2*b+c;
+  const delta = d!==0 ? 0.5*(a-c)/d : 0;
+  const refined=(best+Math.max(-1,Math.min(1,delta)))*binHz;
+  // Only trust it if it agrees with autocorrelation about which tone this is.
+  return Math.abs(refined-approxHz) <= approxHz*0.12 ? refined : approxHz;
+}
+
 /* ------------------------------ axis ------------------------------ */
-const xFor=f=>Math.max(0,Math.min(1,(Math.log(f)-Math.log(F_MIN))/(Math.log(F_MAX)-Math.log(F_MIN))))*640;
+// The axis spans the SCAN range, not the app's band, or any tone above the app's ceiling would
+// pile up invisibly against the right edge - which is exactly the case worth seeing.
+const xFor=f=>Math.max(0,Math.min(1,(Math.log(f)-Math.log(SCAN_MIN))/(Math.log(SCAN_MAX)-Math.log(SCAN_MIN))))*640;
 function drawAxis(){
   let s=`<line x1="0" y1="70" x2="640" y2="70" stroke="var(--rule)"/>`;
   TONE_TABLE.forEach(t=>{
@@ -305,8 +341,12 @@ function drawAxis(){
     const col=inb?'var(--signal)':'var(--warn)';
     s+=`<line x1="${x}" y1="8" x2="${x}" y2="70" stroke="${col}" stroke-width="2"/><circle cx="${x}" cy="8" r="4" fill="${col}"/>`;
   }
-  s+=`<text x="0" y="94" fill="var(--ink-soft)" font-size="10" font-family="ui-monospace,Menlo,monospace">${F_MIN}Hz</text>`;
-  s+=`<text x="640" y="94" fill="var(--ink-soft)" font-size="10" text-anchor="end" font-family="ui-monospace,Menlo,monospace">${F_MAX}Hz</text>`;
+  // Shade the span the app can actually search, so anything outside it is obvious at a glance.
+  const bx1=xFor(F_MIN), bx2=xFor(F_MAX);
+  s=`<rect x="${bx1}" y="4" width="${bx2-bx1}" height="66" fill="rgba(23,82,155,0.07)"/>`+s;
+  s+=`<text x="0" y="94" fill="var(--ink-soft)" font-size="10" font-family="ui-monospace,Menlo,monospace">${SCAN_MIN}Hz</text>`;
+  s+=`<text x="${bx2}" y="94" fill="var(--ink-soft)" font-size="9" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">app ceiling ${F_MAX}</text>`;
+  s+=`<text x="640" y="94" fill="var(--ink-soft)" font-size="10" text-anchor="end" font-family="ui-monospace,Menlo,monospace">${SCAN_MAX}Hz</text>`;
   $('axis').innerHTML=s;
 }
 
@@ -360,7 +400,8 @@ function loop(){
      closes, so a tone can never end and the recording shatters into fragments. */
   const effThr = (noiseFloor!==null) ? Math.max(thr, noiseFloor+3) : thr;
   if(maxVal>effThr){
-    const f=detectPitch(time,audioCtx.sampleRate,SCAN_MIN,SCAN_MAX);
+    let f=detectPitch(time,audioCtx.sampleRate,SCAN_MIN,SCAN_MAX);
+    if(f>0) f=refineWithFFT(f,freqData,audioCtx.sampleRate,analyser.fftSize);
     liveHz=f>0?f:-1;
     if(recording&&f>0){
       /* Close the current tone when the pitch jumps, not only when the level drops. In a
